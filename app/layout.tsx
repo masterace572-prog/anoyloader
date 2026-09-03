@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'VIPER CHEAT | Admin Control Center',
-  description: 'Enterprise License Key & Device Management Dashboard for VIPER Loader',
+  title: 'ANOY PANEL | Admin Control Center',
+  description: 'Enterprise License Key & Device Management Dashboard for Anoy Loader',
 };
 
 export const viewport: Viewport = {
@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-background text-textPrimary antialiased selection:bg-primary selection:text-black">
+      <body className="min-h-screen bg-background text-textPrimary antialiased selection:bg-primary selection:text-white">
         {children}
       </body>
     </html>

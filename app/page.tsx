@@ -36,7 +36,7 @@ import { LicenseKey, KeyStatus, DURATION_OPTIONS, DurationOption } from '@/lib/t
 const INITIAL_MOCK_KEYS: LicenseKey[] = [
   {
     id: '1',
-    key: 'VIPER-PRO-7D-9941',
+    key: 'ANOY-PRO-7D-9941',
     duration_label: '7 Days',
     duration_seconds: 604800,
     max_devices: 1,
@@ -51,7 +51,7 @@ const INITIAL_MOCK_KEYS: LicenseKey[] = [
   },
   {
     id: '2',
-    key: 'VIPER-TRIAL-1H-8820',
+    key: 'ANOY-TRIAL-1H-8820',
     duration_label: '1 Hour',
     duration_seconds: 3600,
     max_devices: 1,
@@ -66,7 +66,7 @@ const INITIAL_MOCK_KEYS: LicenseKey[] = [
   },
   {
     id: '3',
-    key: 'VIPER-LIFE-9921',
+    key: 'ANOY-LIFE-9921',
     duration_label: 'Lifetime',
     duration_seconds: 0,
     max_devices: 2,
@@ -313,7 +313,7 @@ export default function AdminDashboard() {
   }, [keys, searchQuery, statusFilter]);
 
   // Generate random key string
-  const generateRandomKey = (prefix = 'VIPER') => {
+  const generateRandomKey = (prefix = 'ANOY') => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const segment = (len: number) =>
       Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -325,13 +325,16 @@ export default function AdminDashboard() {
     e.preventDefault();
     const newKeyEntries: Partial<LicenseKey>[] = [];
 
+    const finalDevices = Math.max(1, Number(maxDevices) || 1);
+    const finalBulk = Math.max(1, Number(bulkCount) || 1);
+
     if (createMode === 'single') {
       const finalKey = customKeyName.trim() ? customKeyName.trim().toUpperCase() : generateRandomKey();
       newKeyEntries.push({
         key: finalKey,
         duration_label: selectedDuration.label,
         duration_seconds: selectedDuration.seconds,
-        max_devices: maxDevices,
+        max_devices: finalDevices,
         hwid_list: [],
         status: 'UNUSED',
         notes: keyNotes.trim() || null,
@@ -340,12 +343,12 @@ export default function AdminDashboard() {
         expires_at: null,
       });
     } else {
-      for (let i = 0; i < bulkCount; i++) {
+      for (let i = 0; i < finalBulk; i++) {
         newKeyEntries.push({
           key: generateRandomKey(),
           duration_label: selectedDuration.label,
           duration_seconds: selectedDuration.seconds,
-          max_devices: maxDevices,
+          max_devices: finalDevices,
           hwid_list: [],
           status: 'UNUSED',
           notes: keyNotes.trim() || `Bulk batch #${i + 1}`,
@@ -747,33 +750,31 @@ export default function AdminDashboard() {
     const element = document.createElement('a');
     const file = new Blob([keysList.join('\n')], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = `viper_keys_${new Date().toISOString().slice(0, 10)}.txt`;
+    element.download = `anoy_keys_${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
   };
 
   return (
-    <div className="min-h-screen bg-background text-textPrimary pb-12">
-      {/* Top Cyber Navigation Bar */}
-      <header className="sticky top-0 z-30 border-b border-surfaceBorder bg-surface/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center space-x-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-accent p-0.5 shadow-lg shadow-primary/20">
-              <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-surface">
-                <Shield className="h-5 w-5 text-primary" />
-              </div>
+    <div className="min-h-screen bg-background text-textPrimary pb-16">
+      {/* Top Premium Navigation Bar */}
+      <header className="sticky top-0 z-30 border-b border-surfaceBorder bg-surface/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
+          <div className="flex items-center space-x-3.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-sm">
+              <Shield className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-black tracking-wider text-textPrimary sm:text-xl">
-                  VIPER<span className="text-primary">PANEL</span>
+                <h1 className="text-base font-bold tracking-tight text-textPrimary sm:text-lg">
+                  ANOY<span className="text-primary font-semibold">PANEL</span>
                 </h1>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-primary border border-primary/20">
+                <span className="rounded-md bg-surfaceBorder px-2 py-0.5 text-[10px] font-semibold tracking-wider text-textSecondary uppercase">
                   ADMIN
                 </span>
               </div>
-              <p className="text-[11px] text-textMuted sm:text-xs">License Key & Device Management</p>
+              <p className="text-[11px] text-textMuted hidden sm:block">License & Device Control Suite</p>
             </div>
           </div>
 
@@ -781,21 +782,21 @@ export default function AdminDashboard() {
             {/* Database indicator */}
             <button
               onClick={() => setShowConfigModal(true)}
-              className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition-all ${
+              className={`flex items-center space-x-1.5 rounded-xl px-3 py-1.5 text-xs font-medium border transition-all ${
                 isLiveDatabase
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15'
                   : 'bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse'
               }`}
             >
-              <Database className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{isLiveDatabase ? 'Supabase Connected' : 'Demo Mode (Click to setup)'}</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">{isLiveDatabase ? 'Backend Connected' : 'Demo Mode (Click to setup)'}</span>
               <span className="sm:hidden">{isLiveDatabase ? 'Live' : 'Setup'}</span>
             </button>
 
             {/* Refresh */}
             <button
               onClick={fetchKeys}
-              className="rounded-lg border border-surfaceBorder bg-surface p-2 text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"
+              className="rounded-xl border border-surfaceBorder bg-surface p-2 text-textSecondary hover:bg-surfaceHover hover:text-textPrimary transition-colors"
               title="Refresh Keys"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -807,11 +808,11 @@ export default function AdminDashboard() {
                 setShowLibModal(true);
                 setLibSuccessMsg(null);
               }}
-              className="flex items-center space-x-1.5 rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-2 text-xs font-bold text-secondary shadow-lg shadow-secondary/10 transition-all hover:bg-secondary/20 hover:scale-[1.02] active:scale-[0.98] sm:px-4 sm:text-sm"
+              className="flex items-center space-x-1.5 rounded-xl border border-surfaceBorder bg-surface px-3 py-1.5 text-xs font-medium text-textSecondary hover:text-textPrimary hover:bg-surfaceHover transition-all sm:px-3.5 sm:py-2"
             >
-              <Upload className="h-4 w-4" />
-              <span className="hidden md:inline">MANAGE LIB UPDATES</span>
-              <span className="md:hidden">LIBS</span>
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              <span className="hidden md:inline">Lib Updates</span>
+              <span className="md:hidden">Libs</span>
             </button>
 
             {/* APK In-App Updates Button */}
@@ -820,10 +821,10 @@ export default function AdminDashboard() {
                 setShowApkModal(true);
                 setApkUpdateSuccessMsg(null);
               }}
-              className="flex items-center space-x-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-400 shadow-lg shadow-cyan-500/10 transition-all hover:bg-cyan-500/20 hover:scale-[1.02] active:scale-[0.98] sm:px-4 sm:text-sm"
+              className="flex items-center space-x-1.5 rounded-xl border border-surfaceBorder bg-surface px-3 py-1.5 text-xs font-medium text-textSecondary hover:text-textPrimary hover:bg-surfaceHover transition-all sm:px-3.5 sm:py-2"
             >
-              <Smartphone className="h-4 w-4" />
-              <span className="hidden md:inline">APK UPDATES</span>
+              <Smartphone className="h-3.5 w-3.5 text-primary" />
+              <span className="hidden md:inline">APK Releases</span>
               <span className="md:hidden">APK</span>
             </button>
 
@@ -833,24 +834,24 @@ export default function AdminDashboard() {
                 setShowSystemModal(true);
                 setSystemConfigSuccessMsg(null);
               }}
-              className={`flex items-center space-x-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] sm:px-4 sm:text-sm ${
+              className={`flex items-center space-x-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all sm:px-3.5 sm:py-2 ${
                 maintenanceMode
-                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/40 shadow-lg shadow-rose-500/20 animate-pulse'
-                  : 'border-surfaceBorder bg-surface text-textSecondary hover:bg-surfaceHover hover:text-textPrimary'
+                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                  : 'border-surfaceBorder bg-surface text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
               }`}
             >
-              {maintenanceMode ? <Wrench className="h-4 w-4 text-rose-400" /> : <Megaphone className="h-4 w-4 text-amber-400" />}
-              <span className="hidden md:inline">{maintenanceMode ? 'MAINTENANCE (ACTIVE)' : 'SYSTEM & NOTICE'}</span>
-              <span className="md:hidden">{maintenanceMode ? 'MAINT' : 'SYS'}</span>
+              {maintenanceMode ? <Wrench className="h-3.5 w-3.5 text-rose-400" /> : <Megaphone className="h-3.5 w-3.5 text-amber-400" />}
+              <span className="hidden md:inline">{maintenanceMode ? 'Maintenance (Active)' : 'Notices & Maintenance'}</span>
+              <span className="md:hidden">{maintenanceMode ? 'Maint' : 'Notice'}</span>
             </button>
 
             {/* Create Key Button */}
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center space-x-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-black shadow-lg shadow-primary/20 transition-all hover:bg-primaryHover hover:scale-[1.02] active:scale-[0.98] sm:px-4 sm:text-sm"
+              className="flex items-center space-x-1.5 rounded-xl bg-primary hover:bg-primaryHover px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-500/20 transition-all active:scale-[0.98] sm:px-4 sm:py-2 sm:text-sm"
             >
-              <Plus className="h-4 w-4 stroke-[3]" />
-              <span>CREATE KEYS</span>
+              <Plus className="h-4 w-4" />
+              <span>Create Keys</span>
             </button>
           </div>
         </div>
@@ -860,13 +861,15 @@ export default function AdminDashboard() {
       <main className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
         {/* Maintenance Alert Banner */}
         {maintenanceMode && (
-          <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3.5 text-xs text-rose-300 backdrop-blur-md">
-            <div className="flex items-center space-x-2.5">
-              <Wrench className="h-5 w-5 shrink-0 text-rose-400 animate-bounce" />
+          <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-200">
+            <div className="flex items-center space-x-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-400 shrink-0">
+                <Wrench className="h-4 w-4" />
+              </div>
               <div>
-                <span className="font-extrabold uppercase tracking-wide text-rose-400">MAINTENANCE MODE ACTIVE:</span>{' '}
+                <span className="font-semibold text-rose-300">Maintenance Mode Active:</span>{' '}
                 <span>{maintenanceMessage}</span>
-                <span className="ml-2 font-mono text-[11px] text-rose-400/80">(Estimated completion: {maintenanceEstimatedEnd})</span>
+                <span className="ml-2 text-rose-400/80">(Est. completion: {maintenanceEstimatedEnd})</span>
               </div>
             </div>
             <button
@@ -874,52 +877,63 @@ export default function AdminDashboard() {
                 setShowSystemModal(true);
                 setSystemTab('maintenance');
               }}
-              className="rounded-lg bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 shrink-0"
+              className="rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 px-3.5 py-1.5 text-xs font-semibold text-rose-200 shrink-0 transition-colors"
             >
-              CONFIGURE
+              Configure
             </button>
           </div>
         )}
+
         {/* KPI Stat Cards Grid */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 sm:gap-4">
-          <div className="rounded-xl border border-surfaceBorder bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between text-textMuted">
-              <span className="text-xs font-bold uppercase tracking-wider">Total Keys</span>
-              <Key className="h-4 w-4 text-primary" />
+          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-textSecondary">Total Keys</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Key className="h-4 w-4" />
+              </div>
             </div>
-            <div className="mt-2 text-2xl font-extrabold text-textPrimary">{stats.total}</div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-textPrimary">{stats.total}</div>
           </div>
 
-          <div className="rounded-xl border border-surfaceBorder bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between text-textMuted">
-              <span className="text-xs font-bold uppercase tracking-wider">Active</span>
-              <Zap className="h-4 w-4 text-emerald-400" />
+          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-textSecondary">Active</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                <Zap className="h-4 w-4" />
+              </div>
             </div>
-            <div className="mt-2 text-2xl font-extrabold text-emerald-400">{stats.active}</div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-emerald-400">{stats.active}</div>
           </div>
 
-          <div className="rounded-xl border border-surfaceBorder bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between text-textMuted">
-              <span className="text-xs font-bold uppercase tracking-wider">Unused</span>
-              <Clock className="h-4 w-4 text-secondary" />
+          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-textSecondary">Unused</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+                <Clock className="h-4 w-4" />
+              </div>
             </div>
-            <div className="mt-2 text-2xl font-extrabold text-secondary">{stats.unused}</div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-blue-400">{stats.unused}</div>
           </div>
 
-          <div className="rounded-xl border border-surfaceBorder bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between text-textMuted">
-              <span className="text-xs font-bold uppercase tracking-wider">Expired</span>
-              <AlertCircle className="h-4 w-4 text-amber-400" />
+          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-textSecondary">Expired</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                <AlertCircle className="h-4 w-4" />
+              </div>
             </div>
-            <div className="mt-2 text-2xl font-extrabold text-amber-400">{stats.expired}</div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-amber-400">{stats.expired}</div>
           </div>
 
-          <div className="col-span-2 rounded-xl border border-surfaceBorder bg-surface p-4 shadow-sm sm:col-span-1">
-            <div className="flex items-center justify-between text-textMuted">
-              <span className="text-xs font-bold uppercase tracking-wider">Banned</span>
-              <Ban className="h-4 w-4 text-rose-400" />
+          <div className="col-span-2 rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors sm:col-span-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-textSecondary">Banned</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
+                <Ban className="h-4 w-4" />
+              </div>
             </div>
-            <div className="mt-2 text-2xl font-extrabold text-rose-400">{stats.banned}</div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-rose-400">{stats.banned}</div>
           </div>
         </div>
 
@@ -927,36 +941,38 @@ export default function AdminDashboard() {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Search bar */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
             <input
               type="text"
-              placeholder="Search by key, HWID, or notes..."
+              placeholder="Search key, HWID, notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-surfaceBorder bg-surface py-2.5 pl-9 pr-4 text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-xl border border-surfaceBorder bg-surface py-2.5 pl-10 pr-4 text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
             />
           </div>
 
-          {/* Status Filter buttons */}
-          <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {(['ALL', 'ACTIVE', 'UNUSED', 'EXPIRED', 'BANNED'] as const).map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`rounded-lg px-3 py-2 text-xs font-bold transition-all ${
-                  statusFilter === st
-                    ? 'bg-surfaceBorder text-primary border border-primary/40'
-                    : 'bg-surface text-textMuted hover:bg-surfaceHover hover:text-textSecondary'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+          {/* Status Filter segmented pills */}
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex items-center space-x-1 rounded-xl border border-surfaceBorder bg-surface p-1">
+              {(['ALL', 'ACTIVE', 'UNUSED', 'EXPIRED', 'BANNED'] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                    statusFilter === st
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
 
             {/* Clean expired button */}
             <button
               onClick={handleDeleteExpired}
-              className="flex items-center space-x-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20"
+              className="flex items-center space-x-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-400 hover:bg-amber-500/15 transition-all"
               title="Delete all expired keys"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -966,38 +982,40 @@ export default function AdminDashboard() {
         </div>
 
         {/* Keys Table / Mobile Cards */}
-        <div className="mt-4 rounded-xl border border-surfaceBorder bg-surface shadow-md overflow-hidden">
+        <div className="mt-5 rounded-2xl border border-surfaceBorder bg-surface shadow-xs overflow-hidden">
           {filteredKeys.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-textMuted">
-              <Key className="h-10 w-10 opacity-30 mb-2" />
-              <p className="text-base font-semibold">No license keys found</p>
-              <p className="text-xs mt-1">Create a new key or adjust your filter.</p>
+            <div className="flex flex-col items-center justify-center py-20 text-center text-textMuted">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surfaceHover border border-surfaceBorder text-textMuted mb-3">
+                <Key className="h-6 w-6 opacity-40" />
+              </div>
+              <p className="text-sm font-semibold text-textSecondary">No license keys found</p>
+              <p className="text-xs text-textMuted mt-1">Create a new license or adjust your search filter.</p>
             </div>
           ) : (
             <>
               {/* Desktop Table View */}
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-surfaceBorder bg-surfaceHover/50 text-textMuted uppercase tracking-wider font-semibold">
+                  <thead className="border-b border-surfaceBorder bg-surfaceHover/50 text-textMuted uppercase tracking-wider text-[11px] font-semibold">
                     <tr>
-                      <th className="py-3.5 pl-4 pr-2">License Key</th>
+                      <th className="py-3.5 pl-5 pr-2">License Key</th>
                       <th className="px-3 py-3.5">Status</th>
                       <th className="px-3 py-3.5">Duration</th>
                       <th className="px-3 py-3.5">Devices / HWID</th>
                       <th className="px-3 py-3.5">Expires At</th>
                       <th className="px-3 py-3.5">Notes</th>
-                      <th className="py-3.5 pl-2 pr-4 text-right">Actions</th>
+                      <th className="py-3.5 pl-2 pr-5 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surfaceBorder/60">
                     {filteredKeys.map((item) => (
-                      <tr key={item.id} className="hover:bg-surfaceHover/40 transition-colors">
-                        <td className="py-3 pl-4 pr-2 font-mono font-bold text-textPrimary">
+                      <tr key={item.id} className="hover:bg-surfaceHover/30 transition-colors">
+                        <td className="py-3.5 pl-5 pr-2 font-mono font-medium text-textPrimary">
                           <div className="flex items-center space-x-2">
-                            <span>{item.key}</span>
+                            <span className="tracking-wide">{item.key}</span>
                             <button
                               onClick={() => copyToClipboard(item.key)}
-                              className="text-textMuted hover:text-primary transition-colors"
+                              className="text-textMuted hover:text-primary transition-colors p-1 rounded-md hover:bg-surfaceHover"
                               title="Copy Key"
                             >
                               {copiedKey === item.key ? (
@@ -1009,33 +1027,33 @@ export default function AdminDashboard() {
                           </div>
                         </td>
 
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3.5">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider uppercase border ${
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase border ${
                               item.status === 'ACTIVE'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 : item.status === 'UNUSED'
-                                ? 'bg-secondary/10 text-secondary border-secondary/30'
+                                ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                                 : item.status === 'EXPIRED'
-                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                                : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                                ? 'bg-slate-800 text-slate-400 border-slate-700/50'
+                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                             }`}
                           >
                             {item.status}
                           </span>
                         </td>
 
-                        <td className="px-3 py-3 font-medium text-textSecondary">{item.duration_label}</td>
+                        <td className="px-3 py-3.5 font-medium text-textSecondary">{item.duration_label}</td>
 
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3.5">
                           <div className="flex items-center space-x-2">
-                            <span className="font-semibold text-textPrimary">
+                            <span className="font-medium text-textPrimary">
                               {item.hwid_list.length} / {item.max_devices}
                             </span>
                             {item.hwid_list.length > 0 && (
                               <button
                                 onClick={() => handleResetHwid(item)}
-                                className="rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-400 hover:bg-amber-400/10 border border-amber-400/30"
+                                className="rounded-lg px-2 py-0.5 text-[10px] font-semibold text-amber-400 hover:bg-amber-400/10 border border-amber-400/30 transition-colors"
                                 title="Reset HWID"
                               >
                                 Reset
@@ -1044,11 +1062,11 @@ export default function AdminDashboard() {
                           </div>
                         </td>
 
-                        <td className="px-3 py-3 text-textMuted">
+                        <td className="px-3 py-3.5 text-textMuted">
                           {item.duration_seconds <= 0 ? (
-                            <span className="font-bold text-accent">LIFETIME</span>
+                            <span className="font-semibold text-indigo-400">LIFETIME</span>
                           ) : item.status === 'UNUSED' ? (
-                            <span className="italic text-textMuted">Starts on first login</span>
+                            <span className="italic text-textMuted">Timer starts on first login</span>
                           ) : item.expires_at ? (
                             new Date(item.expires_at).toLocaleString()
                           ) : (
@@ -1056,13 +1074,13 @@ export default function AdminDashboard() {
                           )}
                         </td>
 
-                        <td className="px-3 py-3 text-textMuted max-w-[150px] truncate">{item.notes || '—'}</td>
+                        <td className="px-3 py-3.5 text-textMuted max-w-[150px] truncate">{item.notes || '—'}</td>
 
-                        <td className="py-3 pl-2 pr-4 text-right">
-                          <div className="flex items-center justify-end space-x-1.5">
+                        <td className="py-3.5 pl-2 pr-5 text-right">
+                          <div className="flex items-center justify-end space-x-1">
                             <button
                               onClick={() => setShowExtendModal(item)}
-                              className="rounded-lg p-1.5 text-textMuted hover:bg-surfaceBorder hover:text-secondary"
+                              className="rounded-lg p-1.5 text-textMuted hover:bg-surfaceBorder/80 hover:text-primary transition-colors"
                               title="Extend Time"
                             >
                               <Clock className="h-4 w-4" />
@@ -1070,7 +1088,7 @@ export default function AdminDashboard() {
 
                             <button
                               onClick={() => handleToggleBan(item)}
-                              className={`rounded-lg p-1.5 hover:bg-surfaceBorder ${
+                              className={`rounded-lg p-1.5 hover:bg-surfaceBorder/80 transition-colors ${
                                 item.status === 'BANNED'
                                   ? 'text-rose-400 hover:text-emerald-400'
                                   : 'text-textMuted hover:text-rose-400'
@@ -1086,7 +1104,7 @@ export default function AdminDashboard() {
 
                             <button
                               onClick={() => handleDeleteKey(item)}
-                              className="rounded-lg p-1.5 text-textMuted hover:bg-surfaceBorder hover:text-rose-400"
+                              className="rounded-lg p-1.5 text-textMuted hover:bg-surfaceBorder/80 hover:text-rose-400 transition-colors"
                               title="Delete Key"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1105,10 +1123,10 @@ export default function AdminDashboard() {
                   <div key={item.id} className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <span className="font-mono font-bold text-sm text-textPrimary">{item.key}</span>
+                        <span className="font-mono font-medium text-sm text-textPrimary">{item.key}</span>
                         <button
                           onClick={() => copyToClipboard(item.key)}
-                          className="text-textMuted hover:text-primary"
+                          className="text-textMuted hover:text-primary p-1 rounded-md"
                         >
                           {copiedKey === item.key ? (
                             <Check className="h-4 w-4 text-emerald-400" />
@@ -1119,14 +1137,14 @@ export default function AdminDashboard() {
                       </div>
 
                       <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase border ${
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase border ${
                           item.status === 'ACTIVE'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                             : item.status === 'UNUSED'
-                            ? 'bg-secondary/10 text-secondary border-secondary/30'
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                             : item.status === 'EXPIRED'
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                            : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                            ? 'bg-slate-800 text-slate-400 border-slate-700/50'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                         }`}
                       >
                         {item.status}
@@ -1135,22 +1153,22 @@ export default function AdminDashboard() {
 
                     <div className="grid grid-cols-2 gap-2 text-xs text-textMuted">
                       <div>
-                        <span className="block text-[10px] uppercase tracking-wider font-bold">Duration</span>
+                        <span className="block text-[10px] uppercase tracking-wider font-medium text-textMuted">Duration</span>
                         <span className="font-medium text-textSecondary">{item.duration_label}</span>
                       </div>
 
                       <div>
-                        <span className="block text-[10px] uppercase tracking-wider font-bold">Devices</span>
+                        <span className="block text-[10px] uppercase tracking-wider font-medium text-textMuted">Devices</span>
                         <span className="font-medium text-textSecondary">
                           {item.hwid_list.length} / {item.max_devices} bound
                         </span>
                       </div>
 
                       <div className="col-span-2">
-                        <span className="block text-[10px] uppercase tracking-wider font-bold">Expires</span>
+                        <span className="block text-[10px] uppercase tracking-wider font-medium text-textMuted">Expires</span>
                         <span className="font-medium text-textSecondary">
                           {item.duration_seconds <= 0 ? (
-                            <span className="text-accent font-bold">LIFETIME</span>
+                            <span className="text-indigo-400 font-semibold">LIFETIME</span>
                           ) : item.status === 'UNUSED' ? (
                             <span className="italic">Timer starts on first login</span>
                           ) : item.expires_at ? (
@@ -1163,11 +1181,11 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Mobile Actions */}
-                    <div className="flex items-center justify-end space-x-2 pt-2 border-t border-surfaceBorder/40">
+                    <div className="flex items-center justify-end space-x-2 pt-2.5 border-t border-surfaceBorder/40">
                       {item.hwid_list.length > 0 && (
                         <button
                           onClick={() => handleResetHwid(item)}
-                          className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1.5 text-xs font-bold text-amber-400"
+                          className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1.5 text-xs font-semibold text-amber-400"
                         >
                           Reset HWID
                         </button>
@@ -1175,7 +1193,7 @@ export default function AdminDashboard() {
 
                       <button
                         onClick={() => setShowExtendModal(item)}
-                        className="rounded-lg border border-surfaceBorder bg-surfaceHover px-2.5 py-1.5 text-xs font-bold text-secondary"
+                        className="rounded-lg border border-surfaceBorder bg-surfaceHover px-2.5 py-1.5 text-xs font-semibold text-textSecondary hover:text-primary"
                       >
                         + Extend
                       </button>
@@ -1204,31 +1222,33 @@ export default function AdminDashboard() {
 
       {/* CREATE KEY MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
           <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2">
-                <Plus className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-black text-textPrimary">GENERATE LICENSE KEYS</h3>
+              <div className="flex items-center space-x-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <h3 className="text-base font-bold text-textPrimary">Generate License Keys</h3>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-textMuted hover:text-textPrimary"
+                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateKeys} className="mt-4 space-y-4">
+            <form onSubmit={handleCreateKeys} className="mt-5 space-y-4">
               {/* Single vs Bulk Tab */}
-              <div className="grid grid-cols-2 gap-2 rounded-xl bg-background p-1 border border-surfaceBorder">
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-background p-1 border border-surfaceBorder">
                 <button
                   type="button"
                   onClick={() => setCreateMode('single')}
-                  className={`rounded-lg py-2 text-xs font-bold uppercase transition-all ${
+                  className={`rounded-lg py-2 text-xs font-semibold transition-all ${
                     createMode === 'single'
-                      ? 'bg-primary text-black shadow-md'
-                      : 'text-textMuted hover:text-textSecondary'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'text-textSecondary hover:text-textPrimary'
                   }`}
                 >
                   Single Key
@@ -1236,10 +1256,10 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setCreateMode('bulk')}
-                  className={`rounded-lg py-2 text-xs font-bold uppercase transition-all ${
+                  className={`rounded-lg py-2 text-xs font-semibold transition-all ${
                     createMode === 'bulk'
-                      ? 'bg-primary text-black shadow-md'
-                      : 'text-textMuted hover:text-textSecondary'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'text-textSecondary hover:text-textPrimary'
                   }`}
                 >
                   Bulk Generator
@@ -1249,44 +1269,40 @@ export default function AdminDashboard() {
               {/* Single Mode Custom Name */}
               {createMode === 'single' ? (
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
-                    Custom Key Name <span className="font-normal text-[11px]">(Optional, auto-generated if empty)</span>
+                  <label className="block text-xs font-medium text-textSecondary">
+                    Custom Key Name <span className="text-textMuted font-normal">(Optional, auto-generated if empty)</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. VIPER-PRO-PLAYER-01"
+                    placeholder="e.g. ANOY-PREMIUM-USER-01"
                     value={customKeyName}
                     onChange={(e) => setCustomKeyName(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-sm text-textPrimary uppercase placeholder:text-textMuted focus:border-primary focus:outline-none"
+                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary uppercase placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                   />
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                  <label className="block text-xs font-medium text-textSecondary">
                     Number of Keys to Generate
                   </label>
-                  <div className="mt-1.5 grid grid-cols-5 gap-2">
-                    {[5, 10, 25, 50, 100].map((count) => (
-                      <button
-                        key={count}
-                        type="button"
-                        onClick={() => setBulkCount(count)}
-                        className={`rounded-lg py-2 text-xs font-bold border transition-all ${
-                          bulkCount === count
-                            ? 'bg-primary/10 border-primary text-primary'
-                            : 'border-surfaceBorder bg-background text-textMuted hover:text-textSecondary'
-                        }`}
-                      >
-                        {count}
-                      </button>
-                    ))}
-                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={bulkCount || ''}
+                    onChange={(e) => setBulkCount(e.target.value === '' ? 0 : Math.max(1, parseInt(e.target.value) || 1))}
+                    placeholder="Enter quantity (e.g. 10, 25, 50, 100)"
+                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                  />
+                  <p className="mt-1 text-[11px] text-textMuted">
+                    Type any number of keys you want to generate.
+                  </p>
                 </div>
               )}
 
               {/* Duration Selector */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-textMuted mb-2">
+                <label className="block text-xs font-medium text-textSecondary mb-1.5">
                   Select Key Duration
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -1295,10 +1311,10 @@ export default function AdminDashboard() {
                       key={opt.label}
                       type="button"
                       onClick={() => setSelectedDuration(opt)}
-                      className={`rounded-lg p-2 text-center border text-xs font-bold transition-all ${
+                      className={`rounded-xl p-2 text-center border text-xs font-semibold transition-all ${
                         selectedDuration.label === opt.label
-                          ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                          : 'border-surfaceBorder bg-background text-textSecondary hover:bg-surfaceHover'
+                          ? 'border-primary bg-primary text-white shadow-xs'
+                          : 'border-surfaceBorder bg-background text-textSecondary hover:bg-surfaceHover hover:text-textPrimary'
                       }`}
                     >
                       {opt.label}
@@ -1309,47 +1325,43 @@ export default function AdminDashboard() {
 
               {/* Device Limit */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
-                  Device Limit (Concurrent / Bound Devices)
+                <label className="block text-xs font-medium text-textSecondary mb-1.5">
+                  Device Limit (Max Devices per Key)
                 </label>
-                <div className="mt-1.5 flex items-center space-x-2">
-                  {[1, 2, 3, 5, 10].map((dev) => (
-                    <button
-                      key={dev}
-                      type="button"
-                      onClick={() => setMaxDevices(dev)}
-                      className={`flex-1 rounded-lg py-2 text-xs font-bold border ${
-                        maxDevices === dev
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-surfaceBorder bg-background text-textMuted'
-                      }`}
-                    >
-                      {dev} {dev === 1 ? 'Device' : 'Devices'}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={maxDevices || ''}
+                  onChange={(e) => setMaxDevices(e.target.value === '' ? 0 : Math.max(1, parseInt(e.target.value) || 1))}
+                  placeholder="Enter device limit (e.g. 1, 2, 5)"
+                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                />
+                <p className="mt-1 text-[11px] text-textMuted">
+                  Type the max number of unique devices that can bind to each key.
+                </p>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
-                  Admin Notes / Customer Tag (Optional)
+                <label className="block text-xs font-medium text-textSecondary">
+                  Admin Notes / Customer Tag <span className="text-textMuted font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Reseller Alex / Order #104"
+                  placeholder="e.g. VIP Customer / Order #104"
                   value={keyNotes}
                   onChange={(e) => setKeyNotes(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2 text-xs text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none"
+                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                 />
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-black shadow-lg shadow-primary/20 hover:bg-primaryHover transition-all active:scale-[0.98]"
+                  className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all active:scale-[0.98]"
                 >
-                  {createMode === 'single' ? 'GENERATE SINGLE KEY' : `GENERATE ${bulkCount} BULK KEYS`}
+                  {createMode === 'single' ? 'Create Single License Key' : `Generate ${bulkCount} License Keys`}
                 </button>
               </div>
             </form>
@@ -1359,34 +1371,36 @@ export default function AdminDashboard() {
 
       {/* EXTEND TIME MODAL */}
       {showExtendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-5 w-5 text-secondary" />
-                <h3 className="text-base font-bold text-textPrimary">EXTEND KEY DURATION</h3>
+              <div className="flex items-center space-x-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Clock className="h-4 w-4" />
+                </div>
+                <h3 className="text-base font-bold text-textPrimary">Extend Key Duration</h3>
               </div>
               <button
                 onClick={() => setShowExtendModal(null)}
-                className="text-textMuted hover:text-textPrimary"
+                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleExtendKey} className="mt-4 space-y-4">
-              <div className="rounded-xl bg-background p-3 border border-surfaceBorder">
-                <span className="text-[11px] uppercase font-bold text-textMuted">Target Key:</span>
-                <p className="font-mono font-bold text-sm text-textPrimary">{showExtendModal.key}</p>
-                <p className="text-xs text-secondary mt-1">
+              <div className="rounded-xl bg-background p-3.5 border border-surfaceBorder">
+                <span className="text-[11px] uppercase font-semibold text-textMuted">Target Key:</span>
+                <p className="font-mono font-medium text-sm text-textPrimary mt-0.5">{showExtendModal.key}</p>
+                <p className="text-xs text-textSecondary mt-1">
                   Current: {showExtendModal.duration_label}{' '}
                   {showExtendModal.expires_at ? `(Expires: ${new Date(showExtendModal.expires_at).toLocaleDateString()})` : ''}
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-textMuted mb-2">
-                  Select Time to Add:
+                <label className="block text-xs font-medium text-textSecondary mb-2">
+                  Select Duration to Add:
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -1401,10 +1415,10 @@ export default function AdminDashboard() {
                       key={ext.sec}
                       type="button"
                       onClick={() => setExtendingSeconds(ext.sec)}
-                      className={`rounded-lg py-2 text-xs font-bold border ${
+                      className={`rounded-xl py-2 text-xs font-semibold border transition-all ${
                         extendingSeconds === ext.sec
-                          ? 'border-secondary bg-secondary/10 text-secondary'
-                          : 'border-surfaceBorder bg-background text-textMuted hover:text-textSecondary'
+                          ? 'border-primary bg-primary text-white shadow-xs'
+                          : 'border-surfaceBorder bg-background text-textSecondary hover:bg-surfaceHover hover:text-textPrimary'
                       }`}
                     >
                       {ext.label}
@@ -1416,9 +1430,9 @@ export default function AdminDashboard() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-secondary py-2.5 text-sm font-bold text-black hover:bg-secondary/90 transition-all"
+                  className="w-full rounded-xl bg-primary hover:bg-primaryHover py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all active:scale-[0.98]"
                 >
-                  ADD TIME TO KEY
+                  Add Time to License Key
                 </button>
               </div>
             </form>
@@ -1428,18 +1442,20 @@ export default function AdminDashboard() {
 
       {/* BULK SUCCESS / COPY MODAL */}
       {showBulkSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
           <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="h-5 w-5 text-primary" />
+              <div className="flex items-center space-x-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <Sparkles className="h-4 w-4" />
+                </div>
                 <h3 className="text-base font-bold text-textPrimary">
                   {showBulkSuccessModal.length} Keys Generated Successfully!
                 </h3>
               </div>
               <button
                 onClick={() => setShowBulkSuccessModal(null)}
-                className="text-textMuted hover:text-textPrimary"
+                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
               >
                 ✕
               </button>
@@ -1450,7 +1466,7 @@ export default function AdminDashboard() {
                 readOnly
                 rows={8}
                 value={showBulkSuccessModal.join('\n')}
-                className="w-full rounded-xl border border-surfaceBorder bg-background p-3 font-mono text-xs text-textPrimary focus:outline-none"
+                className="w-full rounded-xl border border-surfaceBorder bg-background p-3.5 font-mono text-xs text-textPrimary focus:outline-none"
               />
             </div>
 
@@ -1460,18 +1476,18 @@ export default function AdminDashboard() {
                   copyToClipboard(showBulkSuccessModal.join('\n'));
                   alert('All keys copied to clipboard!');
                 }}
-                className="flex-1 flex items-center justify-center space-x-2 rounded-xl bg-primary py-2.5 text-xs font-bold text-black hover:bg-primaryHover"
+                className="flex-1 flex items-center justify-center space-x-2 rounded-xl bg-primary hover:bg-primaryHover py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-500/20 transition-all"
               >
                 <Copy className="h-4 w-4" />
-                <span>COPY ALL KEYS</span>
+                <span>Copy All Keys</span>
               </button>
 
               <button
                 onClick={() => downloadBulkTxt(showBulkSuccessModal)}
-                className="flex items-center space-x-2 rounded-xl border border-surfaceBorder bg-surfaceHover px-4 py-2.5 text-xs font-bold text-textPrimary hover:bg-surfaceBorder"
+                className="flex items-center space-x-2 rounded-xl border border-surfaceBorder bg-surfaceHover px-4 py-2.5 text-xs font-semibold text-textPrimary hover:bg-surfaceBorder transition-colors"
               >
                 <Download className="h-4 w-4" />
-                <span>DOWNLOAD .TXT</span>
+                <span>Download .txt</span>
               </button>
             </div>
           </div>
@@ -1480,43 +1496,45 @@ export default function AdminDashboard() {
 
       {/* MANAGE LIB UPDATES MODAL */}
       {showLibModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
           <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2">
-                <Upload className="h-5 w-5 text-secondary" />
-                <h3 className="text-lg font-black text-textPrimary">MANAGE LIB UPDATES</h3>
+              <div className="flex items-center space-x-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Upload className="h-4 w-4" />
+                </div>
+                <h3 className="text-base font-bold text-textPrimary">Manage Library Updates</h3>
               </div>
               <button
                 onClick={() => setShowLibModal(false)}
-                className="text-textMuted hover:text-textPrimary"
+                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
               >
                 ✕
               </button>
             </div>
 
             {/* Current Active Lib Banner */}
-            <div className="mt-4 rounded-xl border border-secondary/30 bg-secondary/5 p-4 space-y-2">
+            <div className="mt-4 rounded-xl border border-surfaceBorder bg-background p-4 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-textMuted">Active Lib Version:</span>
-                  <span className="rounded-full bg-secondary/20 px-2.5 py-0.5 text-xs font-extrabold text-secondary border border-secondary/40">
+                  <span className="text-xs font-medium text-textSecondary">Active Lib Version:</span>
+                  <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-400 border border-blue-500/20">
                     v{libActiveVersion}
                   </span>
                 </div>
-                <span className="text-[10px] text-textMuted">
+                <span className="text-[11px] text-textMuted">
                   Updated: {new Date(libUpdatedAt).toLocaleDateString()}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg bg-background/80 p-2 border border-surfaceBorder text-xs">
+              <div className="flex items-center justify-between rounded-xl bg-surface p-2.5 border border-surfaceBorder text-xs">
                 <span className="truncate font-mono text-[11px] text-textSecondary max-w-[280px]">
                   {libDownloadUrl}
                 </span>
                 <div className="flex items-center space-x-1.5 ml-2">
                   <button
                     onClick={() => copyToClipboard(libDownloadUrl)}
-                    className="p-1 text-textMuted hover:text-secondary transition-colors"
+                    className="p-1 text-textMuted hover:text-primary transition-colors"
                     title="Copy URL"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -1525,7 +1543,7 @@ export default function AdminDashboard() {
                     href={libDownloadUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-1 text-textMuted hover:text-secondary transition-colors"
+                    className="p-1 text-textMuted hover:text-primary transition-colors"
                     title="Test Download Link"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -1536,21 +1554,21 @@ export default function AdminDashboard() {
 
             {/* Success Alert Banner */}
             {libSuccessMsg && (
-              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-400">
+              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-400">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{libSuccessMsg}</span>
               </div>
             )}
 
             {/* Mode Switcher */}
-            <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-background p-1 border border-surfaceBorder">
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-background p-1 border border-surfaceBorder">
               <button
                 type="button"
                 onClick={() => setLibUploadMode('upload')}
-                className={`rounded-lg py-2 text-xs font-bold uppercase transition-all ${
+                className={`rounded-lg py-2 text-xs font-semibold transition-all ${
                   libUploadMode === 'upload'
-                    ? 'bg-secondary text-black shadow-md'
-                    : 'text-textMuted hover:text-textSecondary'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-textSecondary hover:text-textPrimary'
                 }`}
               >
                 1. Upload ZIP File
@@ -1558,10 +1576,10 @@ export default function AdminDashboard() {
               <button
                 type="button"
                 onClick={() => setLibUploadMode('url')}
-                className={`rounded-lg py-2 text-xs font-bold uppercase transition-all ${
+                className={`rounded-lg py-2 text-xs font-semibold transition-all ${
                   libUploadMode === 'url'
-                    ? 'bg-secondary text-black shadow-md'
-                    : 'text-textMuted hover:text-textSecondary'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-textSecondary hover:text-textPrimary'
                 }`}
               >
                 2. Direct ZIP URL
@@ -1572,7 +1590,7 @@ export default function AdminDashboard() {
               {libUploadMode === 'upload' ? (
                 <>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       Select Library ZIP File (.zip)
                     </label>
                     <input
@@ -1583,15 +1601,15 @@ export default function AdminDashboard() {
                           setLibFile(e.target.files[0]);
                         }
                       }}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background p-2.5 text-xs text-textPrimary file:mr-3 file:rounded-lg file:border-0 file:bg-surfaceHover file:px-3 file:py-1 file:text-xs file:font-bold file:text-secondary hover:file:bg-surfaceBorder"
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background p-2 text-xs text-textPrimary file:mr-3 file:rounded-lg file:border-0 file:bg-surfaceHover file:px-3 file:py-1 file:text-xs file:font-semibold file:text-textPrimary hover:file:bg-surfaceBorder"
                     />
                     <p className="mt-1 text-[11px] text-textMuted">
-                      Must contain <code className="text-secondary">libbgmi.so</code> inside.
+                      Must contain <code className="text-primary font-mono">libbgmi.so</code> inside.
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       New Version Code (e.g. 2.0, 2.1)
                     </label>
                     <input
@@ -1599,28 +1617,28 @@ export default function AdminDashboard() {
                       placeholder="e.g. 2.0"
                       value={libNewVersion}
                       onChange={(e) => setLibNewVersion(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-sm text-textPrimary placeholder:text-textMuted focus:border-secondary focus:outline-none"
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                     />
                   </div>
 
-                  <div className="rounded-xl bg-background/60 p-3 border border-surfaceBorder text-[11px] text-textMuted">
-                    💡 <span className="font-semibold text-textSecondary">Smart Storage Cleanup:</span> When you upload a new zip, any previously uploaded zip in Supabase Storage is automatically deleted to keep your storage usage free and clean.
+                  <div className="rounded-xl bg-background p-3 border border-surfaceBorder text-[11px] text-textMuted">
+                    💡 <span className="font-medium text-textSecondary">Smart Storage Cleanup:</span> When uploading a new zip, old archives in Supabase Storage are automatically pruned to keep your cloud storage lean and free.
                   </div>
 
                   <button
                     type="submit"
                     disabled={isUploadingLib || !libFile || !libNewVersion}
-                    className="w-full rounded-xl bg-secondary py-3 text-sm font-bold text-black shadow-lg shadow-secondary/20 hover:bg-secondary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-2 active:scale-[0.98]"
                   >
                     {isUploadingLib ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>UPLOADING & PUSHING UPDATE...</span>
+                        <span>Uploading & Pushing Update...</span>
                       </>
                     ) : (
                       <>
                         <Upload className="h-4 w-4" />
-                        <span>UPLOAD ZIP & PUSH UPDATE</span>
+                        <span>Upload ZIP & Push Release</span>
                       </>
                     )}
                   </button>
@@ -1628,7 +1646,7 @@ export default function AdminDashboard() {
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       Direct Download URL for ZIP
                     </label>
                     <input
@@ -1636,15 +1654,15 @@ export default function AdminDashboard() {
                       placeholder="https://github.com/.../release/download/v2/lib.zip"
                       value={libDirectUrl}
                       onChange={(e) => setLibDirectUrl(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-secondary focus:outline-none"
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                     />
                     <p className="mt-1 text-[11px] text-textMuted">
-                      Direct downloadable link to the zip containing <code className="text-secondary">libbgmi.so</code>.
+                      Direct link to the zip containing <code className="text-primary font-mono">libbgmi.so</code>.
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       New Version Code (e.g. 2.0, 2.1)
                     </label>
                     <input
@@ -1652,24 +1670,24 @@ export default function AdminDashboard() {
                       placeholder="e.g. 2.0"
                       value={libNewVersion}
                       onChange={(e) => setLibNewVersion(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-sm text-textPrimary placeholder:text-textMuted focus:border-secondary focus:outline-none"
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isUploadingLib || !libDirectUrl || !libNewVersion}
-                    className="w-full rounded-xl bg-secondary py-3 text-sm font-bold text-black shadow-lg shadow-secondary/20 hover:bg-secondary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-2 active:scale-[0.98]"
                   >
                     {isUploadingLib ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>PUSHING UPDATE...</span>
+                        <span>Pushing Update...</span>
                       </>
                     ) : (
                       <>
                         <Zap className="h-4 w-4" />
-                        <span>PUSH DIRECT URL UPDATE</span>
+                        <span>Push Direct URL Update</span>
                       </>
                     )}
                   </button>
@@ -1682,21 +1700,21 @@ export default function AdminDashboard() {
 
       {/* SYSTEM CONTROL & ANNOUNCEMENTS MODAL */}
       {showSystemModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
           <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <Wrench className="h-4 w-4 text-amber-400" />
+              <div className="flex items-center space-x-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <Wrench className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-textPrimary">SYSTEM & ANNOUNCEMENTS</h3>
-                  <p className="text-[11px] text-textMuted">Control server maintenance and push broadcast notices</p>
+                  <h3 className="text-base font-bold text-textPrimary">System & Broadcast Notices</h3>
+                  <p className="text-[11px] text-textMuted">Control maintenance mode and push broadcast announcements</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowSystemModal(false)}
-                className="text-textMuted hover:text-textPrimary text-sm font-bold"
+                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
               >
                 ✕
               </button>
@@ -1704,29 +1722,29 @@ export default function AdminDashboard() {
 
             {/* Success notification */}
             {systemConfigSuccessMsg && (
-              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-400">
+              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-400">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{systemConfigSuccessMsg}</span>
               </div>
             )}
 
             {/* Tab switchers */}
-            <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-background p-1 border border-surfaceBorder">
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-background p-1 border border-surfaceBorder">
               <button
                 type="button"
                 onClick={() => {
                   setSystemTab('maintenance');
                   setSystemConfigSuccessMsg(null);
                 }}
-                className={`flex items-center justify-center space-x-2 rounded-lg py-2 text-xs font-bold uppercase transition-all ${
+                className={`flex items-center justify-center space-x-2 rounded-lg py-2 text-xs font-semibold transition-all ${
                   systemTab === 'maintenance'
-                    ? 'bg-rose-500 text-white shadow-md'
-                    : 'text-textMuted hover:text-textSecondary'
+                    ? 'bg-rose-500 text-white shadow-xs'
+                    : 'text-textSecondary hover:text-textPrimary'
                 }`}
               >
                 <Wrench className="h-3.5 w-3.5" />
-                <span>1. Maintenance</span>
-                {maintenanceMode && <span className="h-2 w-2 rounded-full bg-white animate-ping" />}
+                <span>Maintenance</span>
+                {maintenanceMode && <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />}
               </button>
               <button
                 type="button"
@@ -1734,15 +1752,15 @@ export default function AdminDashboard() {
                   setSystemTab('announcement');
                   setSystemConfigSuccessMsg(null);
                 }}
-                className={`flex items-center justify-center space-x-2 rounded-lg py-2 text-xs font-bold uppercase transition-all ${
+                className={`flex items-center justify-center space-x-2 rounded-lg py-2 text-xs font-semibold transition-all ${
                   systemTab === 'announcement'
-                    ? 'bg-amber-500 text-black shadow-md'
-                    : 'text-textMuted hover:text-textSecondary'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'text-textSecondary hover:text-textPrimary'
                 }`}
               >
                 <Megaphone className="h-3.5 w-3.5" />
-                <span>2. Announcement</span>
-                {announcementActive && <span className="h-2 w-2 rounded-full bg-black" />}
+                <span>Announcement</span>
+                {announcementActive && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
               </button>
             </div>
 
@@ -1750,18 +1768,18 @@ export default function AdminDashboard() {
               {systemTab === 'maintenance' ? (
                 <>
                   {/* Maintenance Toggle */}
-                  <div className="flex items-center justify-between rounded-xl border border-surfaceBorder bg-background p-3.5">
+                  <div className="flex items-center justify-between rounded-xl border border-surfaceBorder bg-background p-4">
                     <div>
-                      <div className="text-xs font-extrabold uppercase tracking-wide text-textPrimary flex items-center space-x-2">
-                        <span>MAINTENANCE MODE</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      <div className="text-xs font-semibold text-textPrimary flex items-center space-x-2">
+                        <span>Maintenance Status</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                           maintenanceMode ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         }`}>
-                          {maintenanceMode ? 'ACTIVE (APP LOCKED)' : 'OFF (NORMAL)'}
+                          {maintenanceMode ? 'Active (App Locked)' : 'Disabled (Normal)'}
                         </span>
                       </div>
                       <p className="mt-1 text-[11px] text-textMuted">
-                        When active, app users cannot use or log into the app.
+                        When enabled, client applications display maintenance screen.
                       </p>
                     </div>
 
@@ -1773,7 +1791,7 @@ export default function AdminDashboard() {
                       }`}
                     >
                       <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition duration-200 ease-in-out ${
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
                           maintenanceMode ? 'translate-x-5' : 'translate-x-0'
                         }`}
                       />
@@ -1782,21 +1800,21 @@ export default function AdminDashboard() {
 
                   {/* Maintenance Message */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       Maintenance Notice Message
                     </label>
                     <textarea
                       rows={3}
                       value={maintenanceMessage}
                       onChange={(e) => setMaintenanceMessage(e.target.value)}
-                      placeholder="Server is undergoing maintenance. Please check back later."
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-rose-500 focus:outline-none leading-relaxed"
+                      placeholder="Server is undergoing scheduled maintenance. Please check back later."
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500/40 leading-relaxed transition-colors"
                     />
                   </div>
 
                   {/* Estimated End Time */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       Estimated Completion Time
                     </label>
                     <input
@@ -1804,27 +1822,27 @@ export default function AdminDashboard() {
                       value={maintenanceEstimatedEnd}
                       onChange={(e) => setMaintenanceEstimatedEnd(e.target.value)}
                       placeholder="e.g. 1 Hour, 2:00 PM UTC, Tomorrow Morning"
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-rose-500 focus:outline-none"
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500/40 transition-colors"
                     />
-                    <p className="mt-1 text-[10px] text-textMuted">
-                      This will be shown to users so they know when to expect the server back online.
+                    <p className="mt-1 text-[11px] text-textMuted">
+                      Shown to users so they know when the server is expected back online.
                     </p>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSavingSystemConfig}
-                    className="w-full rounded-xl bg-rose-500 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all disabled:opacity-40 flex items-center justify-center space-x-2"
+                    className="w-full rounded-xl bg-rose-500 hover:bg-rose-600 py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-rose-500/20 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 active:scale-[0.98]"
                   >
                     {isSavingSystemConfig ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>SAVING SETTINGS...</span>
+                        <span>Saving Settings...</span>
                       </>
                     ) : (
                       <>
                         <Wrench className="h-4 w-4" />
-                        <span>PUSH MAINTENANCE STATUS</span>
+                        <span>Update Maintenance Status</span>
                       </>
                     )}
                   </button>
@@ -1832,18 +1850,18 @@ export default function AdminDashboard() {
               ) : (
                 <>
                   {/* Announcement Toggle */}
-                  <div className="flex items-center justify-between rounded-xl border border-surfaceBorder bg-background p-3.5">
+                  <div className="flex items-center justify-between rounded-xl border border-surfaceBorder bg-background p-4">
                     <div>
-                      <div className="text-xs font-extrabold uppercase tracking-wide text-textPrimary flex items-center space-x-2">
-                        <span>BROADCAST ANNOUNCEMENT</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      <div className="text-xs font-semibold text-textPrimary flex items-center space-x-2">
+                        <span>Broadcast Status</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                           announcementActive ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-surfaceBorder text-textMuted'
                         }`}>
-                          {announcementActive ? 'BROADCASTING' : 'OFF'}
+                          {announcementActive ? 'Broadcasting' : 'Disabled'}
                         </span>
                       </div>
                       <p className="mt-1 text-[11px] text-textMuted">
-                        Displays an in-app popup notice when users launch the app.
+                        Displays an in-app notice dialog when users launch the app.
                       </p>
                     </div>
 
@@ -1855,7 +1873,7 @@ export default function AdminDashboard() {
                       }`}
                     >
                       <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-black shadow-lg transition duration-200 ease-in-out ${
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
                           announcementActive ? 'translate-x-5' : 'translate-x-0'
                         }`}
                       />
@@ -1864,77 +1882,77 @@ export default function AdminDashboard() {
 
                   {/* Announcement Title */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       Announcement Title
                     </label>
                     <input
                       type="text"
                       value={announcementTitle}
                       onChange={(e) => setAnnouncementTitle(e.target.value)}
-                      placeholder="e.g. Season Update 3.5 Released!"
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none font-semibold"
+                      placeholder="e.g. Major Update Released!"
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40 font-semibold transition-colors"
                     />
                   </div>
 
                   {/* Announcement Message */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
-                      Announcement Message / Details
+                    <label className="block text-xs font-medium text-textSecondary">
+                      Announcement Details
                     </label>
                     <textarea
                       rows={3}
                       value={announcementMessage}
                       onChange={(e) => setAnnouncementMessage(e.target.value)}
-                      placeholder="Enter update changelog, community news, or instructions..."
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none leading-relaxed"
+                      placeholder="Enter update notes or instructions..."
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40 leading-relaxed transition-colors"
                     />
                   </div>
 
                   {/* Type / Priority */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
-                      Notice Style / Priority
+                    <label className="block text-xs font-medium text-textSecondary mb-1.5">
+                      Notice Style
                     </label>
-                    <div className="mt-1.5 grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <button
                         type="button"
                         onClick={() => setAnnouncementType('info')}
-                        className={`rounded-xl border p-2 text-xs font-bold transition-all ${
+                        className={`rounded-xl border p-2 text-xs font-semibold transition-all ${
                           announcementType === 'info'
-                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                            : 'border-surfaceBorder bg-background text-textMuted hover:text-textSecondary'
+                            ? 'border-blue-500 bg-blue-500 text-white shadow-xs'
+                            : 'border-surfaceBorder bg-background text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
                         }`}
                       >
-                        INFO (Blue)
+                        Info (Blue)
                       </button>
                       <button
                         type="button"
                         onClick={() => setAnnouncementType('warning')}
-                        className={`rounded-xl border p-2 text-xs font-bold transition-all ${
+                        className={`rounded-xl border p-2 text-xs font-semibold transition-all ${
                           announcementType === 'warning'
-                            ? 'border-amber-500 bg-amber-500/10 text-amber-400'
-                            : 'border-surfaceBorder bg-background text-textMuted hover:text-textSecondary'
+                            ? 'border-amber-500 bg-amber-500 text-white shadow-xs'
+                            : 'border-surfaceBorder bg-background text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
                         }`}
                       >
-                        WARNING (Yellow)
+                        Warning (Amber)
                       </button>
                       <button
                         type="button"
                         onClick={() => setAnnouncementType('critical')}
-                        className={`rounded-xl border p-2 text-xs font-bold transition-all ${
+                        className={`rounded-xl border p-2 text-xs font-semibold transition-all ${
                           announcementType === 'critical'
-                            ? 'border-rose-500 bg-rose-500/10 text-rose-400'
-                            : 'border-surfaceBorder bg-background text-textMuted hover:text-textSecondary'
+                            ? 'border-rose-500 bg-rose-500 text-white shadow-xs'
+                            : 'border-surfaceBorder bg-background text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
                         }`}
                       >
-                        ALERT (Red)
+                        Alert (Red)
                       </button>
                     </div>
                   </div>
 
                   {/* Optional Link */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                    <label className="block text-xs font-medium text-textSecondary">
                       Optional Action Link (Telegram, Discord, Website)
                     </label>
                     <input
@@ -1942,24 +1960,24 @@ export default function AdminDashboard() {
                       value={announcementLink}
                       onChange={(e) => setAnnouncementLink(e.target.value)}
                       placeholder="https://t.me/your_official_channel"
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none"
+                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSavingSystemConfig}
-                    className="w-full rounded-xl bg-amber-500 py-3 text-xs font-bold uppercase tracking-wider text-black shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all disabled:opacity-40 flex items-center justify-center space-x-2"
+                    className="w-full rounded-xl bg-amber-500 hover:bg-amber-600 py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-amber-500/20 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 active:scale-[0.98]"
                   >
                     {isSavingSystemConfig ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>SAVING ANNOUNCEMENT...</span>
+                        <span>Saving Announcement...</span>
                       </>
                     ) : (
                       <>
                         <Megaphone className="h-4 w-4" />
-                        <span>PUSH ANNOUNCEMENT TO APP</span>
+                        <span>Push Announcement to App</span>
                       </>
                     )}
                   </button>
@@ -1972,21 +1990,21 @@ export default function AdminDashboard() {
 
       {/* APK IN-APP UPDATES MODAL */}
       {showApkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
           <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                  <Smartphone className="h-4 w-4 text-cyan-400" />
+              <div className="flex items-center space-x-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                  <Smartphone className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-textPrimary">IN-APP APK UPDATES</h3>
-                  <p className="text-[11px] text-textMuted">Push APK releases with changelogs and in-app installer</p>
+                  <h3 className="text-base font-bold text-textPrimary">In-App APK Releases</h3>
+                  <p className="text-[11px] text-textMuted">Publish APK updates with changelog and direct in-app downloader</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowApkModal(false)}
-                className="text-textMuted hover:text-textPrimary text-sm font-bold"
+                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
               >
                 ✕
               </button>
@@ -1994,30 +2012,30 @@ export default function AdminDashboard() {
 
             {/* Success notification */}
             {apkUpdateSuccessMsg && (
-              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-400">
+              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-400">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{apkUpdateSuccessMsg}</span>
               </div>
             )}
 
             {/* Current Active APK Info Card */}
-            <div className="mt-4 rounded-xl border border-surfaceBorder bg-background p-4 space-y-2">
+            <div className="mt-4 rounded-xl border border-surfaceBorder bg-background p-4 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-textMuted">Currently Active Release</span>
-                <span className="flex items-center space-x-1.5 rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-extrabold text-cyan-400 border border-cyan-500/30">
-                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-xs font-medium text-textSecondary">Active Release</span>
+                <span className="flex items-center space-x-1.5 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-400 border border-blue-500/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
                   <span>v{apkActiveVerName} (Code {apkActiveVerCode})</span>
                 </span>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-surfaceBorder/60">
+              <div className="flex items-center justify-between rounded-xl bg-surface px-3 py-2 border border-surfaceBorder">
                 <span className="font-mono text-[11px] text-textSecondary truncate max-w-[280px] sm:max-w-[340px]">
                   {apkActiveUrl || 'No URL configured'}
                 </span>
                 {apkActiveUrl && (
                   <button
                     onClick={() => copyToClipboard(apkActiveUrl)}
-                    className="ml-2 text-textMuted hover:text-textPrimary"
+                    className="ml-2 text-textMuted hover:text-primary transition-colors p-1 rounded-md"
                     title="Copy APK URL"
                   >
                     {copiedKey === apkActiveUrl ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
@@ -2027,7 +2045,7 @@ export default function AdminDashboard() {
 
               {apkActiveChangelog && (
                 <div className="text-[11px] text-textMuted">
-                  <span className="font-semibold text-textSecondary">Changelog: </span>
+                  <span className="font-medium text-textSecondary">Changelog: </span>
                   <span className="italic">{apkActiveChangelog}</span>
                 </div>
               )}
@@ -2037,7 +2055,7 @@ export default function AdminDashboard() {
             <form onSubmit={handleSaveApkUpdate} className="mt-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                  <label className="block text-xs font-medium text-textSecondary">
                     Version Name
                   </label>
                   <input
@@ -2046,11 +2064,11 @@ export default function AdminDashboard() {
                     value={apkNewVerName}
                     onChange={(e) => setApkNewVerName(e.target.value)}
                     placeholder="e.g. 2026.02.01"
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-cyan-500 focus:outline-none"
+                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                  <label className="block text-xs font-medium text-textSecondary">
                     Version Code (Number)
                   </label>
                   <input
@@ -2060,13 +2078,13 @@ export default function AdminDashboard() {
                     value={apkNewVerCode}
                     onChange={(e) => setApkNewVerCode(e.target.value)}
                     placeholder={`e.g. ${apkActiveVerCode + 1}`}
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-cyan-500 focus:outline-none"
+                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                <label className="block text-xs font-medium text-textSecondary">
                   Direct APK Download URL
                 </label>
                 <input
@@ -2075,33 +2093,33 @@ export default function AdminDashboard() {
                   value={apkNewUrl}
                   onChange={(e) => setApkNewUrl(e.target.value)}
                   placeholder="https://.../Anoy_Loader_v2.apk"
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-cyan-500 focus:outline-none"
+                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                 />
-                <p className="mt-1 text-[10px] text-textMuted">
-                  The app will download this .apk directly in-app with a live progress bar and trigger installation.
+                <p className="mt-1 text-[11px] text-textMuted">
+                  The app will download this .apk directly in-app with a live progress bar and launch package installer.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-textMuted">
+                <label className="block text-xs font-medium text-textSecondary">
                   What's New / Changelog
                 </label>
                 <textarea
                   rows={3}
                   value={apkNewChangelog}
                   onChange={(e) => setApkNewChangelog(e.target.value)}
-                  placeholder="• Fixed login connection issue&#10;• Added new VIP features&#10;• Faster injection speed"
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-cyan-500 focus:outline-none leading-relaxed"
+                  placeholder="• Performance optimizations&#10;• New VIP features&#10;• Faster connection"
+                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 leading-relaxed transition-colors"
                 />
               </div>
 
-              <div className="flex items-center space-x-2.5 rounded-xl border border-surfaceBorder bg-background p-3">
+              <div className="flex items-center space-x-2.5 rounded-xl border border-surfaceBorder bg-background p-3.5">
                 <input
                   type="checkbox"
                   id="apkMandatory"
                   checked={apkNewMandatory}
                   onChange={(e) => setApkNewMandatory(e.target.checked)}
-                  className="h-4 w-4 rounded border-surfaceBorder text-cyan-500 focus:ring-cyan-500 bg-surface"
+                  className="h-4 w-4 rounded border-surfaceBorder text-primary focus:ring-primary/30 bg-surface"
                 />
                 <label htmlFor="apkMandatory" className="text-xs text-textSecondary cursor-pointer select-none">
                   <strong className="text-textPrimary">Mandatory Update</strong> (Users must update before they can use the app)
@@ -2111,17 +2129,17 @@ export default function AdminDashboard() {
               <button
                 type="submit"
                 disabled={isSavingApkUpdate}
-                className="w-full rounded-xl bg-cyan-500 py-3 text-xs font-bold uppercase tracking-wider text-black shadow-lg shadow-cyan-500/20 hover:bg-cyan-400 transition-all disabled:opacity-40 flex items-center justify-center space-x-2"
+                className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 active:scale-[0.98]"
               >
                 {isSavingApkUpdate ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>PUBLISHING APK UPDATE...</span>
+                    <span>Publishing APK Release...</span>
                   </>
                 ) : (
                   <>
                     <Smartphone className="h-4 w-4" />
-                    <span>PUSH APK UPDATE TO APP</span>
+                    <span>Push APK Update to App</span>
                   </>
                 )}
               </button>
@@ -2166,9 +2184,9 @@ export default function AdminDashboard() {
               <div className="pt-2">
                 <button
                   onClick={() => setShowConfigModal(false)}
-                  className="w-full rounded-xl bg-primary py-2 text-xs font-bold text-black"
+                  className="w-full rounded-xl bg-primary hover:bg-primaryHover py-2.5 text-xs font-semibold text-white shadow-xs transition-colors"
                 >
-                  GOT IT
+                  Close
                 </button>
               </div>
             </div>
