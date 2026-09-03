@@ -1270,20 +1270,19 @@ export default function AdminDashboard() {
               {createMode === 'single' ? (
                 <div>
                   <label className="block text-xs font-medium text-textSecondary">
-                    Custom Key Name <span className="text-textMuted font-normal">(Optional, auto-generated if empty)</span>
+                    Custom Key Name <span className="text-textMuted font-normal">(Optional)</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. ANOY-PREMIUM-USER-01"
                     value={customKeyName}
                     onChange={(e) => setCustomKeyName(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary uppercase placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary uppercase focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                   />
                 </div>
               ) : (
                 <div>
                   <label className="block text-xs font-medium text-textSecondary">
-                    Number of Keys to Generate
+                    Number of Keys
                   </label>
                   <input
                     type="number"
@@ -1291,19 +1290,15 @@ export default function AdminDashboard() {
                     max={1000}
                     value={bulkCount || ''}
                     onChange={(e) => setBulkCount(e.target.value === '' ? 0 : Math.max(1, parseInt(e.target.value) || 1))}
-                    placeholder="Enter quantity (e.g. 10, 25, 50, 100)"
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                   />
-                  <p className="mt-1 text-[11px] text-textMuted">
-                    Type any number of keys you want to generate.
-                  </p>
                 </div>
               )}
 
               {/* Duration Selector */}
               <div>
                 <label className="block text-xs font-medium text-textSecondary mb-1.5">
-                  Select Key Duration
+                  Key Duration
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {DURATION_OPTIONS.map((opt) => (
@@ -1326,7 +1321,7 @@ export default function AdminDashboard() {
               {/* Device Limit */}
               <div>
                 <label className="block text-xs font-medium text-textSecondary mb-1.5">
-                  Device Limit (Max Devices per Key)
+                  Device Limit
                 </label>
                 <input
                   type="number"
@@ -1334,25 +1329,20 @@ export default function AdminDashboard() {
                   max={100}
                   value={maxDevices || ''}
                   onChange={(e) => setMaxDevices(e.target.value === '' ? 0 : Math.max(1, parseInt(e.target.value) || 1))}
-                  placeholder="Enter device limit (e.g. 1, 2, 5)"
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                 />
-                <p className="mt-1 text-[11px] text-textMuted">
-                  Type the max number of unique devices that can bind to each key.
-                </p>
               </div>
 
               {/* Notes */}
               <div>
                 <label className="block text-xs font-medium text-textSecondary">
-                  Admin Notes / Customer Tag <span className="text-textMuted font-normal">(Optional)</span>
+                  Notes <span className="text-textMuted font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. VIP Customer / Order #104"
                   value={keyNotes}
                   onChange={(e) => setKeyNotes(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs sm:text-sm text-textPrimary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                 />
               </div>
 
