@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #090D16;
-  --foreground: #F8FAFC;
+  --background: #080808;
+  --foreground: #FFFFFF;
 }
 
 body {
@@ -23,22 +23,20 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #090D16;
+  background: #080808;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
+  background: #242424;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3B82F6;
+  background: #383838;
 }
 
-/* Glass & Card Effects */
+/* Minimal Black & White Card Panels */
 .glass-panel {
-  background: rgba(17, 24, 39, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(30, 41, 59, 0.8);
+  background: #121212;
+  border: 1px solid #242424;
 }
