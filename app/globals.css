@@ -40,3 +40,13 @@ body {
   background: #121212;
   border: 1px solid #242424;
 }
+
+/* Hide scrollbar for mobile horizontal swipe pills */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
