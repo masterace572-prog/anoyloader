@@ -12,6 +12,10 @@ export interface SystemConfigResponse {
   announcement_message: string;
   announcement_type: 'info' | 'warning' | 'critical';
   announcement_link?: string;
+  bgmi_enabled: boolean;
+  bgmi_status: string;
+  pubg_enabled: boolean;
+  pubg_status: string;
   updated_at?: string;
   error?: string;
 }
@@ -26,6 +30,10 @@ const DEFAULT_CONFIG: SystemConfigResponse = {
   announcement_message: '',
   announcement_type: 'info',
   announcement_link: '',
+  bgmi_enabled: true,
+  bgmi_status: 'OBB Ready',
+  pubg_enabled: true,
+  pubg_status: 'OBB Ready',
   updated_at: new Date().toISOString(),
 };
 
@@ -57,6 +65,10 @@ export async function GET() {
             announcement_message: data.announcement_message || '',
             announcement_type: data.announcement_type || 'info',
             announcement_link: data.announcement_link || '',
+            bgmi_enabled: data.bgmi_enabled !== undefined ? !!data.bgmi_enabled : true,
+            bgmi_status: data.bgmi_status || 'OBB Ready',
+            pubg_enabled: data.pubg_enabled !== undefined ? !!data.pubg_enabled : true,
+            pubg_status: data.pubg_status || 'OBB Ready',
             updated_at: data.updated_at || new Date().toISOString(),
           },
           { headers: corsHeaders }
@@ -96,6 +108,10 @@ export async function POST(req: NextRequest) {
       announcement_message: body.announcement_message || '',
       announcement_type: body.announcement_type || 'info',
       announcement_link: body.announcement_link || '',
+      bgmi_enabled: body.bgmi_enabled !== undefined ? !!body.bgmi_enabled : true,
+      bgmi_status: body.bgmi_status || 'OBB Ready',
+      pubg_enabled: body.pubg_enabled !== undefined ? !!body.pubg_enabled : true,
+      pubg_status: body.pubg_status || 'OBB Ready',
       updated_at: new Date().toISOString(),
     };
 

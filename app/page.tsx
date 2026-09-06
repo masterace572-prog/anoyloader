@@ -111,7 +111,11 @@ export default function AdminDashboard() {
   const [showBcoreInfoModal, setShowBcoreInfoModal] = useState(false);
 
   // System Settings State
-  const [systemTab, setSystemTab] = useState<"maintenance" | "announcement">("maintenance");
+  const [systemTab, setSystemTab] = useState<"maintenance" | "announcement" | "games">("maintenance");
+  const [bgmiEnabled, setBgmiEnabled] = useState(true);
+  const [bgmiStatus, setBgmiStatus] = useState("OBB Ready");
+  const [pubgEnabled, setPubgEnabled] = useState(true);
+  const [pubgStatus, setPubgStatus] = useState("OBB Ready");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState(
     "Server is currently undergoing scheduled maintenance. Please check back soon."
@@ -236,6 +240,10 @@ export default function AdminDashboard() {
           setAnnouncementMessage(sysData.announcement_message || "");
           setAnnouncementType(sysData.announcement_type || "info");
           setAnnouncementLink(sysData.announcement_link || "");
+          setBgmiEnabled(sysData.bgmi_enabled !== undefined ? !!sysData.bgmi_enabled : true);
+          setBgmiStatus(sysData.bgmi_status || "OBB Ready");
+          setPubgEnabled(sysData.pubg_enabled !== undefined ? !!sysData.pubg_enabled : true);
+          setPubgStatus(sysData.pubg_status || "OBB Ready");
         }
 
         // Fetch APK update
@@ -706,6 +714,10 @@ export default function AdminDashboard() {
             announcement_message: announcementMessage,
             announcement_type: announcementType,
             announcement_link: announcementLink,
+            bgmi_enabled: bgmiEnabled,
+            bgmi_status: bgmiStatus,
+            pubg_enabled: pubgEnabled,
+            pubg_status: pubgStatus,
             updated_at: new Date().toISOString(),
           });
 
@@ -1913,7 +1925,7 @@ export default function AdminDashboard() {
                     : "text-neutral-400 hover:text-white"
                 }`}
               >
-                MAINTENANCE MODE
+                MAINTENANCE
               </button>
               <button
                 type="button"
@@ -1924,12 +1936,23 @@ export default function AdminDashboard() {
                     : "text-neutral-400 hover:text-white"
                 }`}
               >
-                ANNOUNCEMENT BANNER
+                ANNOUNCEMENT
+              </button>
+              <button
+                type="button"
+                onClick={() => setSystemTab("games")}
+                className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
+                  systemTab === "games"
+                    ? "bg-white text-black font-semibold"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                GAMES CONTROL
               </button>
             </div>
 
             <form onSubmit={handleSaveSystemConfig} className="space-y-4 text-xs">
-              {systemTab === "maintenance" ? (
+              {systemTab === "maintenance" && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border border-[#262626] bg-[#0A0A0A] p-3">
                     <div>
@@ -1970,7 +1993,9 @@ export default function AdminDashboard() {
                     />
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {systemTab === "announcement" && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border border-[#262626] bg-[#0A0A0A] p-3">
                     <div>
@@ -2021,6 +2046,66 @@ export default function AdminDashboard() {
                       onChange={(e) => setAnnouncementLink(e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                     />
+                  </div>
+                </div>
+              )}
+
+              {systemTab === "games" && (
+                <div className="space-y-4">
+                  {/* BGMI Card */}
+                  <div className="rounded-lg border border-[#262626] bg-[#0A0A0A] p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-white">BGMI (Battlegrounds Mobile India)</div>
+                        <div className="text-[11px] text-neutral-400 font-mono">com.pubg.imobile &bull; libbgmi.so</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={bgmiEnabled}
+                        onChange={(e) => setBgmiEnabled(e.target.checked)}
+                        className="h-4 w-4 rounded border-[#262626] bg-[#121212] text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                        STATUS TEXT
+                      </label>
+                      <input
+                        type="text"
+                        value={bgmiStatus}
+                        onChange={(e) => setBgmiStatus(e.target.value)}
+                        placeholder="e.g. OBB Ready or Unavailable"
+                        className="mt-1 w-full rounded-lg border border-[#262626] bg-[#121212] px-3 py-1.5 text-xs text-white focus:border-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* PUBG Global Card */}
+                  <div className="rounded-lg border border-[#262626] bg-[#0A0A0A] p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-white">PUBG Mobile (Global)</div>
+                        <div className="text-[11px] text-neutral-400 font-mono">com.tencent.ig &bull; libpubgm.so</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={pubgEnabled}
+                        onChange={(e) => setPubgEnabled(e.target.checked)}
+                        className="h-4 w-4 rounded border-[#262626] bg-[#121212] text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                        STATUS TEXT
+                      </label>
+                      <input
+                        type="text"
+                        value={pubgStatus}
+                        onChange={(e) => setPubgStatus(e.target.value)}
+                        placeholder="e.g. OBB Ready or Unavailable"
+                        className="mt-1 w-full rounded-lg border border-[#262626] bg-[#121212] px-3 py-1.5 text-xs text-white focus:border-white focus:outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
