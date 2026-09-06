@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Key,
   Shield,
@@ -28,149 +28,188 @@ import {
   CheckCircle2,
   Wrench,
   Megaphone,
-} from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { LicenseKey, KeyStatus, DURATION_OPTIONS, DurationOption } from '@/lib/types';
+  Terminal,
+  Cpu,
+  Lock,
+  ArrowRight,
+  Sliders,
+  LogOut,
+  X,
+} from "lucide-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { LicenseKey, KeyStatus, DURATION_OPTIONS, DurationOption } from "@/lib/types";
 
-// Mock initial data if Supabase is not connected yet
 const INITIAL_MOCK_KEYS: LicenseKey[] = [
   {
-    id: '1',
-    key: 'ANOY-PRO-7D-9941',
-    duration_label: '7 Days',
+    id: "1",
+    key: "ANOY-PRO-7D-9941",
+    duration_label: "7 Days",
     duration_seconds: 604800,
     max_devices: 1,
-    hwid_list: ['HWID-REDMI-K20-8921'],
-    status: 'ACTIVE',
+    hwid_list: ["HWID-REDMI-K20-8921"],
+    status: "ACTIVE",
     created_at: new Date(Date.now() - 86400000).toISOString(),
     activated_at: new Date(Date.now() - 86400000).toISOString(),
     expires_at: new Date(Date.now() + 518400000).toISOString(),
     last_login_at: new Date().toISOString(),
-    last_ip: '103.21.144.92',
-    notes: 'Sample active user',
+    last_ip: "103.21.144.92",
+    notes: "Sample loader key",
   },
   {
-    id: '2',
-    key: 'ANOY-TRIAL-1H-8820',
-    duration_label: '1 Hour',
-    duration_seconds: 3600,
+    id: "2",
+    key: "SDK-VIP-30D-8820",
+    duration_label: "30 Days",
+    duration_seconds: 2592000,
     max_devices: 1,
     hwid_list: [],
-    status: 'UNUSED',
+    status: "UNUSED",
     created_at: new Date().toISOString(),
     activated_at: null,
     expires_at: null,
     last_login_at: null,
     last_ip: null,
-    notes: 'Unused key - timer starts on first login',
+    notes: "BCORE_SDK",
   },
   {
-    id: '3',
-    key: 'ANOY-LIFE-9921',
-    duration_label: 'Lifetime',
+    id: "3",
+    key: "ANOY-LIFE-9921",
+    duration_label: "Lifetime",
     duration_seconds: 0,
     max_devices: 2,
-    hwid_list: ['HWID-SAMSUNG-S23-7721'],
-    status: 'ACTIVE',
+    hwid_list: ["HWID-SAMSUNG-S23-7721"],
+    status: "ACTIVE",
     created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
     activated_at: new Date(Date.now() - 86400000 * 10).toISOString(),
     expires_at: null,
     last_login_at: new Date().toISOString(),
-    last_ip: '49.36.12.11',
-    notes: 'VIP Lifetime Key (2 Devices)',
+    last_ip: "49.36.12.11",
+    notes: "VIP Lifetime Key",
   },
 ];
 
 export default function AdminDashboard() {
+  // Authentication PIN
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [enteredPin, setEnteredPin] = useState("");
+  const [pinError, setPinError] = useState(false);
+
+  // Core Data
   const [keys, setKeys] = useState<LicenseKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | KeyStatus>('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | KeyStatus>("ALL");
+  const [targetTypeFilter, setTargetTypeFilter] = useState<"ALL" | "LOADER" | "BCORE_SDK">("ALL");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Modals state
+  // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState<LicenseKey | null>(null);
   const [showBulkSuccessModal, setShowBulkSuccessModal] = useState<string[] | null>(null);
-  const [showConfigModal, setShowConfigModal] = useState(false);
   const [showLibModal, setShowLibModal] = useState(false);
+  const [showApkModal, setShowApkModal] = useState(false);
   const [showSystemModal, setShowSystemModal] = useState(false);
+  const [showBcoreInfoModal, setShowBcoreInfoModal] = useState(false);
 
-  // System Settings State (Maintenance Mode & Announcements)
-  const [systemTab, setSystemTab] = useState<'maintenance' | 'announcement'>('maintenance');
+  // System Settings State
+  const [systemTab, setSystemTab] = useState<"maintenance" | "announcement">("maintenance");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState(
-    'Server is currently undergoing scheduled maintenance. Please check back soon.'
+    "Server is currently undergoing scheduled maintenance. Please check back soon."
   );
-  const [maintenanceEstimatedEnd, setMaintenanceEstimatedEnd] = useState('1 Hour');
+  const [maintenanceEstimatedEnd, setMaintenanceEstimatedEnd] = useState("1 Hour");
   const [announcementActive, setAnnouncementActive] = useState(false);
-  const [announcementTitle, setAnnouncementTitle] = useState('Server Notice');
-  const [announcementMessage, setAnnouncementMessage] = useState('');
-  const [announcementType, setAnnouncementType] = useState<'info' | 'warning' | 'critical'>('info');
-  const [announcementLink, setAnnouncementLink] = useState('');
+  const [announcementTitle, setAnnouncementTitle] = useState("Server Notice");
+  const [announcementMessage, setAnnouncementMessage] = useState("");
+  const [announcementType, setAnnouncementType] = useState<"info" | "warning" | "critical">("info");
+  const [announcementLink, setAnnouncementLink] = useState("");
   const [isSavingSystemConfig, setIsSavingSystemConfig] = useState(false);
   const [systemConfigSuccessMsg, setSystemConfigSuccessMsg] = useState<string | null>(null);
 
   // APK In-App Update State
-  const [showApkModal, setShowApkModal] = useState(false);
-  const [apkActiveVerName, setApkActiveVerName] = useState('2026.01.01');
+  const [apkActiveVerName, setApkActiveVerName] = useState("2026.01.01");
   const [apkActiveVerCode, setApkActiveVerCode] = useState(2);
-  const [apkActiveUrl, setApkActiveUrl] = useState('https://example.com/anoy_loader.apk');
-  const [apkActiveChangelog, setApkActiveChangelog] = useState('Initial release with Supabase integration & AMOLED UI.');
+  const [apkActiveUrl, setApkActiveUrl] = useState("https://example.com/anoy_loader.apk");
+  const [apkActiveChangelog, setApkActiveChangelog] = useState("Initial release with Supabase integration.");
   const [apkActiveMandatory, setApkActiveMandatory] = useState(false);
-  const [apkNewVerName, setApkNewVerName] = useState('');
-  const [apkNewVerCode, setApkNewVerCode] = useState('');
-  const [apkNewUrl, setApkNewUrl] = useState('');
-  const [apkNewChangelog, setApkNewChangelog] = useState('');
+  const [apkNewVerName, setApkNewVerName] = useState("");
+  const [apkNewVerCode, setApkNewVerCode] = useState("");
+  const [apkNewUrl, setApkNewUrl] = useState("");
+  const [apkNewChangelog, setApkNewChangelog] = useState("");
   const [apkNewMandatory, setApkNewMandatory] = useState(false);
   const [isSavingApkUpdate, setIsSavingApkUpdate] = useState(false);
   const [apkUpdateSuccessMsg, setApkUpdateSuccessMsg] = useState<string | null>(null);
 
   // Lib Update State
-  const [libActiveVersion, setLibActiveVersion] = useState('1.0');
-  const [libDownloadUrl, setLibDownloadUrl] = useState('https://github.com/AkhilRyzen/Ryzen/releases/download/Ryzen/hb.zip');
+  const [libActiveVersion, setLibActiveVersion] = useState("1.0");
+  const [libDownloadUrl, setLibDownloadUrl] = useState("https://github.com/AkhilRyzen/Ryzen/releases/download/Ryzen/hb.zip");
   const [libStoragePath, setLibStoragePath] = useState<string | null>(null);
   const [libUpdatedAt, setLibUpdatedAt] = useState<string>(new Date().toISOString());
-  const [libUploadMode, setLibUploadMode] = useState<'upload' | 'url'>('upload');
+  const [libUploadMode, setLibUploadMode] = useState<"upload" | "url">("upload");
   const [libFile, setLibFile] = useState<File | null>(null);
-  const [libNewVersion, setLibNewVersion] = useState('');
-  const [libDirectUrl, setLibDirectUrl] = useState('');
+  const [libNewVersion, setLibNewVersion] = useState("");
+  const [libDirectUrl, setLibDirectUrl] = useState("");
   const [isUploadingLib, setIsUploadingLib] = useState(false);
   const [libSuccessMsg, setLibSuccessMsg] = useState<string | null>(null);
 
   // Form State for Key Creation
-  const [createMode, setCreateMode] = useState<'single' | 'bulk'>('single');
-  const [customKeyName, setCustomKeyName] = useState('');
+  const [createKeyType, setCreateKeyType] = useState<"LOADER" | "BCORE_SDK">("LOADER");
+  const [createMode, setCreateMode] = useState<"single" | "bulk">("single");
+  const [customKeyName, setCustomKeyName] = useState("");
   const [bulkCount, setBulkCount] = useState<number>(5);
-  const [selectedDuration, setSelectedDuration] = useState<DurationOption>(DURATION_OPTIONS[5]); // Default: 7 Days
+  const [selectedDuration, setSelectedDuration] = useState<DurationOption>(DURATION_OPTIONS[5]); // 7 Days
   const [maxDevices, setMaxDevices] = useState<number>(1);
-  const [keyNotes, setKeyNotes] = useState('');
-  const [extendingSeconds, setExtendingSeconds] = useState<number>(86400); // Default: 1 day extension
+  const [keyNotes, setKeyNotes] = useState("");
+  const [extendingSeconds, setExtendingSeconds] = useState<number>(86400);
 
-  // Dynamic Supabase status
+  // Supabase live indicator
   const [isLiveDatabase, setIsLiveDatabase] = useState(false);
 
-  // Load keys and active lib info
+  // PIN verification on load
+  useEffect(() => {
+    const savedPin = sessionStorage.getItem("admin_session_auth");
+    if (savedPin === "valid") {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredPin === "1234") {
+      sessionStorage.setItem("admin_session_auth", "valid");
+      setIsAuthenticated(true);
+      setPinError(false);
+    } else {
+      setPinError(true);
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_session_auth");
+    setIsAuthenticated(false);
+    setEnteredPin("");
+  };
+
+  // Fetch keys and active info
   const fetchKeys = async () => {
     setLoading(true);
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data, error } = await supabase
-          .from('license_keys')
-          .select('*')
-          .order('created_at', { ascending: false });
+          .from("license_keys")
+          .select("*")
+          .order("created_at", { ascending: false });
 
         if (!error && data) {
           setKeys(data as LicenseKey[]);
           setIsLiveDatabase(true);
         }
 
-        // Fetch active lib update
+        // Fetch lib update
         const { data: libData } = await supabase
-          .from('lib_updates')
-          .select('*')
-          .eq('is_active', true)
-          .order('updated_at', { ascending: false })
+          .from("lib_updates")
+          .select("*")
+          .eq("is_active", true)
+          .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
@@ -181,30 +220,30 @@ export default function AdminDashboard() {
           setLibUpdatedAt(libData.updated_at);
         }
 
-        // Fetch system config (Maintenance & Announcement)
+        // Fetch system config
         const { data: sysData } = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', 'global')
+          .from("system_config")
+          .select("*")
+          .eq("id", "global")
           .maybeSingle();
 
         if (sysData) {
           setMaintenanceMode(!!sysData.maintenance_mode);
-          setMaintenanceMessage(sysData.maintenance_message || 'Server is currently undergoing scheduled maintenance. Please check back soon.');
-          setMaintenanceEstimatedEnd(sysData.maintenance_estimated_end || 'Soon');
+          setMaintenanceMessage(sysData.maintenance_message || "Server is currently undergoing scheduled maintenance.");
+          setMaintenanceEstimatedEnd(sysData.maintenance_estimated_end || "Soon");
           setAnnouncementActive(!!sysData.announcement_active);
-          setAnnouncementTitle(sysData.announcement_title || '');
-          setAnnouncementMessage(sysData.announcement_message || '');
-          setAnnouncementType(sysData.announcement_type || 'info');
-          setAnnouncementLink(sysData.announcement_link || '');
+          setAnnouncementTitle(sysData.announcement_title || "");
+          setAnnouncementMessage(sysData.announcement_message || "");
+          setAnnouncementType(sysData.announcement_type || "info");
+          setAnnouncementLink(sysData.announcement_link || "");
         }
 
-        // Fetch active APK update
+        // Fetch APK update
         const { data: apkData } = await supabase
-          .from('app_apk_updates')
-          .select('*')
-          .eq('is_active', true)
-          .order('version_code', { ascending: false })
+          .from("app_apk_updates")
+          .select("*")
+          .eq("is_active", true)
+          .order("version_code", { ascending: false })
           .limit(1)
           .maybeSingle();
 
@@ -212,20 +251,20 @@ export default function AdminDashboard() {
           setApkActiveVerName(apkData.version_name);
           setApkActiveVerCode(apkData.version_code);
           setApkActiveUrl(apkData.download_url);
-          setApkActiveChangelog(apkData.changelog);
+          setApkActiveChangelog(apkData.changelog || "");
           setApkActiveMandatory(!!apkData.is_mandatory);
         }
 
         setLoading(false);
         return;
       } catch (e) {
-        console.error('Supabase fetch failed, falling back to local storage', e);
+        console.error("Supabase fetch error", e);
       }
     }
 
-    // Local storage fallback for instant demo/test
+    // Local fallback
     setIsLiveDatabase(false);
-    const stored = localStorage.getItem('viper_license_keys');
+    const stored = localStorage.getItem("anoy_keys");
     if (stored) {
       try {
         setKeys(JSON.parse(stored));
@@ -234,1085 +273,1138 @@ export default function AdminDashboard() {
       }
     } else {
       setKeys(INITIAL_MOCK_KEYS);
-      localStorage.setItem('viper_license_keys', JSON.stringify(INITIAL_MOCK_KEYS));
+      localStorage.setItem("anoy_keys", JSON.stringify(INITIAL_MOCK_KEYS));
     }
-
-    const storedLib = localStorage.getItem('viper_lib_update');
-    if (storedLib) {
-      try {
-        const parsedLib = JSON.parse(storedLib);
-        setLibActiveVersion(parsedLib.version);
-        setLibDownloadUrl(parsedLib.download_url);
-        setLibUpdatedAt(parsedLib.updated_at);
-      } catch (ignored) {}
-    }
-
-    const storedSys = localStorage.getItem('viper_system_config');
-    if (storedSys) {
-      try {
-        const p = JSON.parse(storedSys);
-        setMaintenanceMode(!!p.maintenance_mode);
-        setMaintenanceMessage(p.maintenance_message || 'Server is currently undergoing scheduled maintenance. Please check back soon.');
-        setMaintenanceEstimatedEnd(p.maintenance_estimated_end || 'Soon');
-        setAnnouncementActive(!!p.announcement_active);
-        setAnnouncementTitle(p.announcement_title || '');
-        setAnnouncementMessage(p.announcement_message || '');
-        setAnnouncementType(p.announcement_type || 'info');
-        setAnnouncementLink(p.announcement_link || '');
-      } catch (ignored) {}
-    }
-
-    const storedApk = localStorage.getItem('viper_apk_update');
-    if (storedApk) {
-      try {
-        const p = JSON.parse(storedApk);
-        setApkActiveVerName(p.version_name);
-        setApkActiveVerCode(p.version_code);
-        setApkActiveUrl(p.download_url);
-        setApkActiveChangelog(p.changelog);
-        setApkActiveMandatory(!!p.is_mandatory);
-      } catch (ignored) {}
-    }
-
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchKeys();
-  }, []);
+    if (isAuthenticated) {
+      fetchKeys();
+    }
+  }, [isAuthenticated]);
 
-  // Save to local storage if running in mock mode
   const syncKeys = (updated: LicenseKey[]) => {
     setKeys(updated);
     if (!isLiveDatabase) {
-      localStorage.setItem('viper_license_keys', JSON.stringify(updated));
+      localStorage.setItem("anoy_keys", JSON.stringify(updated));
     }
   };
 
-  // KPI Calculations
-  const stats = useMemo(() => {
-    const total = keys.length;
-    const active = keys.filter((k) => k.status === 'ACTIVE').length;
-    const unused = keys.filter((k) => k.status === 'UNUSED').length;
-    const expired = keys.filter((k) => k.status === 'EXPIRED').length;
-    const banned = keys.filter((k) => k.status === 'BANNED').length;
-    return { total, active, unused, expired, banned };
-  }, [keys]);
+  // Helper to test if a key is a Bcore SDK key
+  const isBcoreKey = (k: LicenseKey) => {
+    return (
+      (k.notes && k.notes.includes("BCORE_SDK")) ||
+      k.key.startsWith("SDK-") ||
+      k.key.startsWith("BCORE-")
+    );
+  };
 
-  // Filtering
+  // Filtered keys
   const filteredKeys = useMemo(() => {
     return keys.filter((k) => {
       const matchesSearch =
         k.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (k.notes && k.notes.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (k.last_ip && k.last_ip.includes(searchQuery)) ||
         k.hwid_list.some((h) => h.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchesStatus = statusFilter === 'ALL' || k.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesStatus = statusFilter === "ALL" || k.status === statusFilter;
+
+      let matchesTarget = true;
+      if (targetTypeFilter === "LOADER") {
+        matchesTarget = !isBcoreKey(k);
+      } else if (targetTypeFilter === "BCORE_SDK") {
+        matchesTarget = isBcoreKey(k);
+      }
+
+      return matchesSearch && matchesStatus && matchesTarget;
     });
-  }, [keys, searchQuery, statusFilter]);
+  }, [keys, searchQuery, statusFilter, targetTypeFilter]);
 
-  // Generate random key string
-  const generateRandomKey = (prefix = 'ANOY') => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const segment = (len: number) =>
-      Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    return `${prefix}-${segment(4)}-${segment(4)}-${segment(4)}`;
-  };
-
-  // Handle Create Keys (Single & Bulk)
-  const handleCreateKeys = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newKeyEntries: Partial<LicenseKey>[] = [];
-
-    const finalDevices = Math.max(1, Number(maxDevices) || 1);
-    const finalBulk = Math.max(1, Number(bulkCount) || 1);
-
-    if (createMode === 'single') {
-      const finalKey = customKeyName.trim() ? customKeyName.trim().toUpperCase() : generateRandomKey();
-      newKeyEntries.push({
-        key: finalKey,
-        duration_label: selectedDuration.label,
-        duration_seconds: selectedDuration.seconds,
-        max_devices: finalDevices,
-        hwid_list: [],
-        status: 'UNUSED',
-        notes: keyNotes.trim() || null,
-        created_at: new Date().toISOString(),
-        activated_at: null,
-        expires_at: null,
-      });
-    } else {
-      for (let i = 0; i < finalBulk; i++) {
-        newKeyEntries.push({
-          key: generateRandomKey(),
-          duration_label: selectedDuration.label,
-          duration_seconds: selectedDuration.seconds,
-          max_devices: finalDevices,
-          hwid_list: [],
-          status: 'UNUSED',
-          notes: keyNotes.trim() || `Bulk batch #${i + 1}`,
-          created_at: new Date().toISOString(),
-          activated_at: null,
-          expires_at: null,
-        });
-      }
-    }
-
-    if (isLiveDatabase && supabase) {
-      const { data, error } = await supabase.from('license_keys').insert(newKeyEntries).select();
-      if (error) {
-        alert('Failed to insert keys in Supabase: ' + error.message);
-        return;
-      }
-      if (data) {
-        setKeys((prev) => [...(data as LicenseKey[]), ...prev]);
-        if (createMode === 'bulk') {
-          setShowBulkSuccessModal(data.map((k) => k.key));
-        }
-      }
-    } else {
-      const localGenerated: LicenseKey[] = newKeyEntries.map((entry, idx) => ({
-        ...entry,
-        id: 'local_' + Date.now() + '_' + idx,
-        hwid_list: [],
-        status: 'UNUSED',
-        last_login_at: null,
-        last_ip: null,
-      })) as LicenseKey[];
-
-      const nextList = [...localGenerated, ...keys];
-      syncKeys(nextList);
-      if (createMode === 'bulk') {
-        setShowBulkSuccessModal(localGenerated.map((k) => k.key));
-      }
-    }
-
-    setShowCreateModal(false);
-    setCustomKeyName('');
-    setKeyNotes('');
-  };
-
-  // Reset HWID
-  const handleResetHwid = async (keyItem: LicenseKey) => {
-    if (!confirm(`Reset HWID for key ${keyItem.key}? The user will be able to bind a new device on their next login.`)) {
-      return;
-    }
-
-    if (isLiveDatabase && supabase) {
-      const { error } = await supabase.rpc('reset_key_hwid', { p_key: keyItem.key });
-      if (error) {
-        alert('Error resetting HWID: ' + error.message);
-        return;
-      }
-    }
-
-    const updated = keys.map((k) => (k.id === keyItem.id ? { ...k, hwid_list: [] } : k));
-    syncKeys(updated);
-  };
-
-  // Toggle Ban
-  const handleToggleBan = async (keyItem: LicenseKey) => {
-    const newStatus: KeyStatus = keyItem.status === 'BANNED' ? (keyItem.activated_at ? 'ACTIVE' : 'UNUSED') : 'BANNED';
-
-    if (isLiveDatabase && supabase) {
-      const { error } = await supabase.from('license_keys').update({ status: newStatus }).eq('id', keyItem.id);
-      if (error) {
-        alert('Error updating key status: ' + error.message);
-        return;
-      }
-    }
-
-    const updated = keys.map((k) => (k.id === keyItem.id ? { ...k, status: newStatus } : k));
-    syncKeys(updated);
-  };
-
-  // Extend Key
-  const handleExtendKey = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!showExtendModal) return;
-
-    if (isLiveDatabase && supabase) {
-      const { error } = await supabase.rpc('extend_key_duration', {
-        p_key: showExtendModal.key,
-        p_additional_seconds: extendingSeconds,
-      });
-      if (error) {
-        alert('Error extending key: ' + error.message);
-        return;
-      }
-      fetchKeys();
-    } else {
-      const updated = keys.map((k) => {
-        if (k.id === showExtendModal.id) {
-          if (k.expires_at) {
-            const currentExp = new Date(k.expires_at).getTime();
-            const baseTime = currentExp < Date.now() ? Date.now() : currentExp;
-            const newExpiry = new Date(baseTime + extendingSeconds * 1000).toISOString();
-            return { ...k, expires_at: newExpiry, status: 'ACTIVE' as KeyStatus };
-          } else {
-            return { ...k, duration_seconds: k.duration_seconds + extendingSeconds };
-          }
-        }
-        return k;
-      });
-      syncKeys(updated);
-    }
-
-    setShowExtendModal(null);
-  };
-
-  // Delete Single Key
-  const handleDeleteKey = async (keyItem: LicenseKey) => {
-    if (!confirm(`Are you sure you want to permanently delete key: ${keyItem.key}?`)) {
-      return;
-    }
-
-    if (isLiveDatabase && supabase) {
-      const { error } = await supabase.from('license_keys').delete().eq('id', keyItem.id);
-      if (error) {
-        alert('Error deleting key: ' + error.message);
-        return;
-      }
-    }
-
-    const updated = keys.filter((k) => k.id !== keyItem.id);
-    syncKeys(updated);
-  };
-
-  // Delete All Expired Keys
-  const handleDeleteExpired = async () => {
-    if (!confirm('Are you sure you want to delete all EXPIRED keys from the database?')) {
-      return;
-    }
-
-    if (isLiveDatabase && supabase) {
-      const { data, error } = await supabase.rpc('delete_expired_keys');
-      if (error) {
-        alert('Error deleting expired keys: ' + error.message);
-        return;
-      }
-      alert(`Successfully deleted ${data} expired keys.`);
-      fetchKeys();
-    } else {
-      const updated = keys.filter((k) => k.status !== 'EXPIRED');
-      const removedCount = keys.length - updated.length;
-      syncKeys(updated);
-      alert(`Deleted ${removedCount} expired keys.`);
-    }
-  };
-
-  // Push Lib Update (Upload ZIP or Direct URL)
-  const handlePushLibUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanVer = libNewVersion.trim();
-    if (!cleanVer) {
-      alert('Please enter a version string (e.g. 2.0)');
-      return;
-    }
-
-    setIsUploadingLib(true);
-    setLibSuccessMsg(null);
-
-    try {
-      if (libUploadMode === 'upload') {
-        if (!libFile) {
-          alert('Please select a .zip file to upload');
-          setIsUploadingLib(false);
-          return;
-        }
-
-        if (isLiveDatabase && supabase) {
-          // 1. Delete old zip from Supabase Storage if present
-          if (libStoragePath) {
-            try {
-              await supabase.storage.from('libs').remove([libStoragePath]);
-            } catch (delErr) {
-              console.warn('Failed to delete old zip from storage', delErr);
-            }
-          }
-
-          // 2. Upload new zip
-          const newStoragePath = `lib_${Date.now()}_${libFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-          const { error: uploadError } = await supabase.storage
-            .from('libs')
-            .upload(newStoragePath, libFile, {
-              upsert: true,
-              contentType: 'application/zip',
-            });
-
-          if (uploadError) {
-            alert('Supabase storage upload failed: ' + uploadError.message);
-            setIsUploadingLib(false);
-            return;
-          }
-
-          // 3. Get Public URL
-          const { data: publicData } = supabase.storage.from('libs').getPublicUrl(newStoragePath);
-          const newPublicUrl = publicData.publicUrl;
-
-          // 4. Deactivate previous lib update records & insert active one
-          await supabase.from('lib_updates').update({ is_active: false }).eq('is_active', true);
-          const { error: insertError } = await supabase.from('lib_updates').insert({
-            version: cleanVer,
-            download_url: newPublicUrl,
-            storage_path: newStoragePath,
-            file_name: libFile.name,
-            file_size: libFile.size,
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          });
-
-          if (insertError) {
-            alert('Failed to save lib update record: ' + insertError.message);
-            setIsUploadingLib(false);
-            return;
-          }
-
-          setLibActiveVersion(cleanVer);
-          setLibDownloadUrl(newPublicUrl);
-          setLibStoragePath(newStoragePath);
-          setLibUpdatedAt(new Date().toISOString());
-        } else {
-          // Demo / Local fallback
-          const mockUrl = 'https://example.com/libs/' + libFile.name;
-          setLibActiveVersion(cleanVer);
-          setLibDownloadUrl(mockUrl);
-          setLibUpdatedAt(new Date().toISOString());
-          localStorage.setItem('viper_lib_update', JSON.stringify({
-            version: cleanVer,
-            download_url: mockUrl,
-            updated_at: new Date().toISOString(),
-          }));
-        }
-
-        setLibSuccessMsg(`Library v${cleanVer} uploaded & pushed successfully! Old storage archive removed.`);
-      } else {
-        // Direct URL mode
-        const cleanUrl = libDirectUrl.trim();
-        if (!cleanUrl) {
-          alert('Please enter a valid download URL');
-          setIsUploadingLib(false);
-          return;
-        }
-
-        if (isLiveDatabase && supabase) {
-          await supabase.from('lib_updates').update({ is_active: false }).eq('is_active', true);
-          const { error: insertError } = await supabase.from('lib_updates').insert({
-            version: cleanVer,
-            download_url: cleanUrl,
-            storage_path: null,
-            file_name: 'direct_url.zip',
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          });
-
-          if (insertError) {
-            alert('Failed to save lib update record: ' + insertError.message);
-            setIsUploadingLib(false);
-            return;
-          }
-
-          setLibActiveVersion(cleanVer);
-          setLibDownloadUrl(cleanUrl);
-          setLibStoragePath(null);
-          setLibUpdatedAt(new Date().toISOString());
-        } else {
-          setLibActiveVersion(cleanVer);
-          setLibDownloadUrl(cleanUrl);
-          setLibUpdatedAt(new Date().toISOString());
-          localStorage.setItem('viper_lib_update', JSON.stringify({
-            version: cleanVer,
-            download_url: cleanUrl,
-            updated_at: new Date().toISOString(),
-          }));
-        }
-
-        setLibSuccessMsg(`Library v${cleanVer} direct URL pushed successfully!`);
-      }
-    } catch (err: any) {
-      alert('Error pushing update: ' + (err.message || err));
-    } finally {
-      setIsUploadingLib(false);
-      setLibFile(null);
-      setLibNewVersion('');
-      setLibDirectUrl('');
-    }
-  };
-
-  // Save System Config (Maintenance Mode & Announcements)
-  const handleSaveSystemConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingSystemConfig(true);
-    setSystemConfigSuccessMsg(null);
-
-    const payload = {
-      id: 'global',
-      maintenance_mode: maintenanceMode,
-      maintenance_message: maintenanceMessage.trim(),
-      maintenance_estimated_end: maintenanceEstimatedEnd.trim(),
-      announcement_active: announcementActive,
-      announcement_title: announcementTitle.trim(),
-      announcement_message: announcementMessage.trim(),
-      announcement_type: announcementType,
-      announcement_link: announcementLink.trim(),
-      updated_at: new Date().toISOString(),
-    };
-
-    try {
-      if (isLiveDatabase && supabase) {
-        const { error } = await supabase.from('system_config').upsert(payload);
-        if (error) {
-          alert('Failed to save system settings to Supabase: ' + error.message);
-          setIsSavingSystemConfig(false);
-          return;
-        }
-      }
-
-      localStorage.setItem('viper_system_config', JSON.stringify(payload));
-      setSystemConfigSuccessMsg(
-        maintenanceMode
-          ? 'Maintenance Mode is now ACTIVE! App users will be blocked with your notice.'
-          : 'System configuration updated and pushed to app successfully!'
-      );
-    } catch (err: any) {
-      alert('Error saving system config: ' + (err.message || err));
-    } finally {
-      setIsSavingSystemConfig(false);
-    }
-  };
-
-  // Push APK In-App Update
-  const handleSaveApkUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanUrl = apkNewUrl.trim();
-    const cleanVer = apkNewVerName.trim();
-    const cleanCode = parseInt(apkNewVerCode.trim(), 10);
-
-    if (!cleanVer || isNaN(cleanCode) || !cleanUrl) {
-      alert('Please enter Version Name, numeric Version Code, and APK Download URL');
-      return;
-    }
-
-    setIsSavingApkUpdate(true);
-    setApkUpdateSuccessMsg(null);
-
-    const payload = {
-      version_name: cleanVer,
-      version_code: cleanCode,
-      download_url: cleanUrl,
-      changelog: apkNewChangelog.trim() || 'Performance improvements and bug fixes.',
-      is_mandatory: apkNewMandatory,
-      is_active: true,
-      updated_at: new Date().toISOString(),
-    };
-
-    try {
-      if (isLiveDatabase && supabase) {
-        // Deactivate previous active updates
-        await supabase.from('app_apk_updates').update({ is_active: false }).eq('is_active', true);
-        const { error } = await supabase.from('app_apk_updates').insert(payload);
-        if (error) {
-          alert('Failed to save APK update to Supabase: ' + error.message);
-          setIsSavingApkUpdate(false);
-          return;
-        }
-      }
-
-      setApkActiveVerName(cleanVer);
-      setApkActiveVerCode(cleanCode);
-      setApkActiveUrl(cleanUrl);
-      setApkActiveChangelog(payload.changelog);
-      setApkActiveMandatory(apkNewMandatory);
-
-      localStorage.setItem('viper_apk_update', JSON.stringify(payload));
-      setApkUpdateSuccessMsg(`APK update v${cleanVer} (Code: ${cleanCode}) published successfully!`);
-    } catch (err: any) {
-      alert('Error publishing APK update: ' + (err.message || err));
-    } finally {
-      setIsSavingApkUpdate(false);
-      setApkNewVerName('');
-      setApkNewVerCode('');
-      setApkNewUrl('');
-      setApkNewChangelog('');
-    }
-  };
+  // Statistics
+  const stats = useMemo(() => {
+    const total = keys.length;
+    const active = keys.filter((k) => k.status === "ACTIVE").length;
+    const unused = keys.filter((k) => k.status === "UNUSED").length;
+    const expired = keys.filter((k) => k.status === "EXPIRED").length;
+    const banned = keys.filter((k) => k.status === "BANNED").length;
+    const bcoreSdkCount = keys.filter(isBcoreKey).length;
+    const loaderCount = total - bcoreSdkCount;
+    return { total, active, unused, expired, banned, bcoreSdkCount, loaderCount };
+  }, [keys]);
 
   // Copy helper
-  const copyToClipboard = (text: string) => {
+  const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(text);
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Download Bulk TXT
-  const downloadBulkTxt = (keysList: string[]) => {
-    const element = document.createElement('a');
-    const file = new Blob([keysList.join('\n')], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `anoy_keys_${new Date().toISOString().slice(0, 10)}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+  // Key generator helper
+  const generateRandomSegment = (len = 4) => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let res = "";
+    for (let i = 0; i < len; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return res;
   };
 
-  return (
-    <div className="min-h-screen bg-background text-textPrimary pb-16">
-      {/* Top Premium Navigation Bar */}
-      <header className="sticky top-0 z-30 border-b border-surfaceBorder bg-surface/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <div className="flex items-center space-x-3.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-sm">
-              <Shield className="h-5 w-5" />
+  const createFormattedKey = (type: "LOADER" | "BCORE_SDK") => {
+    if (type === "BCORE_SDK") {
+      return `SDK-BCORE-${generateRandomSegment()}-${generateRandomSegment()}`;
+    }
+    return `ANOY-${generateRandomSegment()}-${generateRandomSegment()}-${generateRandomSegment()}`;
+  };
+
+  // Create Key action
+  const handleCreateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const notesToSave = createKeyType === "BCORE_SDK"
+      ? (keyNotes ? `BCORE_SDK - ${keyNotes}` : "BCORE_SDK")
+      : keyNotes;
+
+    if (createMode === "single") {
+      const generatedKey = customKeyName.trim()
+        ? customKeyName.trim().toUpperCase()
+        : createFormattedKey(createKeyType);
+
+      const newKeyObj: Partial<LicenseKey> = {
+        key: generatedKey,
+        duration_label: selectedDuration.label,
+        duration_seconds: selectedDuration.seconds,
+        max_devices: maxDevices,
+        hwid_list: [],
+        status: "UNUSED",
+        created_at: new Date().toISOString(),
+        notes: notesToSave || null,
+      };
+
+      if (isLiveDatabase && supabase) {
+        const { data, error } = await supabase
+          .from("license_keys")
+          .insert([newKeyObj])
+          .select()
+          .single();
+
+        if (!error && data) {
+          syncKeys([data as LicenseKey, ...keys]);
+        }
+      } else {
+        const localKey: LicenseKey = {
+          id: String(Date.now()),
+          key: generatedKey,
+          duration_label: selectedDuration.label,
+          duration_seconds: selectedDuration.seconds,
+          max_devices: maxDevices,
+          hwid_list: [],
+          status: "UNUSED",
+          created_at: new Date().toISOString(),
+          activated_at: null,
+          expires_at: null,
+          last_login_at: null,
+          last_ip: null,
+          notes: notesToSave || null,
+        };
+        syncKeys([localKey, ...keys]);
+      }
+    } else {
+      // Bulk generation
+      const count = Math.min(Math.max(bulkCount, 1), 50);
+      const newItems: Partial<LicenseKey>[] = [];
+      const keysList: string[] = [];
+
+      for (let i = 0; i < count; i++) {
+        const kStr = createFormattedKey(createKeyType);
+        keysList.push(kStr);
+        newItems.push({
+          key: kStr,
+          duration_label: selectedDuration.label,
+          duration_seconds: selectedDuration.seconds,
+          max_devices: maxDevices,
+          hwid_list: [],
+          status: "UNUSED",
+          created_at: new Date().toISOString(),
+          notes: notesToSave || null,
+        });
+      }
+
+      if (isLiveDatabase && supabase) {
+        const { data, error } = await supabase
+          .from("license_keys")
+          .insert(newItems)
+          .select();
+
+        if (!error && data) {
+          syncKeys([...(data as LicenseKey[]), ...keys]);
+          setShowBulkSuccessModal(keysList);
+        }
+      } else {
+        const localItems: LicenseKey[] = newItems.map((item, idx) => ({
+          id: String(Date.now() + idx),
+          key: item.key!,
+          duration_label: selectedDuration.label,
+          duration_seconds: selectedDuration.seconds,
+          max_devices: maxDevices,
+          hwid_list: [],
+          status: "UNUSED",
+          created_at: new Date().toISOString(),
+          activated_at: null,
+          expires_at: null,
+          last_login_at: null,
+          last_ip: null,
+          notes: notesToSave || null,
+        }));
+        syncKeys([...localItems, ...keys]);
+        setShowBulkSuccessModal(keysList);
+      }
+    }
+
+    setShowCreateModal(false);
+    setCustomKeyName("");
+    setKeyNotes("");
+  };
+
+  // Reset HWID
+  const handleResetHwid = async (targetKey: LicenseKey) => {
+    if (!confirm(`Reset HWID device bindings for key ${targetKey.key}?`)) return;
+
+    if (isLiveDatabase && supabase) {
+      const { error } = await supabase
+        .from("license_keys")
+        .update({ hwid_list: [] })
+        .eq("id", targetKey.id);
+
+      if (!error) {
+        syncKeys(keys.map((k) => (k.id === targetKey.id ? { ...k, hwid_list: [] } : k)));
+      }
+    } else {
+      syncKeys(keys.map((k) => (k.id === targetKey.id ? { ...k, hwid_list: [] } : k)));
+    }
+  };
+
+  // Toggle Ban
+  const handleToggleBan = async (targetKey: LicenseKey) => {
+    const nextStatus: KeyStatus = targetKey.status === "BANNED" ? "ACTIVE" : "BANNED";
+
+    if (isLiveDatabase && supabase) {
+      const { error } = await supabase
+        .from("license_keys")
+        .update({ status: nextStatus })
+        .eq("id", targetKey.id);
+
+      if (!error) {
+        syncKeys(keys.map((k) => (k.id === targetKey.id ? { ...k, status: nextStatus } : k)));
+      }
+    } else {
+      syncKeys(keys.map((k) => (k.id === targetKey.id ? { ...k, status: nextStatus } : k)));
+    }
+  };
+
+  // Delete Key
+  const handleDeleteKey = async (targetKey: LicenseKey) => {
+    if (!confirm(`Are you sure you want to permanently delete key ${targetKey.key}?`)) return;
+
+    if (isLiveDatabase && supabase) {
+      const { error } = await supabase
+        .from("license_keys")
+        .delete()
+        .eq("id", targetKey.id);
+
+      if (!error) {
+        syncKeys(keys.filter((k) => k.id !== targetKey.id));
+      }
+    } else {
+      syncKeys(keys.filter((k) => k.id !== targetKey.id));
+    }
+  };
+
+  // Extend Key
+  const handleExtendKey = async () => {
+    if (!showExtendModal) return;
+
+    const targetKey = showExtendModal;
+    const baseTime = targetKey.expires_at ? new Date(targetKey.expires_at).getTime() : Date.now();
+    const newExpiresAt = new Date(baseTime + extendingSeconds * 1000).toISOString();
+
+    if (isLiveDatabase && supabase) {
+      const { error } = await supabase
+        .from("license_keys")
+        .update({ expires_at: newExpiresAt, status: "ACTIVE" })
+        .eq("id", targetKey.id);
+
+      if (!error) {
+        syncKeys(
+          keys.map((k) =>
+            k.id === targetKey.id ? { ...k, expires_at: newExpiresAt, status: "ACTIVE" } : k
+          )
+        );
+      }
+    } else {
+      syncKeys(
+        keys.map((k) =>
+          k.id === targetKey.id ? { ...k, expires_at: newExpiresAt, status: "ACTIVE" } : k
+        )
+      );
+    }
+
+    setShowExtendModal(null);
+  };
+
+  // Save Lib Update
+  const handleSaveLibUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUploadingLib(true);
+    setLibSuccessMsg(null);
+
+    let finalUrl = libDirectUrl.trim();
+
+    try {
+      if (libUploadMode === "upload" && libFile) {
+        if (!supabase) throw new Error("Supabase storage client not connected.");
+
+        const filePath = `libs/${Date.now()}_${libFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("loader-files")
+          .upload(filePath, libFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from("loader-files")
+          .getPublicUrl(filePath);
+
+        finalUrl = publicUrlData.publicUrl;
+      }
+
+      if (!finalUrl) {
+        alert("Please provide a valid download URL or select a library file.");
+        setIsUploadingLib(false);
+        return;
+      }
+
+      const versionToSave = libNewVersion.trim() || libActiveVersion;
+
+      if (isLiveDatabase && supabase) {
+        // Set all existing to inactive
+        await supabase
+          .from("lib_updates")
+          .update({ is_active: false })
+          .neq("id", "00000000-0000-0000-0000-000000000000");
+
+        // Insert new active
+        const { error: insertError } = await supabase
+          .from("lib_updates")
+          .insert([
+            {
+              version: versionToSave,
+              download_url: finalUrl,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            },
+          ]);
+
+        if (insertError) throw insertError;
+      }
+
+      setLibActiveVersion(versionToSave);
+      setLibDownloadUrl(finalUrl);
+      setLibUpdatedAt(new Date().toISOString());
+      setLibSuccessMsg("Native library updated successfully!");
+
+      setTimeout(() => {
+        setShowLibModal(false);
+        setLibSuccessMsg(null);
+        setLibNewVersion("");
+        setLibDirectUrl("");
+        setLibFile(null);
+      }, 1500);
+    } catch (err: any) {
+      alert(`Error updating lib: ${err.message || err}`);
+    } finally {
+      setIsUploadingLib(false);
+    }
+  };
+
+  // Save APK In-App Update
+  const handleSaveApkUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingApkUpdate(true);
+    setApkUpdateSuccessMsg(null);
+
+    const vName = apkNewVerName.trim() || apkActiveVerName;
+    const vCode = parseInt(apkNewVerCode) || apkActiveVerCode;
+    const url = apkNewUrl.trim() || apkActiveUrl;
+    const changelog = apkNewChangelog.trim() || apkActiveChangelog;
+
+    try {
+      if (isLiveDatabase && supabase) {
+        await supabase
+          .from("app_apk_updates")
+          .update({ is_active: false })
+          .neq("id", "00000000-0000-0000-0000-000000000000");
+
+        const { error } = await supabase
+          .from("app_apk_updates")
+          .insert([
+            {
+              version_name: vName,
+              version_code: vCode,
+              download_url: url,
+              changelog: changelog,
+              is_mandatory: apkNewMandatory,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            },
+          ]);
+
+        if (error) throw error;
+      }
+
+      setApkActiveVerName(vName);
+      setApkActiveVerCode(vCode);
+      setApkActiveUrl(url);
+      setApkActiveChangelog(changelog);
+      setApkActiveMandatory(apkNewMandatory);
+      setApkUpdateSuccessMsg("In-app APK update published successfully!");
+
+      setTimeout(() => {
+        setShowApkModal(false);
+        setApkUpdateSuccessMsg(null);
+      }, 1500);
+    } catch (err: any) {
+      alert(`Failed to save APK update: ${err.message || err}`);
+    } finally {
+      setIsSavingApkUpdate(false);
+    }
+  };
+
+  // Save System Config
+  const handleSaveSystemConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSystemConfig(true);
+    setSystemConfigSuccessMsg(null);
+
+    try {
+      if (isLiveDatabase && supabase) {
+        const { error } = await supabase
+          .from("system_config")
+          .upsert({
+            id: "global",
+            maintenance_mode: maintenanceMode,
+            maintenance_message: maintenanceMessage,
+            maintenance_estimated_end: maintenanceEstimatedEnd,
+            announcement_active: announcementActive,
+            announcement_title: announcementTitle,
+            announcement_message: announcementMessage,
+            announcement_type: announcementType,
+            announcement_link: announcementLink,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (error) throw error;
+      }
+
+      setSystemConfigSuccessMsg("System configuration updated successfully!");
+      setTimeout(() => {
+        setShowSystemModal(false);
+        setSystemConfigSuccessMsg(null);
+      }, 1500);
+    } catch (err: any) {
+      alert(`Failed to update system config: ${err.message || err}`);
+    } finally {
+      setIsSavingSystemConfig(false);
+    }
+  };
+
+  const formatDate = (isoStr: string | null) => {
+    if (!isoStr) return "Never / Lifetime";
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return isoStr;
+    }
+  };
+
+  // -------------------------------------------------------------
+  // PIN LOGIN VIEW (If not authorized)
+  // -------------------------------------------------------------
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#080808] px-4 text-white">
+        <div className="w-full max-w-sm rounded-xl border border-[#222222] bg-[#121212] p-6 shadow-2xl">
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-[#2A2A2A] bg-[#1A1A1A]">
+              <Lock className="h-5 w-5 text-white" />
             </div>
+            <h1 className="text-base font-semibold text-white tracking-wide">
+              ADMIN ACCESS
+            </h1>
+            <p className="mt-1 text-xs text-neutral-400">
+              Enter your authorization PIN to enter control dashboard
+            </p>
+          </div>
+
+          <form onSubmit={handlePinSubmit} className="space-y-4">
             <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-base font-bold tracking-tight text-textPrimary sm:text-lg">
-                  ANOY<span className="text-primary font-semibold">PANEL</span>
-                </h1>
-                <span className="rounded-md bg-surfaceBorder px-2 py-0.5 text-[10px] font-semibold tracking-wider text-textSecondary uppercase">
-                  ADMIN
-                </span>
+              <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                SECURITY PIN
+              </label>
+              <input
+                type="password"
+                maxLength={8}
+                value={enteredPin}
+                onChange={(e) => {
+                  setEnteredPin(e.target.value);
+                  setPinError(false);
+                }}
+                className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3.5 py-2.5 text-center font-mono text-base tracking-widest text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                autoFocus
+              />
+              {pinError && (
+                <p className="mt-1.5 text-center text-xs text-red-400">
+                  Invalid security PIN. Default is 1234
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-white py-2.5 text-xs font-semibold text-black hover:bg-neutral-200 transition-colors"
+            >
+              AUTHENTICATE
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // MAIN DASHBOARD VIEW
+  // -------------------------------------------------------------
+  return (
+    <div className="min-h-screen bg-[#080808] text-white">
+      {/* TOP HEADER */}
+      <header className="sticky top-0 z-30 border-b border-[#202020] bg-[#080808]/95 backdrop-blur-md px-3.5 py-2.5 sm:px-8 sm:py-3.5">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg border border-[#2A2A2A] bg-[#141414]">
+                <Shield className="h-4 w-4 text-white" />
               </div>
-              <p className="text-[11px] text-textMuted hidden sm:block">License & Device Control Suite</p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold tracking-wide text-xs sm:text-base">
+                    ANOY CONTROL
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] uppercase font-mono tracking-wider text-neutral-400 border border-[#2B2B2B] px-1.5 py-0.5 rounded">
+                    {isLiveDatabase ? "LIVE" : "LOCAL"}
+                  </span>
+                </div>
+                <p className="hidden sm:block text-[11px] text-neutral-400">
+                  License management, Bcore SDK authorization, and remote OTA dispatch
+                </p>
+              </div>
+            </div>
+
+            {/* Mobile quick actions: Refresh & Logout */}
+            <div className="flex items-center gap-1.5 sm:hidden">
+              <button
+                onClick={fetchKeys}
+                title="Refresh Keys"
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-[#262626] bg-[#141414] text-neutral-300 hover:text-white"
+              >
+                <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+              </button>
+              <button
+                onClick={handleLogout}
+                title="Logout"
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-[#262626] bg-[#141414] text-neutral-400 hover:text-white"
+              >
+                <LogOut className="h-3 w-3" />
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Database indicator */}
+          {/* Action Tabs: Horizontally scrollable on mobile, flex on desktop */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 sm:py-0">
             <button
-              onClick={() => setShowConfigModal(true)}
-              className={`flex items-center space-x-1.5 rounded-xl px-3 py-1.5 text-xs font-medium border transition-all ${
-                isLiveDatabase
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15'
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse'
-              }`}
+              onClick={() => setShowBcoreInfoModal(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#262626] bg-[#141414] px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-white hover:bg-[#1E1E1E] transition-colors"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="hidden sm:inline">{isLiveDatabase ? 'Backend Connected' : 'Demo Mode (Click to setup)'}</span>
-              <span className="sm:hidden">{isLiveDatabase ? 'Live' : 'Setup'}</span>
+              <Cpu className="h-3.5 w-3.5 text-white" />
+              <span>BCORE SDK</span>
             </button>
 
-            {/* Refresh */}
             <button
-              onClick={fetchKeys}
-              className="rounded-xl border border-surfaceBorder bg-surface p-2 text-textSecondary hover:bg-surfaceHover hover:text-textPrimary transition-colors"
-              title="Refresh Keys"
+              onClick={() => setShowLibModal(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#262626] bg-[#141414] px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-white hover:bg-[#1E1E1E] transition-colors"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <FileArchive className="h-3.5 w-3.5 text-white" />
+              <span>LIB (v{libActiveVersion})</span>
             </button>
 
-            {/* Manage Lib Updates Button */}
             <button
-              onClick={() => {
-                setShowLibModal(true);
-                setLibSuccessMsg(null);
-              }}
-              className="flex items-center space-x-1.5 rounded-xl border border-surfaceBorder bg-surface px-3 py-1.5 text-xs font-medium text-textSecondary hover:text-textPrimary hover:bg-surfaceHover transition-all sm:px-3.5 sm:py-2"
+              onClick={() => setShowApkModal(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#262626] bg-[#141414] px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-white hover:bg-[#1E1E1E] transition-colors"
             >
-              <Upload className="h-3.5 w-3.5 text-primary" />
-              <span className="hidden md:inline">Lib Updates</span>
-              <span className="md:hidden">Libs</span>
+              <Download className="h-3.5 w-3.5 text-white" />
+              <span>APK (v{apkActiveVerName})</span>
             </button>
 
-            {/* APK In-App Updates Button */}
             <button
-              onClick={() => {
-                setShowApkModal(true);
-                setApkUpdateSuccessMsg(null);
-              }}
-              className="flex items-center space-x-1.5 rounded-xl border border-surfaceBorder bg-surface px-3 py-1.5 text-xs font-medium text-textSecondary hover:text-textPrimary hover:bg-surfaceHover transition-all sm:px-3.5 sm:py-2"
+              onClick={() => setShowSystemModal(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#262626] bg-[#141414] px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-white hover:bg-[#1E1E1E] transition-colors"
             >
-              <Smartphone className="h-3.5 w-3.5 text-primary" />
-              <span className="hidden md:inline">APK Releases</span>
-              <span className="md:hidden">APK</span>
+              <Sliders className="h-3.5 w-3.5 text-white" />
+              <span>SYSTEM</span>
             </button>
 
-            {/* System Control Button */}
             <button
-              onClick={() => {
-                setShowSystemModal(true);
-                setSystemConfigSuccessMsg(null);
-              }}
-              className={`flex items-center space-x-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all sm:px-3.5 sm:py-2 ${
-                maintenanceMode
-                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                  : 'border-surfaceBorder bg-surface text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
-              }`}
+              onClick={handleLogout}
+              title="Logout"
+              className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg border border-[#262626] bg-[#141414] text-neutral-400 hover:text-white hover:bg-[#1E1E1E] transition-colors"
             >
-              {maintenanceMode ? <Wrench className="h-3.5 w-3.5 text-rose-400" /> : <Megaphone className="h-3.5 w-3.5 text-amber-400" />}
-              <span className="hidden md:inline">{maintenanceMode ? 'Maintenance (Active)' : 'Notices & Maintenance'}</span>
-              <span className="md:hidden">{maintenanceMode ? 'Maint' : 'Notice'}</span>
-            </button>
-
-            {/* Create Key Button */}
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center space-x-1.5 rounded-xl bg-primary hover:bg-primaryHover px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-500/20 transition-all active:scale-[0.98] sm:px-4 sm:py-2 sm:text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Keys</span>
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
-        {/* Maintenance Alert Banner */}
-        {maintenanceMode && (
-          <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-200">
-            <div className="flex items-center space-x-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-400 shrink-0">
-                <Wrench className="h-4 w-4" />
-              </div>
-              <div>
-                <span className="font-semibold text-rose-300">Maintenance Mode Active:</span>{' '}
-                <span>{maintenanceMessage}</span>
-                <span className="ml-2 text-rose-400/80">(Est. completion: {maintenanceEstimatedEnd})</span>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setShowSystemModal(true);
-                setSystemTab('maintenance');
-              }}
-              className="rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 px-3.5 py-1.5 text-xs font-semibold text-rose-200 shrink-0 transition-colors"
-            >
-              Configure
-            </button>
-          </div>
-        )}
-
-        {/* KPI Stat Cards Grid */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 sm:gap-4">
-          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+      {/* DASHBOARD CONTENT */}
+      <main className="mx-auto max-w-7xl px-3.5 py-4 sm:px-8 sm:py-6 space-y-4 sm:space-y-6">
+        {/* KPI METRICS */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="rounded-xl border border-[#222222] bg-[#121212] p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-textSecondary">Total Keys</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Key className="h-4 w-4" />
-              </div>
+              <span className="text-[10px] sm:text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                TOTAL KEYS
+              </span>
+              <Key className="h-3.5 w-3.5 text-neutral-400" />
             </div>
-            <div className="mt-3 text-2xl font-bold tracking-tight text-textPrimary">{stats.total}</div>
+            <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+              <span className="font-mono text-xl sm:text-2xl font-bold text-white">{stats.total}</span>
+              <span className="text-[9px] sm:text-[10px] text-neutral-400 font-mono">
+                ({stats.loaderCount} L / {stats.bcoreSdkCount} SDK)
+              </span>
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+          <div className="rounded-xl border border-[#222222] bg-[#121212] p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-textSecondary">Active</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                <Zap className="h-4 w-4" />
-              </div>
+              <span className="text-[10px] sm:text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                ACTIVE
+              </span>
+              <Zap className="h-3.5 w-3.5 text-white" />
             </div>
-            <div className="mt-3 text-2xl font-bold tracking-tight text-emerald-400">{stats.active}</div>
+            <div className="mt-1.5 sm:mt-2 font-mono text-xl sm:text-2xl font-bold text-white">
+              {stats.active}
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+          <div className="rounded-xl border border-[#222222] bg-[#121212] p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-textSecondary">Unused</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
-                <Clock className="h-4 w-4" />
-              </div>
+              <span className="text-[10px] sm:text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                UNUSED
+              </span>
+              <Clock className="h-3.5 w-3.5 text-neutral-400" />
             </div>
-            <div className="mt-3 text-2xl font-bold tracking-tight text-blue-400">{stats.unused}</div>
+            <div className="mt-1.5 sm:mt-2 font-mono text-xl sm:text-2xl font-bold text-white">
+              {stats.unused}
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors">
+          <div className="rounded-xl border border-[#222222] bg-[#121212] p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-textSecondary">Expired</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
-                <AlertCircle className="h-4 w-4" />
-              </div>
+              <span className="text-[10px] sm:text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                EXPIRED
+              </span>
+              <AlertCircle className="h-3.5 w-3.5 text-neutral-400" />
             </div>
-            <div className="mt-3 text-2xl font-bold tracking-tight text-amber-400">{stats.expired}</div>
+            <div className="mt-1.5 sm:mt-2 font-mono text-xl sm:text-2xl font-bold text-white">
+              {stats.expired}
+            </div>
           </div>
 
-          <div className="col-span-2 rounded-2xl border border-surfaceBorder bg-surface p-4 sm:p-5 shadow-xs hover:border-slate-700 transition-colors sm:col-span-1">
+          <div className="col-span-2 rounded-xl border border-[#222222] bg-[#121212] p-3 sm:p-4 sm:col-span-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-textSecondary">Banned</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
-                <Ban className="h-4 w-4" />
-              </div>
+              <span className="text-[10px] sm:text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                BANNED
+              </span>
+              <Ban className="h-3.5 w-3.5 text-neutral-400" />
             </div>
-            <div className="mt-3 text-2xl font-bold tracking-tight text-rose-400">{stats.banned}</div>
+            <div className="mt-1.5 sm:mt-2 font-mono text-xl sm:text-2xl font-bold text-white">
+              {stats.banned}
+            </div>
           </div>
         </div>
 
-        {/* Filter and Action Bar */}
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
-            <input
-              type="text"
-              placeholder="Search key, HWID, notes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-surfaceBorder bg-surface py-2.5 pl-10 pr-4 text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
-            />
+        {/* TOOLBAR: SEARCH, FILTERS & DEDICATED GENERATE BUTTONS */}
+        <div className="flex flex-col gap-2.5 rounded-xl border border-[#222222] bg-[#121212] p-3 sm:p-3.5">
+          {/* Top row: Search + Refresh + Generate Buttons */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-[#262626] bg-[#0A0A0A] py-2 pl-9 pr-3 text-xs text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                aria-label="Search keys"
+              />
+            </div>
+
+            <button
+              onClick={fetchKeys}
+              title="Refresh Keys"
+              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg border border-[#262626] bg-[#161616] text-neutral-300 hover:text-white hover:bg-[#202020] transition-colors"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            </button>
+
+            {/* LOADER KEY GENERATOR */}
+            <button
+              onClick={() => {
+                setCreateKeyType("LOADER");
+                setShowCreateModal(true);
+              }}
+              className="flex items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-black hover:bg-neutral-200 transition-colors shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">LOADER KEY</span>
+              <span className="sm:hidden">KEY</span>
+            </button>
+
+            {/* DEDICATED BCORE SDK KEY GENERATOR */}
+            <button
+              onClick={() => {
+                setCreateKeyType("BCORE_SDK");
+                setShowCreateModal(true);
+              }}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-white/30 bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#262626] transition-colors shrink-0"
+            >
+              <Cpu className="h-3.5 w-3.5 text-white" />
+              <span className="hidden sm:inline">SDK KEY</span>
+              <span className="sm:hidden">SDK</span>
+            </button>
           </div>
 
-          {/* Status Filter segmented pills */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
-            <div className="flex items-center space-x-1 rounded-xl border border-surfaceBorder bg-surface p-1">
-              {(['ALL', 'ACTIVE', 'UNUSED', 'EXPIRED', 'BANNED'] as const).map((st) => (
+          {/* Bottom row: Target Type Filter & Status Filter */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-t border-[#1C1C1C] pt-2">
+            {/* Target Type Filter */}
+            <div className="flex rounded-lg border border-[#262626] bg-[#0A0A0A] p-0.5 shrink-0">
+              <button
+                onClick={() => setTargetTypeFilter("ALL")}
+                className={`flex-1 sm:flex-none rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
+                  targetTypeFilter === "ALL" ? "bg-white text-black font-semibold" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                ALL
+              </button>
+              <button
+                onClick={() => setTargetTypeFilter("LOADER")}
+                className={`flex-1 sm:flex-none rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
+                  targetTypeFilter === "LOADER" ? "bg-white text-black font-semibold" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                LOADER
+              </button>
+              <button
+                onClick={() => setTargetTypeFilter("BCORE_SDK")}
+                className={`flex-1 sm:flex-none rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
+                  targetTypeFilter === "BCORE_SDK" ? "bg-white text-black font-semibold" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                BCORE SDK
+              </button>
+            </div>
+
+            {/* Status Filter (horizontal swipeable pills on mobile) */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5 sm:pb-0">
+              {(["ALL", "ACTIVE", "UNUSED", "EXPIRED", "BANNED"] as const).map((st) => (
                 <button
                   key={st}
                   onClick={() => setStatusFilter(st)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
                     statusFilter === st
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
+                      ? "border border-white bg-white text-black font-semibold"
+                      : "border border-[#262626] bg-[#141414] text-neutral-400 hover:text-white"
                   }`}
                 >
                   {st}
                 </button>
               ))}
             </div>
-
-            {/* Clean expired button */}
-            <button
-              onClick={handleDeleteExpired}
-              className="flex items-center space-x-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-400 hover:bg-amber-500/15 transition-all"
-              title="Delete all expired keys"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">Clean Expired</span>
-            </button>
           </div>
         </div>
 
-        {/* Keys Table / Mobile Cards */}
-        <div className="mt-5 rounded-2xl border border-surfaceBorder bg-surface shadow-xs overflow-hidden">
-          {filteredKeys.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center text-textMuted">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surfaceHover border border-surfaceBorder text-textMuted mb-3">
-                <Key className="h-6 w-6 opacity-40" />
-              </div>
-              <p className="text-sm font-semibold text-textSecondary">No license keys found</p>
-              <p className="text-xs text-textMuted mt-1">Create a new license or adjust your search filter.</p>
-            </div>
-          ) : (
-            <>
-              {/* Desktop Table View */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-surfaceBorder bg-surfaceHover/50 text-textMuted uppercase tracking-wider text-[11px] font-semibold">
-                    <tr>
-                      <th className="py-3.5 pl-5 pr-2">License Key</th>
-                      <th className="px-3 py-3.5">Status</th>
-                      <th className="px-3 py-3.5">Duration</th>
-                      <th className="px-3 py-3.5">Devices / HWID</th>
-                      <th className="px-3 py-3.5">Expires At</th>
-                      <th className="px-3 py-3.5">Notes</th>
-                      <th className="py-3.5 pl-2 pr-5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surfaceBorder/60">
-                    {filteredKeys.map((item) => (
-                      <tr key={item.id} className="hover:bg-surfaceHover/30 transition-colors">
-                        <td className="py-3.5 pl-5 pr-2 font-mono font-medium text-textPrimary">
-                          <div className="flex items-center space-x-2">
-                            <span className="tracking-wide">{item.key}</span>
+        {/* KEYS LIST / TABLE */}
+        <div className="rounded-xl border border-[#222222] bg-[#121212] overflow-hidden">
+          {/* Mobile Card List (Visible on small screens) */}
+          <div className="block divide-y divide-[#1F1F1F] md:hidden">
+            {loading ? (
+              <div className="p-8 text-center text-xs text-neutral-400">Loading licenses...</div>
+            ) : filteredKeys.length === 0 ? (
+              <div className="p-8 text-center text-xs text-neutral-400">No matching keys found.</div>
+            ) : (
+              filteredKeys.map((k) => {
+                const isSdk = isBcoreKey(k);
+                return (
+                  <div key={k.id} className="p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-xs font-semibold tracking-wide text-white select-all break-all">
+                          {k.key}
+                        </span>
+                        <button
+                          onClick={() => handleCopy(k.key)}
+                          className="text-neutral-400 hover:text-white p-1 shrink-0"
+                          title="Copy Key"
+                        >
+                          {copiedKey === k.key ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                      <span className="text-[9px] font-mono border border-[#333333] px-1.5 py-0.5 rounded text-white uppercase shrink-0">
+                        {k.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px] text-neutral-400 bg-[#0A0A0A] p-2.5 rounded-lg border border-[#1A1A1A]">
+                      <div>
+                        <span className="text-neutral-500 uppercase">Target: </span>
+                        <span className="text-white font-medium">{isSdk ? "Bcore SDK" : "Loader"}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 uppercase">Duration: </span>
+                        <span className="text-white">{k.duration_label}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 uppercase">Devices: </span>
+                        <span className="text-white font-mono">
+                          {k.hwid_list.length} / {k.max_devices}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 uppercase">Expires: </span>
+                        <span className="text-white truncate">{formatDate(k.expires_at)}</span>
+                      </div>
+                    </div>
+
+                    {k.notes && (
+                      <p className="text-[10px] text-neutral-500 truncate font-mono">
+                        {k.notes}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-[#1C1C1C]">
+                      <button
+                        onClick={() => setShowExtendModal(k)}
+                        className="flex-1 rounded-md border border-[#2B2B2B] bg-[#181818] py-2 text-[11px] font-semibold text-white hover:bg-[#222222] transition-colors"
+                      >
+                        EXTEND
+                      </button>
+                      <button
+                        onClick={() => handleResetHwid(k)}
+                        className="flex-1 rounded-md border border-[#2B2B2B] bg-[#181818] py-2 text-[11px] font-semibold text-white hover:bg-[#222222] transition-colors"
+                      >
+                        RESET HWID
+                      </button>
+                      <button
+                        onClick={() => handleToggleBan(k)}
+                        title={k.status === "BANNED" ? "Unban Key" : "Ban Key"}
+                        className="rounded-md border border-[#2B2B2B] bg-[#181818] px-3 py-2 text-neutral-300 hover:text-white transition-colors"
+                      >
+                        {k.status === "BANNED" ? <Unlock className="h-3.5 w-3.5 text-white" /> : <Ban className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteKey(k)}
+                        title="Delete Key"
+                        className="rounded-md bg-[#DC2626] px-3 py-2 text-white hover:bg-red-700 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Table View (Hidden on mobile) */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-[#202020] bg-[#0E0E0E] text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                  <th className="py-3.5 pl-6 pr-4">KEY</th>
+                  <th className="px-4 py-3.5">TARGET</th>
+                  <th className="px-4 py-3.5">DURATION</th>
+                  <th className="px-4 py-3.5">DEVICES</th>
+                  <th className="px-4 py-3.5">STATUS</th>
+                  <th className="px-4 py-3.5">EXPIRES</th>
+                  <th className="px-4 py-3.5">LAST IP</th>
+                  <th className="py-3.5 pl-4 pr-6 text-right">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1F1F1F] text-xs">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-neutral-400">
+                      Loading licenses...
+                    </td>
+                  </tr>
+                ) : filteredKeys.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-neutral-400">
+                      No matching keys found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredKeys.map((k) => {
+                    const isSdk = isBcoreKey(k);
+                    return (
+                      <tr key={k.id} className="hover:bg-[#161616] transition-colors">
+                        <td className="py-3.5 pl-6 pr-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-semibold tracking-wide text-white">
+                              {k.key}
+                            </span>
                             <button
-                              onClick={() => copyToClipboard(item.key)}
-                              className="text-textMuted hover:text-primary transition-colors p-1 rounded-md hover:bg-surfaceHover"
-                              title="Copy Key"
+                              onClick={() => handleCopy(k.key)}
+                              className="text-neutral-500 hover:text-white p-0.5"
                             >
-                              {copiedKey === item.key ? (
-                                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                              {copiedKey === k.key ? (
+                                <Check className="h-3.5 w-3.5 text-white" />
                               ) : (
                                 <Copy className="h-3.5 w-3.5" />
                               )}
                             </button>
                           </div>
-                        </td>
-
-                        <td className="px-3 py-3.5">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase border ${
-                              item.status === 'ACTIVE'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : item.status === 'UNUSED'
-                                ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                : item.status === 'EXPIRED'
-                                ? 'bg-slate-800 text-slate-400 border-slate-700/50'
-                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                            }`}
-                          >
-                            {item.status}
-                          </span>
-                        </td>
-
-                        <td className="px-3 py-3.5 font-medium text-textSecondary">{item.duration_label}</td>
-
-                        <td className="px-3 py-3.5">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium text-textPrimary">
-                              {item.hwid_list.length} / {item.max_devices}
-                            </span>
-                            {item.hwid_list.length > 0 && (
-                              <button
-                                onClick={() => handleResetHwid(item)}
-                                className="rounded-lg px-2 py-0.5 text-[10px] font-semibold text-amber-400 hover:bg-amber-400/10 border border-amber-400/30 transition-colors"
-                                title="Reset HWID"
-                              >
-                                Reset
-                              </button>
-                            )}
-                          </div>
-                        </td>
-
-                        <td className="px-3 py-3.5 text-textMuted">
-                          {item.duration_seconds <= 0 ? (
-                            <span className="font-semibold text-indigo-400">LIFETIME</span>
-                          ) : item.status === 'UNUSED' ? (
-                            <span className="italic text-textMuted">Timer starts on first login</span>
-                          ) : item.expires_at ? (
-                            new Date(item.expires_at).toLocaleString()
-                          ) : (
-                            '—'
+                          {k.notes && (
+                            <div className="mt-0.5 text-[10px] text-neutral-400 truncate max-w-xs font-mono">
+                              {k.notes}
+                            </div>
                           )}
                         </td>
 
-                        <td className="px-3 py-3.5 text-textMuted max-w-[150px] truncate">{item.notes || '—'}</td>
+                        <td className="px-4 py-3.5">
+                          <span className="font-mono text-[10px] tracking-wider uppercase border border-[#2B2B2B] px-1.5 py-0.5 rounded text-white">
+                            {isSdk ? "BCORE SDK" : "LOADER"}
+                          </span>
+                        </td>
 
-                        <td className="py-3.5 pl-2 pr-5 text-right">
-                          <div className="flex items-center justify-end space-x-1">
+                        <td className="px-4 py-3.5 text-neutral-300 font-medium">
+                          {k.duration_label}
+                        </td>
+
+                        <td className="px-4 py-3.5 font-mono text-neutral-300">
+                          {k.hwid_list.length} / {k.max_devices}
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <span className="text-[10px] font-mono border border-[#333333] px-2 py-0.5 rounded text-white uppercase">
+                            {k.status}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-neutral-300">
+                          {formatDate(k.expires_at)}
+                        </td>
+
+                        <td className="px-4 py-3.5 font-mono text-[11px] text-neutral-400">
+                          {k.last_ip || "—"}
+                        </td>
+
+                        <td className="py-3.5 pl-4 pr-6 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => setShowExtendModal(item)}
-                              className="rounded-lg p-1.5 text-textMuted hover:bg-surfaceBorder/80 hover:text-primary transition-colors"
-                              title="Extend Time"
+                              onClick={() => setShowExtendModal(k)}
+                              className="rounded-md border border-[#2B2B2B] bg-[#181818] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#222222]"
                             >
-                              <Clock className="h-4 w-4" />
+                              EXTEND
                             </button>
-
                             <button
-                              onClick={() => handleToggleBan(item)}
-                              className={`rounded-lg p-1.5 hover:bg-surfaceBorder/80 transition-colors ${
-                                item.status === 'BANNED'
-                                  ? 'text-rose-400 hover:text-emerald-400'
-                                  : 'text-textMuted hover:text-rose-400'
-                              }`}
-                              title={item.status === 'BANNED' ? 'Unban Key' : 'Ban Key'}
+                              onClick={() => handleResetHwid(k)}
+                              className="rounded-md border border-[#2B2B2B] bg-[#181818] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#222222]"
                             >
-                              {item.status === 'BANNED' ? (
-                                <Unlock className="h-4 w-4" />
+                              RESET HWID
+                            </button>
+                            <button
+                              onClick={() => handleToggleBan(k)}
+                              className="rounded-md border border-[#2B2B2B] bg-[#181818] p-1.5 text-neutral-400 hover:text-white"
+                            >
+                              {k.status === "BANNED" ? (
+                                <Unlock className="h-3.5 w-3.5 text-white" />
                               ) : (
-                                <Ban className="h-4 w-4" />
+                                <Ban className="h-3.5 w-3.5" />
                               )}
                             </button>
-
                             <button
-                              onClick={() => handleDeleteKey(item)}
-                              className="rounded-lg p-1.5 text-textMuted hover:bg-surfaceBorder/80 hover:text-rose-400 transition-colors"
-                              title="Delete Key"
+                              onClick={() => handleDeleteKey(k)}
+                              className="rounded-md bg-[#DC2626] p-1.5 text-white hover:bg-red-700"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile Card View */}
-              <div className="block lg:hidden divide-y divide-surfaceBorder/60">
-                {filteredKeys.map((item) => (
-                  <div key={item.id} className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono font-medium text-sm text-textPrimary">{item.key}</span>
-                        <button
-                          onClick={() => copyToClipboard(item.key)}
-                          className="text-textMuted hover:text-primary p-1 rounded-md"
-                        >
-                          {copiedKey === item.key ? (
-                            <Check className="h-4 w-4 text-emerald-400" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase border ${
-                          item.status === 'ACTIVE'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : item.status === 'UNUSED'
-                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                            : item.status === 'EXPIRED'
-                            ? 'bg-slate-800 text-slate-400 border-slate-700/50'
-                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs text-textMuted">
-                      <div>
-                        <span className="block text-[10px] uppercase tracking-wider font-medium text-textMuted">Duration</span>
-                        <span className="font-medium text-textSecondary">{item.duration_label}</span>
-                      </div>
-
-                      <div>
-                        <span className="block text-[10px] uppercase tracking-wider font-medium text-textMuted">Devices</span>
-                        <span className="font-medium text-textSecondary">
-                          {item.hwid_list.length} / {item.max_devices} bound
-                        </span>
-                      </div>
-
-                      <div className="col-span-2">
-                        <span className="block text-[10px] uppercase tracking-wider font-medium text-textMuted">Expires</span>
-                        <span className="font-medium text-textSecondary">
-                          {item.duration_seconds <= 0 ? (
-                            <span className="text-indigo-400 font-semibold">LIFETIME</span>
-                          ) : item.status === 'UNUSED' ? (
-                            <span className="italic">Timer starts on first login</span>
-                          ) : item.expires_at ? (
-                            new Date(item.expires_at).toLocaleString()
-                          ) : (
-                            '—'
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Mobile Actions */}
-                    <div className="flex items-center justify-end space-x-2 pt-2.5 border-t border-surfaceBorder/40">
-                      {item.hwid_list.length > 0 && (
-                        <button
-                          onClick={() => handleResetHwid(item)}
-                          className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1.5 text-xs font-semibold text-amber-400"
-                        >
-                          Reset HWID
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => setShowExtendModal(item)}
-                        className="rounded-lg border border-surfaceBorder bg-surfaceHover px-2.5 py-1.5 text-xs font-semibold text-textSecondary hover:text-primary"
-                      >
-                        + Extend
-                      </button>
-
-                      <button
-                        onClick={() => handleToggleBan(item)}
-                        className="rounded-lg border border-surfaceBorder bg-surfaceHover p-1.5 text-textMuted"
-                      >
-                        {item.status === 'BANNED' ? <Unlock className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteKey(item)}
-                        className="rounded-lg border border-surfaceBorder bg-surfaceHover p-1.5 text-rose-400"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
 
-      {/* CREATE KEY MODAL */}
+      {/* ============================================================= */}
+      {/* MODAL: CREATE KEY (LOADER OR BCORE SDK) */}
+      {/* ============================================================= */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Plus className="h-4 w-4" />
-                </div>
-                <h3 className="text-base font-bold text-textPrimary">Generate License Keys</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-lg rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <div>
+                <h3 className="font-semibold text-white tracking-wide text-sm sm:text-base">
+                  GENERATE AUTHORIZATION KEY
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Select target module and license parameters
+                </p>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
+                className="text-neutral-400 hover:text-white p-1"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateKeys} className="mt-5 space-y-4">
-              {/* Single vs Bulk Tab */}
-              <div className="grid grid-cols-2 gap-1 rounded-xl bg-background p-1 border border-surfaceBorder">
-                <button
-                  type="button"
-                  onClick={() => setCreateMode('single')}
-                  className={`rounded-lg py-2 text-xs font-semibold transition-all ${
-                    createMode === 'single'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-textSecondary hover:text-textPrimary'
-                  }`}
-                >
-                  Single Key
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCreateMode('bulk')}
-                  className={`rounded-lg py-2 text-xs font-semibold transition-all ${
-                    createMode === 'bulk'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-textSecondary hover:text-textPrimary'
-                  }`}
-                >
-                  Bulk Generator
-                </button>
+            <form onSubmit={handleCreateKey} className="space-y-4 text-xs">
+              {/* Target Type Selection */}
+              <div>
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  KEY TARGET MODULE
+                </label>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreateKeyType("LOADER")}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      createKeyType === "LOADER"
+                        ? "border-white bg-[#1C1C1C] text-white"
+                        : "border-[#262626] bg-[#0A0A0A] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="font-semibold text-xs text-white">LOADER KEY</div>
+                    <div className="text-[10px] text-neutral-400 mt-0.5">
+                      Client login for Android game loader app
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCreateKeyType("BCORE_SDK")}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      createKeyType === "BCORE_SDK"
+                        ? "border-white bg-[#1C1C1C] text-white"
+                        : "border-[#262626] bg-[#0A0A0A] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="font-semibold text-xs text-white">BCORE SDK KEY</div>
+                    <div className="text-[10px] text-neutral-400 mt-0.5">
+                      Virtualization engine activation (isolated)
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              {/* Single Mode Custom Name */}
-              {createMode === 'single' ? (
+              {/* Mode Selection */}
+              <div>
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  GENERATION MODE
+                </label>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreateMode("single")}
+                    className={`rounded-lg py-2 font-medium transition-colors ${
+                      createMode === "single"
+                        ? "bg-white text-black font-semibold"
+                        : "border border-[#262626] bg-[#141414] text-neutral-300"
+                    }`}
+                  >
+                    SINGLE KEY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMode("bulk")}
+                    className={`rounded-lg py-2 font-medium transition-colors ${
+                      createMode === "bulk"
+                        ? "bg-white text-black font-semibold"
+                        : "border border-[#262626] bg-[#141414] text-neutral-300"
+                    }`}
+                  >
+                    BULK BATCH
+                  </button>
+                </div>
+              </div>
+
+              {createMode === "single" ? (
                 <div>
-                  <label className="block text-xs font-medium text-textSecondary">
-                    Custom Key Name <span className="text-textMuted font-normal">(Optional)</span>
+                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                    CUSTOM KEY NAME (OPTIONAL)
                   </label>
                   <input
                     type="text"
                     value={customKeyName}
                     onChange={(e) => setCustomKeyName(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary uppercase focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                   />
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-medium text-textSecondary">
-                    Number of Keys
+                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                    BATCH QUANTITY (MAX 50)
                   </label>
                   <input
                     type="number"
                     min={1}
-                    max={1000}
-                    value={bulkCount || ''}
-                    onChange={(e) => setBulkCount(e.target.value === '' ? 0 : Math.max(1, parseInt(e.target.value) || 1))}
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                    max={50}
+                    value={bulkCount}
+                    onChange={(e) => setBulkCount(parseInt(e.target.value) || 1)}
+                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                   />
                 </div>
               )}
 
-              {/* Duration Selector */}
+              {/* Duration Selection */}
               <div>
-                <label className="block text-xs font-medium text-textSecondary mb-1.5">
-                  Key Duration
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  DURATION VALIDITY
                 </label>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {DURATION_OPTIONS.map((opt) => (
+                <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                  {DURATION_OPTIONS.map((d) => (
                     <button
-                      key={opt.label}
+                      key={d.label}
                       type="button"
-                      onClick={() => setSelectedDuration(opt)}
-                      className={`rounded-xl p-2 text-center border text-xs font-semibold transition-all ${
-                        selectedDuration.label === opt.label
-                          ? 'border-primary bg-primary text-white shadow-xs'
-                          : 'border-surfaceBorder bg-background text-textSecondary hover:bg-surfaceHover hover:text-textPrimary'
+                      onClick={() => setSelectedDuration(d)}
+                      className={`rounded-md py-1.5 px-2 text-center text-[11px] font-medium transition-colors ${
+                        selectedDuration.label === d.label
+                          ? "bg-white text-black font-semibold"
+                          : "border border-[#262626] bg-[#0A0A0A] text-neutral-400 hover:text-white"
                       }`}
                     >
-                      {opt.label}
+                      {d.label}
                     </button>
                   ))}
                 </div>
@@ -1320,38 +1412,46 @@ export default function AdminDashboard() {
 
               {/* Device Limit */}
               <div>
-                <label className="block text-xs font-medium text-textSecondary mb-1.5">
-                  Device Limit
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  MAX CONCURRENT DEVICES
                 </label>
                 <input
                   type="number"
                   min={1}
                   max={100}
-                  value={maxDevices || ''}
-                  onChange={(e) => setMaxDevices(e.target.value === '' ? 0 : Math.max(1, parseInt(e.target.value) || 1))}
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                  value={maxDevices}
+                  onChange={(e) => setMaxDevices(parseInt(e.target.value) || 1)}
+                  className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                 />
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-medium text-textSecondary">
-                  Notes <span className="text-textMuted font-normal">(Optional)</span>
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  NOTES / REFERENCE
                 </label>
                 <input
                   type="text"
                   value={keyNotes}
                   onChange={(e) => setKeyNotes(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs sm:text-sm text-textPrimary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                  className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                 />
               </div>
 
-              <div className="pt-2">
+              {/* Sticky bottom buttons */}
+              <div className="sticky bottom-0 bg-[#121212] flex gap-2 pt-3 pb-1 border-t border-[#202020]">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 rounded-lg border border-[#2B2B2B] bg-[#161616] py-2.5 text-xs font-semibold text-white hover:bg-[#202020] transition-colors"
+                >
+                  CANCEL
+                </button>
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all active:scale-[0.98]"
+                  className="flex-1 rounded-lg bg-white py-2.5 text-xs font-semibold text-black hover:bg-neutral-200 transition-colors"
                 >
-                  {createMode === 'single' ? 'Create Single License Key' : `Generate ${bulkCount} License Keys`}
+                  CREATE
                 </button>
               </div>
             </form>
@@ -1359,827 +1459,590 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* EXTEND TIME MODAL */}
+      {/* ============================================================= */}
+      {/* MODAL: EXTEND KEY */}
+      {/* ============================================================= */}
       {showExtendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Clock className="h-4 w-4" />
-                </div>
-                <h3 className="text-base font-bold text-textPrimary">Extend Key Duration</h3>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-sm rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <h3 className="font-semibold text-white tracking-wide text-sm">
+                EXTEND VALIDITY
+              </h3>
               <button
                 onClick={() => setShowExtendModal(null)}
-                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
+                className="text-neutral-400 hover:text-white p-1"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleExtendKey} className="mt-4 space-y-4">
-              <div className="rounded-xl bg-background p-3.5 border border-surfaceBorder">
-                <span className="text-[11px] uppercase font-semibold text-textMuted">Target Key:</span>
-                <p className="font-mono font-medium text-sm text-textPrimary mt-0.5">{showExtendModal.key}</p>
-                <p className="text-xs text-textSecondary mt-1">
-                  Current: {showExtendModal.duration_label}{' '}
-                  {showExtendModal.expires_at ? `(Expires: ${new Date(showExtendModal.expires_at).toLocaleDateString()})` : ''}
-                </p>
-              </div>
+            <div className="font-mono text-xs text-white">
+              Target: <span className="font-bold">{showExtendModal.key}</span>
+            </div>
 
-              <div>
-                <label className="block text-xs font-medium text-textSecondary mb-2">
-                  Select Duration to Add:
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: '+1 Day', sec: 86400 },
-                    { label: '+3 Days', sec: 259200 },
-                    { label: '+7 Days', sec: 604800 },
-                    { label: '+15 Days', sec: 1296000 },
-                    { label: '+30 Days', sec: 2592000 },
-                    { label: '+60 Days', sec: 5184000 },
-                  ].map((ext) => (
-                    <button
-                      key={ext.sec}
-                      type="button"
-                      onClick={() => setExtendingSeconds(ext.sec)}
-                      className={`rounded-xl py-2 text-xs font-semibold border transition-all ${
-                        extendingSeconds === ext.sec
-                          ? 'border-primary bg-primary text-white shadow-xs'
-                          : 'border-surfaceBorder bg-background text-textSecondary hover:bg-surfaceHover hover:text-textPrimary'
-                      }`}
-                    >
-                      {ext.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                ADD EXTENSION TIME
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { label: "+1 Day", sec: 86400 },
+                  { label: "+3 Days", sec: 259200 },
+                  { label: "+7 Days", sec: 604800 },
+                  { label: "+15 Days", sec: 1296000 },
+                  { label: "+30 Days", sec: 2592000 },
+                  { label: "+60 Days", sec: 5184000 },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => setExtendingSeconds(item.sec)}
+                    className={`rounded-md py-1.5 text-center text-[11px] font-medium transition-colors ${
+                      extendingSeconds === item.sec
+                        ? "bg-white text-black font-semibold"
+                        : "border border-[#262626] bg-[#0A0A0A] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-primary hover:bg-primaryHover py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all active:scale-[0.98]"
-                >
-                  Add Time to License Key
-                </button>
-              </div>
-            </form>
+            <div className="sticky bottom-0 bg-[#121212] flex gap-2 pt-3 pb-1 border-t border-[#202020]">
+              <button
+                onClick={() => setShowExtendModal(null)}
+                className="flex-1 rounded-lg border border-[#2B2B2B] bg-[#161616] py-2 text-xs font-semibold text-white hover:bg-[#202020]"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={handleExtendKey}
+                className="flex-1 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-neutral-200"
+              >
+                APPLY EXTENSION
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* BULK SUCCESS / COPY MODAL */}
+      {/* ============================================================= */}
+      {/* MODAL: BULK KEYS CREATED */}
+      {/* ============================================================= */}
       {showBulkSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <h3 className="text-base font-bold text-textPrimary">
-                  {showBulkSuccessModal.length} Keys Generated Successfully!
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-md rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <h3 className="font-semibold text-white tracking-wide text-sm">
+                BATCH GENERATED ({showBulkSuccessModal.length})
+              </h3>
+              <button
+                onClick={() => setShowBulkSuccessModal(null)}
+                className="text-neutral-400 hover:text-white p-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <textarea
+              readOnly
+              rows={8}
+              value={showBulkSuccessModal.join("\n")}
+              className="w-full rounded-lg border border-[#262626] bg-[#0A0A0A] p-3 font-mono text-xs text-white focus:outline-none"
+            />
+
+            <div className="sticky bottom-0 bg-[#121212] flex gap-2 pt-2 pb-1">
+              <button
+                onClick={() => handleCopy(showBulkSuccessModal.join("\n"))}
+                className="flex-1 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-neutral-200"
+              >
+                COPY ALL KEYS
+              </button>
+              <button
+                onClick={() => setShowBulkSuccessModal(null)}
+                className="flex-1 rounded-lg border border-[#2B2B2B] bg-[#161616] py-2 text-xs font-semibold text-white hover:bg-[#202020]"
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* MODAL: BCORE SDK INFO & QUICK GENERATION */}
+      {/* ============================================================= */}
+      {showBcoreInfoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-lg rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-white" />
+                <h3 className="font-semibold text-white tracking-wide text-sm">
+                  BCORE SDK CONFIGURATION
                 </h3>
               </div>
               <button
-                onClick={() => setShowBulkSuccessModal(null)}
-                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
+                onClick={() => setShowBcoreInfoModal(false)}
+                className="text-neutral-400 hover:text-white p-1"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-4">
-              <textarea
-                readOnly
-                rows={8}
-                value={showBulkSuccessModal.join('\n')}
-                className="w-full rounded-xl border border-surfaceBorder bg-background p-3.5 font-mono text-xs text-textPrimary focus:outline-none"
-              />
+            <div className="space-y-3 text-xs text-neutral-300">
+              <div className="rounded-lg border border-[#262626] bg-[#0A0A0A] p-3 space-y-1.5">
+                <div className="text-[11px] font-semibold text-white uppercase tracking-wider">
+                  SDK CONNECT ENDPOINT
+                </div>
+                <div className="flex items-center justify-between font-mono text-neutral-400 text-[11px] break-all">
+                  <span className="truncate pr-2">https://anoyloader.vercel.app/api/connect</span>
+                  <button
+                    onClick={() => handleCopy("https://anoyloader.vercel.app/api/connect")}
+                    className="text-white hover:text-neutral-300 p-1 shrink-0"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="font-semibold text-white">SDK Protection Rules:</div>
+                <ul className="list-disc pl-4 space-y-1 text-neutral-400 text-[11px]">
+                  <li>Bcore will only authorize keys with prefix <code className="text-white">SDK-</code> or notes tagged <code className="text-white">BCORE_SDK</code>.</li>
+                  <li>Loader login keys (<code className="text-white">ANOY-...</code>) are strictly rejected by the Bcore connect endpoint.</li>
+                  <li>Bcore SDK keys cannot be used to log in to the loader dashboard.</li>
+                  <li>Device ID is locked upon first activation up to the configured limit.</li>
+                </ul>
+              </div>
             </div>
 
-            <div className="mt-4 flex items-center space-x-3">
+            <div className="sticky bottom-0 bg-[#121212] pt-2 pb-1 space-y-2 border-t border-[#202020]">
               <button
                 onClick={() => {
-                  copyToClipboard(showBulkSuccessModal.join('\n'));
-                  alert('All keys copied to clipboard!');
+                  setShowBcoreInfoModal(false);
+                  setCreateKeyType("BCORE_SDK");
+                  setShowCreateModal(true);
                 }}
-                className="flex-1 flex items-center justify-center space-x-2 rounded-xl bg-primary hover:bg-primaryHover py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-500/20 transition-all"
+                className="w-full rounded-lg bg-white py-2.5 text-xs font-semibold text-black hover:bg-neutral-200 transition-colors"
               >
-                <Copy className="h-4 w-4" />
-                <span>Copy All Keys</span>
+                GENERATE BCORE SDK KEY NOW
               </button>
-
               <button
-                onClick={() => downloadBulkTxt(showBulkSuccessModal)}
-                className="flex items-center space-x-2 rounded-xl border border-surfaceBorder bg-surfaceHover px-4 py-2.5 text-xs font-semibold text-textPrimary hover:bg-surfaceBorder transition-colors"
+                onClick={() => setShowBcoreInfoModal(false)}
+                className="w-full rounded-lg border border-[#2B2B2B] bg-[#161616] py-2 text-xs font-semibold text-neutral-300 hover:text-white"
               >
-                <Download className="h-4 w-4" />
-                <span>Download .txt</span>
+                CLOSE
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MANAGE LIB UPDATES MODAL */}
+      {/* ============================================================= */}
+      {/* MODAL: LIB UPDATES */}
+      {/* ============================================================= */}
       {showLibModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Upload className="h-4 w-4" />
-                </div>
-                <h3 className="text-base font-bold text-textPrimary">Manage Library Updates</h3>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-lg rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <h3 className="font-semibold text-white tracking-wide text-sm">
+                NATIVE LIBRARY UPDATES (LIBBGMI.SO)
+              </h3>
               <button
                 onClick={() => setShowLibModal(false)}
-                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
+                className="text-neutral-400 hover:text-white p-1"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Current Active Lib Banner */}
-            <div className="mt-4 rounded-xl border border-surfaceBorder bg-background p-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-medium text-textSecondary">Active Lib Version:</span>
-                  <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-400 border border-blue-500/20">
-                    v{libActiveVersion}
-                  </span>
+            <div className="rounded-lg border border-[#262626] bg-[#0A0A0A] p-3 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-neutral-400">ACTIVE VERSION:</span>
+                <span className="font-mono font-bold text-white">v{libActiveVersion}</span>
+              </div>
+              <div className="flex justify-between truncate">
+                <span className="text-neutral-400">URL:</span>
+                <span className="font-mono text-neutral-300 truncate max-w-xs">{libDownloadUrl}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveLibUpdate} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLibUploadMode("upload")}
+                  className={`rounded-lg py-2 font-medium transition-colors ${
+                    libUploadMode === "upload"
+                      ? "bg-white text-black font-semibold"
+                      : "border border-[#262626] bg-[#141414] text-neutral-300"
+                  }`}
+                >
+                  UPLOAD ZIP / SO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLibUploadMode("url")}
+                  className={`rounded-lg py-2 font-medium transition-colors ${
+                    libUploadMode === "url"
+                      ? "bg-white text-black font-semibold"
+                      : "border border-[#262626] bg-[#141414] text-neutral-300"
+                  }`}
+                >
+                  DIRECT URL
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  NEW VERSION NUMBER
+                </label>
+                <input
+                  type="text"
+                  value={libNewVersion}
+                  onChange={(e) => setLibNewVersion(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                />
+              </div>
+
+              {libUploadMode === "upload" ? (
+                <div>
+                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                    SELECT FILE (.ZIP OR .SO)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".zip,.so"
+                    onChange={(e) => setLibFile(e.target.files ? e.target.files[0] : null)}
+                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs text-neutral-300 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-black hover:file:bg-neutral-200"
+                  />
                 </div>
-                <span className="text-[11px] text-textMuted">
-                  Updated: {new Date(libUpdatedAt).toLocaleDateString()}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl bg-surface p-2.5 border border-surfaceBorder text-xs">
-                <span className="truncate font-mono text-[11px] text-textSecondary max-w-[280px]">
-                  {libDownloadUrl}
-                </span>
-                <div className="flex items-center space-x-1.5 ml-2">
-                  <button
-                    onClick={() => copyToClipboard(libDownloadUrl)}
-                    className="p-1 text-textMuted hover:text-primary transition-colors"
-                    title="Copy URL"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                  <a
-                    href={libDownloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1 text-textMuted hover:text-primary transition-colors"
-                    title="Test Download Link"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            {/* Success Alert Banner */}
-            {libSuccessMsg && (
-              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-400">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>{libSuccessMsg}</span>
-              </div>
-            )}
-
-            {/* Mode Switcher */}
-            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-background p-1 border border-surfaceBorder">
-              <button
-                type="button"
-                onClick={() => setLibUploadMode('upload')}
-                className={`rounded-lg py-2 text-xs font-semibold transition-all ${
-                  libUploadMode === 'upload'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-textSecondary hover:text-textPrimary'
-                }`}
-              >
-                1. Upload ZIP File
-              </button>
-              <button
-                type="button"
-                onClick={() => setLibUploadMode('url')}
-                className={`rounded-lg py-2 text-xs font-semibold transition-all ${
-                  libUploadMode === 'url'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-textSecondary hover:text-textPrimary'
-                }`}
-              >
-                2. Direct ZIP URL
-              </button>
-            </div>
-
-            <form onSubmit={handlePushLibUpdate} className="mt-4 space-y-4">
-              {libUploadMode === 'upload' ? (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      Select Library ZIP File (.zip)
-                    </label>
-                    <input
-                      type="file"
-                      accept=".zip,application/zip"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setLibFile(e.target.files[0]);
-                        }
-                      }}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background p-2 text-xs text-textPrimary file:mr-3 file:rounded-lg file:border-0 file:bg-surfaceHover file:px-3 file:py-1 file:text-xs file:font-semibold file:text-textPrimary hover:file:bg-surfaceBorder"
-                    />
-                    <p className="mt-1 text-[11px] text-textMuted">
-                      Must contain <code className="text-primary font-mono">libbgmi.so</code> inside.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      New Version Code (e.g. 2.0, 2.1)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 2.0"
-                      value={libNewVersion}
-                      onChange={(e) => setLibNewVersion(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
-                    />
-                  </div>
-
-                  <div className="rounded-xl bg-background p-3 border border-surfaceBorder text-[11px] text-textMuted">
-                    💡 <span className="font-medium text-textSecondary">Smart Storage Cleanup:</span> When uploading a new zip, old archives in Supabase Storage are automatically pruned to keep your cloud storage lean and free.
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isUploadingLib || !libFile || !libNewVersion}
-                    className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-2 active:scale-[0.98]"
-                  >
-                    {isUploadingLib ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Uploading & Pushing Update...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4" />
-                        <span>Upload ZIP & Push Release</span>
-                      </>
-                    )}
-                  </button>
-                </>
               ) : (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      Direct Download URL for ZIP
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="https://github.com/.../release/download/v2/lib.zip"
-                      value={libDirectUrl}
-                      onChange={(e) => setLibDirectUrl(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
-                    />
-                    <p className="mt-1 text-[11px] text-textMuted">
-                      Direct link to the zip containing <code className="text-primary font-mono">libbgmi.so</code>.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      New Version Code (e.g. 2.0, 2.1)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 2.0"
-                      value={libNewVersion}
-                      onChange={(e) => setLibNewVersion(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isUploadingLib || !libDirectUrl || !libNewVersion}
-                    className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-2 active:scale-[0.98]"
-                  >
-                    {isUploadingLib ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Pushing Update...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="h-4 w-4" />
-                        <span>Push Direct URL Update</span>
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* SYSTEM CONTROL & ANNOUNCEMENTS MODAL */}
-      {showSystemModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                  <Wrench className="h-4 w-4" />
-                </div>
                 <div>
-                  <h3 className="text-base font-bold text-textPrimary">System & Broadcast Notices</h3>
-                  <p className="text-[11px] text-textMuted">Control maintenance mode and push broadcast announcements</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowSystemModal(false)}
-                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Success notification */}
-            {systemConfigSuccessMsg && (
-              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-400">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>{systemConfigSuccessMsg}</span>
-              </div>
-            )}
-
-            {/* Tab switchers */}
-            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-background p-1 border border-surfaceBorder">
-              <button
-                type="button"
-                onClick={() => {
-                  setSystemTab('maintenance');
-                  setSystemConfigSuccessMsg(null);
-                }}
-                className={`flex items-center justify-center space-x-2 rounded-lg py-2 text-xs font-semibold transition-all ${
-                  systemTab === 'maintenance'
-                    ? 'bg-rose-500 text-white shadow-xs'
-                    : 'text-textSecondary hover:text-textPrimary'
-                }`}
-              >
-                <Wrench className="h-3.5 w-3.5" />
-                <span>Maintenance</span>
-                {maintenanceMode && <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSystemTab('announcement');
-                  setSystemConfigSuccessMsg(null);
-                }}
-                className={`flex items-center justify-center space-x-2 rounded-lg py-2 text-xs font-semibold transition-all ${
-                  systemTab === 'announcement'
-                    ? 'bg-amber-500 text-white shadow-xs'
-                    : 'text-textSecondary hover:text-textPrimary'
-                }`}
-              >
-                <Megaphone className="h-3.5 w-3.5" />
-                <span>Announcement</span>
-                {announcementActive && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSystemConfig} className="mt-5 space-y-4">
-              {systemTab === 'maintenance' ? (
-                <>
-                  {/* Maintenance Toggle */}
-                  <div className="flex items-center justify-between rounded-xl border border-surfaceBorder bg-background p-4">
-                    <div>
-                      <div className="text-xs font-semibold text-textPrimary flex items-center space-x-2">
-                        <span>Maintenance Status</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          maintenanceMode ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        }`}>
-                          {maintenanceMode ? 'Active (App Locked)' : 'Disabled (Normal)'}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-textMuted">
-                        When enabled, client applications display maintenance screen.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setMaintenanceMode(!maintenanceMode)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        maintenanceMode ? 'bg-rose-500' : 'bg-surfaceBorder'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
-                          maintenanceMode ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Maintenance Message */}
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      Maintenance Notice Message
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={maintenanceMessage}
-                      onChange={(e) => setMaintenanceMessage(e.target.value)}
-                      placeholder="Server is undergoing scheduled maintenance. Please check back later."
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500/40 leading-relaxed transition-colors"
-                    />
-                  </div>
-
-                  {/* Estimated End Time */}
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      Estimated Completion Time
-                    </label>
-                    <input
-                      type="text"
-                      value={maintenanceEstimatedEnd}
-                      onChange={(e) => setMaintenanceEstimatedEnd(e.target.value)}
-                      placeholder="e.g. 1 Hour, 2:00 PM UTC, Tomorrow Morning"
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500/40 transition-colors"
-                    />
-                    <p className="mt-1 text-[11px] text-textMuted">
-                      Shown to users so they know when the server is expected back online.
-                    </p>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSavingSystemConfig}
-                    className="w-full rounded-xl bg-rose-500 hover:bg-rose-600 py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-rose-500/20 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 active:scale-[0.98]"
-                  >
-                    {isSavingSystemConfig ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Saving Settings...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Wrench className="h-4 w-4" />
-                        <span>Update Maintenance Status</span>
-                      </>
-                    )}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* Announcement Toggle */}
-                  <div className="flex items-center justify-between rounded-xl border border-surfaceBorder bg-background p-4">
-                    <div>
-                      <div className="text-xs font-semibold text-textPrimary flex items-center space-x-2">
-                        <span>Broadcast Status</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          announcementActive ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-surfaceBorder text-textMuted'
-                        }`}>
-                          {announcementActive ? 'Broadcasting' : 'Disabled'}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-textMuted">
-                        Displays an in-app notice dialog when users launch the app.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setAnnouncementActive(!announcementActive)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        announcementActive ? 'bg-amber-500' : 'bg-surfaceBorder'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
-                          announcementActive ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Announcement Title */}
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      Announcement Title
-                    </label>
-                    <input
-                      type="text"
-                      value={announcementTitle}
-                      onChange={(e) => setAnnouncementTitle(e.target.value)}
-                      placeholder="e.g. Major Update Released!"
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40 font-semibold transition-colors"
-                    />
-                  </div>
-
-                  {/* Announcement Message */}
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      Announcement Details
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={announcementMessage}
-                      onChange={(e) => setAnnouncementMessage(e.target.value)}
-                      placeholder="Enter update notes or instructions..."
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40 leading-relaxed transition-colors"
-                    />
-                  </div>
-
-                  {/* Type / Priority */}
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary mb-1.5">
-                      Notice Style
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setAnnouncementType('info')}
-                        className={`rounded-xl border p-2 text-xs font-semibold transition-all ${
-                          announcementType === 'info'
-                            ? 'border-blue-500 bg-blue-500 text-white shadow-xs'
-                            : 'border-surfaceBorder bg-background text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
-                        }`}
-                      >
-                        Info (Blue)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAnnouncementType('warning')}
-                        className={`rounded-xl border p-2 text-xs font-semibold transition-all ${
-                          announcementType === 'warning'
-                            ? 'border-amber-500 bg-amber-500 text-white shadow-xs'
-                            : 'border-surfaceBorder bg-background text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
-                        }`}
-                      >
-                        Warning (Amber)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAnnouncementType('critical')}
-                        className={`rounded-xl border p-2 text-xs font-semibold transition-all ${
-                          announcementType === 'critical'
-                            ? 'border-rose-500 bg-rose-500 text-white shadow-xs'
-                            : 'border-surfaceBorder bg-background text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
-                        }`}
-                      >
-                        Alert (Red)
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Optional Link */}
-                  <div>
-                    <label className="block text-xs font-medium text-textSecondary">
-                      Optional Action Link (Telegram, Discord, Website)
-                    </label>
-                    <input
-                      type="url"
-                      value={announcementLink}
-                      onChange={(e) => setAnnouncementLink(e.target.value)}
-                      placeholder="https://t.me/your_official_channel"
-                      className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs text-textPrimary placeholder:text-textMuted focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSavingSystemConfig}
-                    className="w-full rounded-xl bg-amber-500 hover:bg-amber-600 py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-amber-500/20 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 active:scale-[0.98]"
-                  >
-                    {isSavingSystemConfig ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Saving Announcement...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Megaphone className="h-4 w-4" />
-                        <span>Push Announcement to App</span>
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* APK IN-APP UPDATES MODAL */}
-      {showApkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
-                  <Smartphone className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-textPrimary">In-App APK Releases</h3>
-                  <p className="text-[11px] text-textMuted">Publish APK updates with changelog and direct in-app downloader</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowApkModal(false)}
-                className="rounded-lg p-1 text-textMuted hover:text-textPrimary hover:bg-surfaceHover transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Success notification */}
-            {apkUpdateSuccessMsg && (
-              <div className="mt-3 flex items-center space-x-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-400">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>{apkUpdateSuccessMsg}</span>
-              </div>
-            )}
-
-            {/* Current Active APK Info Card */}
-            <div className="mt-4 rounded-xl border border-surfaceBorder bg-background p-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-textSecondary">Active Release</span>
-                <span className="flex items-center space-x-1.5 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-400 border border-blue-500/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-                  <span>v{apkActiveVerName} (Code {apkActiveVerCode})</span>
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl bg-surface px-3 py-2 border border-surfaceBorder">
-                <span className="font-mono text-[11px] text-textSecondary truncate max-w-[280px] sm:max-w-[340px]">
-                  {apkActiveUrl || 'No URL configured'}
-                </span>
-                {apkActiveUrl && (
-                  <button
-                    onClick={() => copyToClipboard(apkActiveUrl)}
-                    className="ml-2 text-textMuted hover:text-primary transition-colors p-1 rounded-md"
-                    title="Copy APK URL"
-                  >
-                    {copiedKey === apkActiveUrl ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                  </button>
-                )}
-              </div>
-
-              {apkActiveChangelog && (
-                <div className="text-[11px] text-textMuted">
-                  <span className="font-medium text-textSecondary">Changelog: </span>
-                  <span className="italic">{apkActiveChangelog}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Form to Push New APK */}
-            <form onSubmit={handleSaveApkUpdate} className="mt-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-textSecondary">
-                    Version Name
+                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                    DIRECT DOWNLOAD URL
                   </label>
                   <input
                     type="text"
-                    required
+                    value={libDirectUrl}
+                    onChange={(e) => setLibDirectUrl(e.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                  />
+                </div>
+              )}
+
+              {libSuccessMsg && (
+                <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-2 text-center text-xs text-emerald-400">
+                  {libSuccessMsg}
+                </div>
+              )}
+
+              <div className="sticky bottom-0 bg-[#121212] flex gap-2 pt-3 pb-1 border-t border-[#202020]">
+                <button
+                  type="button"
+                  onClick={() => setShowLibModal(false)}
+                  className="flex-1 rounded-lg border border-[#2B2B2B] bg-[#161616] py-2 text-xs font-semibold text-white hover:bg-[#202020]"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUploadingLib}
+                  className="flex-1 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
+                >
+                  {isUploadingLib ? "DEPLOYING..." : "DEPLOY UPDATE"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* MODAL: APK IN-APP UPDATE */}
+      {/* ============================================================= */}
+      {showApkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-lg rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <h3 className="font-semibold text-white tracking-wide text-sm">
+                IN-APP APK UPDATER
+              </h3>
+              <button
+                onClick={() => setShowApkModal(false)}
+                className="text-neutral-400 hover:text-white p-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-[#262626] bg-[#0A0A0A] p-3 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-neutral-400">CURRENT VERSION:</span>
+                <span className="font-mono font-bold text-white">v{apkActiveVerName} ({apkActiveVerCode})</span>
+              </div>
+              <div className="flex justify-between truncate">
+                <span className="text-neutral-400">DOWNLOAD URL:</span>
+                <span className="font-mono text-neutral-300 truncate max-w-xs">{apkActiveUrl}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveApkUpdate} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                    VERSION NAME
+                  </label>
+                  <input
+                    type="text"
                     value={apkNewVerName}
                     onChange={(e) => setApkNewVerName(e.target.value)}
-                    placeholder="e.g. 2026.02.01"
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-textSecondary">
-                    Version Code (Number)
+                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                    VERSION CODE
                   </label>
                   <input
                     type="number"
-                    required
-                    min={apkActiveVerCode + 1}
                     value={apkNewVerCode}
                     onChange={(e) => setApkNewVerCode(e.target.value)}
-                    placeholder={`e.g. ${apkActiveVerCode + 1}`}
-                    className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-textSecondary">
-                  Direct APK Download URL
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  APK DOWNLOAD URL
                 </label>
                 <input
-                  type="url"
-                  required
+                  type="text"
                   value={apkNewUrl}
                   onChange={(e) => setApkNewUrl(e.target.value)}
-                  placeholder="https://.../Anoy_Loader_v2.apk"
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 font-mono text-xs sm:text-sm text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
+                  className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                 />
-                <p className="mt-1 text-[11px] text-textMuted">
-                  The app will download this .apk directly in-app with a live progress bar and launch package installer.
-                </p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-textSecondary">
-                  What's New / Changelog
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  RELEASE CHANGELOG
                 </label>
                 <textarea
                   rows={3}
                   value={apkNewChangelog}
                   onChange={(e) => setApkNewChangelog(e.target.value)}
-                  placeholder="• Performance optimizations&#10;• New VIP features&#10;• Faster connection"
-                  className="mt-1.5 w-full rounded-xl border border-surfaceBorder bg-background px-3.5 py-2.5 text-xs text-textPrimary placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 leading-relaxed transition-colors"
+                  className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                 />
               </div>
 
-              <div className="flex items-center space-x-2.5 rounded-xl border border-surfaceBorder bg-background p-3.5">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
-                  id="apkMandatory"
+                  id="mandatoryCheck"
                   checked={apkNewMandatory}
                   onChange={(e) => setApkNewMandatory(e.target.checked)}
-                  className="h-4 w-4 rounded border-surfaceBorder text-primary focus:ring-primary/30 bg-surface"
+                  className="rounded border-[#262626] bg-[#0A0A0A] text-white"
                 />
-                <label htmlFor="apkMandatory" className="text-xs text-textSecondary cursor-pointer select-none">
-                  <strong className="text-textPrimary">Mandatory Update</strong> (Users must update before they can use the app)
+                <label htmlFor="mandatoryCheck" className="text-xs text-neutral-300">
+                  Force mandatory update (blocks previous versions)
                 </label>
               </div>
 
-              <button
-                type="submit"
-                disabled={isSavingApkUpdate}
-                className="w-full rounded-xl bg-primary hover:bg-primaryHover py-3 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 active:scale-[0.98]"
-              >
-                {isSavingApkUpdate ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Publishing APK Release...</span>
-                  </>
-                ) : (
-                  <>
-                    <Smartphone className="h-4 w-4" />
-                    <span>Push APK Update to App</span>
-                  </>
-                )}
-              </button>
+              {apkUpdateSuccessMsg && (
+                <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-2 text-center text-xs text-emerald-400">
+                  {apkUpdateSuccessMsg}
+                </div>
+              )}
+
+              <div className="sticky bottom-0 bg-[#121212] flex gap-2 pt-3 pb-1 border-t border-[#202020]">
+                <button
+                  type="button"
+                  onClick={() => setShowApkModal(false)}
+                  className="flex-1 rounded-lg border border-[#2B2B2B] bg-[#161616] py-2 text-xs font-semibold text-white hover:bg-[#202020]"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingApkUpdate}
+                  className="flex-1 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
+                >
+                  {isSavingApkUpdate ? "PUBLISHING..." : "PUBLISH UPDATE"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* CONFIG MODAL */}
-      {showConfigModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-surfaceBorder bg-surface p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-surfaceBorder pb-4">
-              <div className="flex items-center space-x-2">
-                <Database className="h-5 w-5 text-primary" />
-                <h3 className="text-base font-bold text-textPrimary">DATABASE CONFIGURATION</h3>
-              </div>
+      {/* ============================================================= */}
+      {/* MODAL: SYSTEM SETTINGS (MAINTENANCE & ANNOUNCEMENTS) */}
+      {/* ============================================================= */}
+      {showSystemModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-lg rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <h3 className="font-semibold text-white tracking-wide text-sm">
+                REMOTE SYSTEM CONTROL
+              </h3>
               <button
-                onClick={() => setShowConfigModal(false)}
-                className="text-textMuted hover:text-textPrimary"
+                onClick={() => setShowSystemModal(false)}
+                className="text-neutral-400 hover:text-white p-1"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 text-xs text-textSecondary">
-              <p>
-                To connect this Admin Panel with your live <strong>Supabase</strong> instance:
-              </p>
-              <ol className="list-decimal pl-4 space-y-1 text-textMuted">
-                <li>Create a free project at supabase.com</li>
-                <li>Run the provided <code className="text-primary">supabase/schema.sql</code> in your Supabase SQL Editor</li>
-                <li>Add your Project URL and Anon Key to <code className="text-primary">admin-panel/.env.local</code></li>
-                <li>Deploy to Vercel with the same environment variables!</li>
-              </ol>
+            <div className="flex rounded-lg border border-[#262626] bg-[#0A0A0A] p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setSystemTab("maintenance")}
+                className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
+                  systemTab === "maintenance"
+                    ? "bg-white text-black font-semibold"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                MAINTENANCE MODE
+              </button>
+              <button
+                type="button"
+                onClick={() => setSystemTab("announcement")}
+                className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
+                  systemTab === "announcement"
+                    ? "bg-white text-black font-semibold"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                ANNOUNCEMENT BANNER
+              </button>
+            </div>
 
-              <div className="rounded-xl bg-background p-3 border border-surfaceBorder font-mono text-[11px] text-textMuted space-y-1">
-                <div>NEXT_PUBLIC_SUPABASE_URL=...</div>
-                <div>NEXT_PUBLIC_SUPABASE_ANON_KEY=...</div>
-              </div>
+            <form onSubmit={handleSaveSystemConfig} className="space-y-4 text-xs">
+              {systemTab === "maintenance" ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg border border-[#262626] bg-[#0A0A0A] p-3">
+                    <div>
+                      <div className="font-semibold text-white">MAINTENANCE GATE</div>
+                      <div className="text-[11px] text-neutral-400">
+                        When active, clients receive maintenance notice
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={maintenanceMode}
+                      onChange={(e) => setMaintenanceMode(e.target.checked)}
+                      className="h-4 w-4 rounded border-[#262626] bg-[#121212] text-white"
+                    />
+                  </div>
 
-              <div className="pt-2">
+                  <div>
+                    <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                      MAINTENANCE NOTICE MESSAGE
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={maintenanceMessage}
+                      onChange={(e) => setMaintenanceMessage(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                      ESTIMATED COMPLETION
+                    </label>
+                    <input
+                      type="text"
+                      value={maintenanceEstimatedEnd}
+                      onChange={(e) => setMaintenanceEstimatedEnd(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg border border-[#262626] bg-[#0A0A0A] p-3">
+                    <div>
+                      <div className="font-semibold text-white">ACTIVE BANNER</div>
+                      <div className="text-[11px] text-neutral-400">
+                        Broadcasts modal announcement on app launch
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={announcementActive}
+                      onChange={(e) => setAnnouncementActive(e.target.checked)}
+                      className="h-4 w-4 rounded border-[#262626] bg-[#121212] text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                      ANNOUNCEMENT TITLE
+                    </label>
+                    <input
+                      type="text"
+                      value={announcementTitle}
+                      onChange={(e) => setAnnouncementTitle(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                      ANNOUNCEMENT MESSAGE
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={announcementMessage}
+                      onChange={(e) => setAnnouncementMessage(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                      REDIRECT LINK (TELEGRAM / WEBSITE)
+                    </label>
+                    <input
+                      type="text"
+                      value={announcementLink}
+                      onChange={(e) => setAnnouncementLink(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {systemConfigSuccessMsg && (
+                <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-2 text-center text-xs text-emerald-400">
+                  {systemConfigSuccessMsg}
+                </div>
+              )}
+
+              <div className="sticky bottom-0 bg-[#121212] flex gap-2 pt-3 pb-1 border-t border-[#202020]">
                 <button
-                  onClick={() => setShowConfigModal(false)}
-                  className="w-full rounded-xl bg-primary hover:bg-primaryHover py-2.5 text-xs font-semibold text-white shadow-xs transition-colors"
+                  type="button"
+                  onClick={() => setShowSystemModal(false)}
+                  className="flex-1 rounded-lg border border-[#2B2B2B] bg-[#161616] py-2 text-xs font-semibold text-white hover:bg-[#202020]"
                 >
-                  Close
+                  CANCEL
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSystemConfig}
+                  className="flex-1 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
+                >
+                  {isSavingSystemConfig ? "SAVING..." : "SAVE CONFIG"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
