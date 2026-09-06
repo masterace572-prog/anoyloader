@@ -53,6 +53,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
     }
 
+    // Strict validation: Reject if key has expired or remaining seconds is 0 for timed key
+    if (data && data.success) {
+      if (!data.is_lifetime && (data.remaining_seconds === 0 || data.status === 'EXPIRED')) {
+        // Mark as EXPIRED in Supabase table to keep DB consistent
+        await supabase
+          .from('license_keys')
+          .update({ status: 'EXPIRED' })
+          .eq('key', key.trim());
+
+        return NextResponse.json({
+          success: false,
+          error: 'This license key has expired',
+        }, { headers: corsHeaders });
+      }
+    }
+
     return NextResponse.json(data, { headers: corsHeaders });
   } catch (err: any) {
     console.error('Login API error:', err);
