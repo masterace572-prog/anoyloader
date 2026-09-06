@@ -14,6 +14,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Key is required' }, { status: 400 });
     }
 
+    const trimmedKey = key.trim();
+    if (trimmedKey.startsWith('BCORE-') || trimmedKey.startsWith('SDK-')) {
+      return NextResponse.json({
+        success: false,
+        error: 'This is a Bcore SDK Key. Please use a valid Loader key.',
+      }, { status: 400 });
+    }
+
     if (!hwid || typeof hwid !== 'string' || !hwid.trim()) {
       return NextResponse.json({ success: false, error: 'Hardware ID (HWID) is required' }, { status: 400 });
     }
