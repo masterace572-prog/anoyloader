@@ -526,7 +526,10 @@ export default function AdminDashboard() {
     if (!showExtendModal) return;
 
     const targetKey = showExtendModal;
-    const baseTime = targetKey.expires_at ? new Date(targetKey.expires_at).getTime() : Date.now();
+    const now = Date.now();
+    const currentExpiry = targetKey.expires_at ? new Date(targetKey.expires_at).getTime() : now;
+    // If key has already expired (past date), extend from NOW rather than adding to past timestamp
+    const baseTime = currentExpiry > now ? currentExpiry : now;
     const newExpiresAt = new Date(baseTime + extendingSeconds * 1000).toISOString();
 
     if (isLiveDatabase && supabase) {
@@ -566,14 +569,16 @@ export default function AdminDashboard() {
         if (!supabase) throw new Error("Supabase storage client not connected.");
 
         const filePath = `libs/${Date.now()}_${libFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("loader-files")
-          .upload(filePath, libFile);
-
-        if (uploadError) throw uploadError;
+        let uploadRes = await supabase.storage.from("libs").upload(filePath, libFile);
+        let targetBucket = "libs";
+        if (uploadRes.error) {
+          uploadRes = await supabase.storage.from("loader-files").upload(filePath, libFile);
+          targetBucket = "loader-files";
+        }
+        if (uploadRes.error) throw uploadRes.error;
 
         const { data: publicUrlData } = supabase.storage
-          .from("loader-files")
+          .from(targetBucket)
           .getPublicUrl(filePath);
 
         finalUrl = publicUrlData.publicUrl;
