@@ -37,7 +37,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { LicenseKey, KeyStatus, DURATION_OPTIONS, DurationOption } from "@/lib/types";
+import { LicenseKey, KeyStatus, DURATION_OPTIONS, DurationOption, ManagedGame, GameVersion } from "@/lib/types";
 
 const INITIAL_MOCK_KEYS: LicenseKey[] = [
   {
@@ -128,6 +128,35 @@ export default function AdminDashboard() {
   const [announcementLink, setAnnouncementLink] = useState("");
   const [isSavingSystemConfig, setIsSavingSystemConfig] = useState(false);
   const [systemConfigSuccessMsg, setSystemConfigSuccessMsg] = useState<string | null>(null);
+
+  // Advanced Game & Multi-Version Management State
+  const [managedGames, setManagedGames] = useState<ManagedGame[]>([]);
+  const [loadingGames, setLoadingGames] = useState(false);
+  const [showGamesModal, setShowGamesModal] = useState(false);
+  const [gamesSuccessMsg, setGamesSuccessMsg] = useState<string | null>(null);
+
+  // Add Game Form State
+  const [showAddGameForm, setShowAddGameForm] = useState(false);
+  const [newGameId, setNewGameId] = useState("");
+  const [newGameTitle, setNewGameTitle] = useState("");
+  const [newGamePackage, setNewGamePackage] = useState("");
+  const [newGameLib, setNewGameLib] = useState("libbgmi.so");
+  const [newGameIcon, setNewGameIcon] = useState("bgmi");
+  const [newGameStatus, setNewGameStatus] = useState("OBB Ready");
+  const [newGameEnabled, setNewGameEnabled] = useState(true);
+
+  // Add Version Form State
+  const [showAddVersionForm, setShowAddVersionForm] = useState(false);
+  const [targetGameForVersion, setTargetGameForVersion] = useState<ManagedGame | null>(null);
+  const [newVerName, setNewVerName] = useState("");
+  const [newVerCode, setNewVerCode] = useState("");
+  const [newVerObb, setNewVerObb] = useState("");
+  const [newVerTag, setNewVerTag] = useState<"LATEST" | "BETA" | "TEST" | "STABLE">("LATEST");
+  const [newVerStatus, setNewVerStatus] = useState("Ready");
+  const [newVerLibVersion, setNewVerLibVersion] = useState("1.0");
+  const [newVerLibUrl, setNewVerLibUrl] = useState("");
+  const [newVerIsDefault, setNewVerIsDefault] = useState(false);
+  const [isSavingGameData, setIsSavingGameData] = useState(false);
 
   // APK In-App Update State
   const [apkActiveVerName, setApkActiveVerName] = useState("2026.01.01");
@@ -287,9 +316,178 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
+  // Fetch Managed Games & Multi-Versions
+  const fetchManagedGames = async () => {
+    setLoadingGames(true);
+    try {
+      const res = await fetch("/api/admin/games");
+      const json = await res.json();
+      if (json.success && json.games) {
+        setManagedGames(json.games);
+      }
+    } catch (err) {
+      console.error("Failed to fetch managed games", err);
+    } finally {
+      setLoadingGames(false);
+    }
+  };
+
+  const handleSaveGame = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGameId.trim() || !newGameTitle.trim() || !newGamePackage.trim()) {
+      alert("Game ID, Title, and Package Name are required");
+      return;
+    }
+    setIsSavingGameData(true);
+    try {
+      const res = await fetch("/api/admin/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert_game",
+          game: {
+            id: newGameId.trim().toLowerCase(),
+            title: newGameTitle.trim(),
+            package_name: newGamePackage.trim(),
+            lib_name: newGameLib.trim() || "libbgmi.so",
+            icon_type: newGameIcon.trim() || "bgmi",
+            is_enabled: newGameEnabled,
+            status_text: newGameStatus.trim() || "OBB Ready",
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      setGamesSuccessMsg(`Game ${newGameTitle} saved successfully!`);
+      setShowAddGameForm(false);
+      setNewGameId("");
+      setNewGameTitle("");
+      setNewGamePackage("");
+      await fetchManagedGames();
+      setTimeout(() => setGamesSuccessMsg(null), 2500);
+    } catch (err: any) {
+      alert(`Error saving game: ${err.message || err}`);
+    } finally {
+      setIsSavingGameData(false);
+    }
+  };
+
+  const handleToggleGame = async (game: ManagedGame) => {
+    try {
+      const res = await fetch("/api/admin/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert_game",
+          game: {
+            ...game,
+            is_enabled: !game.is_enabled,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      await fetchManagedGames();
+    } catch (err: any) {
+      alert(`Error toggling game: ${err.message || err}`);
+    }
+  };
+
+  const handleDeleteGame = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete ${title} (${id})?\n\nThis will also remove this game from the loader app immediately!`)) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_game", id }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      setGamesSuccessMsg(`Game ${title} deleted. Removed from loader.`);
+      await fetchManagedGames();
+      setTimeout(() => setGamesSuccessMsg(null), 2500);
+    } catch (err: any) {
+      alert(`Error deleting game: ${err.message || err}`);
+    }
+  };
+
+  const handleSaveVersion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetGameForVersion) return;
+    if (!newVerName.trim() || !newVerCode.trim()) {
+      alert("Version Name and Version Code are required");
+      return;
+    }
+    setIsSavingGameData(true);
+    try {
+      const vCode = parseInt(newVerCode.trim(), 10);
+      const defaultObb = `main.${vCode}.${targetGameForVersion.package_name}.obb`;
+      const res = await fetch("/api/admin/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert_version",
+          version: {
+            game_id: targetGameForVersion.id,
+            version_name: newVerName.trim(),
+            version_code: vCode,
+            obb_name: newVerObb.trim() || defaultObb,
+            tag: newVerTag,
+            status_text: newVerStatus.trim() || "Ready",
+            lib_version: newVerLibVersion.trim() || "1.0",
+            lib_download_url: newVerLibUrl.trim(),
+            is_default: newVerIsDefault,
+            is_active: true,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      setGamesSuccessMsg(`Version v${newVerName} added for ${targetGameForVersion.title}!`);
+      setShowAddVersionForm(false);
+      setNewVerName("");
+      setNewVerCode("");
+      setNewVerObb("");
+      setNewVerLibUrl("");
+      await fetchManagedGames();
+      setTimeout(() => setGamesSuccessMsg(null), 2500);
+    } catch (err: any) {
+      alert(`Error saving version: ${err.message || err}`);
+    } finally {
+      setIsSavingGameData(false);
+    }
+  };
+
+  const handleDeleteVersion = async (id: string, verName: string) => {
+    if (!confirm(`Are you sure you want to delete version v${verName}?`)) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_version", id }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      setGamesSuccessMsg(`Version v${verName} deleted.`);
+      await fetchManagedGames();
+      setTimeout(() => setGamesSuccessMsg(null), 2500);
+    } catch (err: any) {
+      alert(`Error deleting version: ${err.message || err}`);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchKeys();
+      fetchManagedGames();
     }
   }, [isAuthenticated]);
 
@@ -922,6 +1120,17 @@ export default function AdminDashboard() {
             >
               <Download className="h-3.5 w-3.5 text-white" />
               <span>APK (v{apkActiveVerName})</span>
+            </button>
+
+            <button
+              onClick={() => {
+                fetchManagedGames();
+                setShowGamesModal(true);
+              }}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#262626] bg-[#141414] px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-white hover:bg-[#1E1E1E] transition-colors"
+            >
+              <Layers className="h-3.5 w-3.5 text-emerald-400" />
+              <span>GAMES ({managedGames.length > 0 ? managedGames.length : "2"})</span>
             </button>
 
             <button
@@ -2216,6 +2425,408 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ============================================================= */}
+      {/* MODAL: ADVANCED GAME & MULTI-VERSION MANAGER */}
+      {/* ============================================================= */}
+      {showGamesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-3xl rounded-xl border border-[#242424] bg-[#121212] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#202020] pb-3">
+              <div className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-emerald-400" />
+                <div>
+                  <h3 className="font-semibold text-white tracking-wide text-sm">
+                    GAME & MULTI-VERSION MANAGER
+                  </h3>
+                  <p className="text-[11px] text-neutral-400">
+                    Remotely add/delete games and publish multi-version OBBs (e.g. 4.5.0 and 4.6.0)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddGameForm(!showAddGameForm);
+                    setShowAddVersionForm(false);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-black hover:bg-neutral-200 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>ADD GAME</span>
+                </button>
+                <button
+                  onClick={() => setShowGamesModal(false)}
+                  className="text-neutral-400 hover:text-white p-1 rounded-lg border border-[#262626] bg-[#161616]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Success message banner */}
+            {gamesSuccessMsg && (
+              <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-2.5 text-center text-xs text-emerald-400 font-medium">
+                {gamesSuccessMsg}
+              </div>
+            )}
+
+            {/* Form: Add New Game */}
+            {showAddGameForm && (
+              <form onSubmit={handleSaveGame} className="rounded-lg border border-[#2B2B2B] bg-[#0E0E0E] p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-[#202020] pb-2">
+                  <div className="font-semibold text-white text-xs flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5 text-emerald-400" />
+                    CREATE NEW MANAGED GAME
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddGameForm(false)}
+                    className="text-neutral-400 hover:text-white text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Game ID (Slug)</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. bgmi or pubg_kr"
+                      value={newGameId}
+                      onChange={(e) => setNewGameId(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Display Title</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. BGMI (Battlegrounds Mobile India)"
+                      value={newGameTitle}
+                      onChange={(e) => setNewGameTitle(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Package Name (Host APK)</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. com.pubg.imobile"
+                      value={newGamePackage}
+                      onChange={(e) => setNewGamePackage(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Native Lib Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. libbgmi.so"
+                      value={newGameLib}
+                      onChange={(e) => setNewGameLib(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Icon Type</label>
+                    <select
+                      value={newGameIcon}
+                      onChange={(e) => setNewGameIcon(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
+                    >
+                      <option value="bgmi">BGMI (India)</option>
+                      <option value="pubg_global">PUBG Mobile (Global)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Status Text</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. OBB Ready"
+                      value={newGameStatus}
+                      onChange={(e) => setNewGameStatus(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 text-xs text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={newGameEnabled}
+                      onChange={(e) => setNewGameEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-[#262626] bg-[#141414]"
+                    />
+                    Enable this game in loader
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={isSavingGameData}
+                    className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-emerald-400 disabled:opacity-50"
+                  >
+                    {isSavingGameData ? "SAVING..." : "CREATE GAME"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Form: Add Version to Game */}
+            {showAddVersionForm && targetGameForVersion && (
+              <form onSubmit={handleSaveVersion} className="rounded-lg border border-[#2B2B2B] bg-[#0E0E0E] p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-[#202020] pb-2">
+                  <div className="font-semibold text-white text-xs flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5 text-cyan-400" />
+                    ADD VERSION FOR {targetGameForVersion.title}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddVersionForm(false)}
+                    className="text-neutral-400 hover:text-white text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Version Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 4.5.0 or 4.6.0"
+                      value={newVerName}
+                      onChange={(e) => setNewVerName(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Version Code (Android versionCode)</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 21325 for 4.5.0 or 21455 for 4.6.0"
+                      value={newVerCode}
+                      onChange={(e) => {
+                        setNewVerCode(e.target.value);
+                        if (!newVerObb && e.target.value) {
+                          setNewVerObb(`main.${e.target.value}.${targetGameForVersion.package_name}.obb`);
+                        }
+                      }}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">OBB File Name</label>
+                    <input
+                      type="text"
+                      placeholder={`e.g. main.${newVerCode || "21325"}.${targetGameForVersion.package_name}.obb`}
+                      value={newVerObb}
+                      onChange={(e) => setNewVerObb(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Tag / Status Badge</label>
+                    <select
+                      value={newVerTag}
+                      onChange={(e) => setNewVerTag(e.target.value as any)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
+                    >
+                      <option value="LATEST">LATEST (Official Current)</option>
+                      <option value="BETA">BETA (Upcoming Build e.g. 4.6.0)</option>
+                      <option value="TEST">TEST (Internal Testing)</option>
+                      <option value="STABLE">STABLE (Legacy Stable)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Lib Version</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1.0 or 1.1-beta"
+                      value={newVerLibVersion}
+                      onChange={(e) => setNewVerLibVersion(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Lib Download URL (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://.../libbgmi_4.6.0.so"
+                      value={newVerLibUrl}
+                      onChange={(e) => setNewVerLibUrl(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 text-xs text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={newVerIsDefault}
+                      onChange={(e) => setNewVerIsDefault(e.target.checked)}
+                      className="h-4 w-4 rounded border-[#262626] bg-[#141414]"
+                    />
+                    Set as default selected version
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={isSavingGameData}
+                    className="rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+                  >
+                    {isSavingGameData ? "SAVING..." : "SAVE VERSION"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Managed Games List */}
+            <div className="space-y-4">
+              {loadingGames ? (
+                <div className="rounded-lg border border-[#262626] bg-[#0A0A0A] p-6 text-center text-xs text-neutral-400">
+                  Loading games and versions...
+                </div>
+              ) : managedGames.length === 0 ? (
+                <div className="rounded-lg border border-[#262626] bg-[#0A0A0A] p-6 text-center text-xs text-neutral-400">
+                  No games configured. Click &quot;+ ADD GAME&quot; above to create one.
+                </div>
+              ) : (
+                managedGames.map((game) => (
+                  <div key={game.id} className="rounded-xl border border-[#262626] bg-[#0E0E0E] p-4 space-y-3">
+                    {/* Game Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#202020] pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white text-sm">{game.title}</span>
+                          <span
+                            className={`text-[10px] uppercase font-mono px-1.5 py-0.5 rounded font-semibold ${
+                              game.is_enabled ? "bg-emerald-950/50 text-emerald-400 border border-emerald-800/40" : "bg-red-950/50 text-red-400 border border-red-800/40"
+                            }`}
+                          >
+                            {game.is_enabled ? "ACTIVE" : "DISABLED"}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-neutral-400 font-mono mt-0.5">
+                          Pkg: {game.package_name} &bull; Lib: {game.lib_name} &bull; Status: {game.status_text}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetGameForVersion(game);
+                            setNewVerName("");
+                            setNewVerCode("");
+                            setNewVerObb("");
+                            setShowAddVersionForm(true);
+                            setShowAddGameForm(false);
+                          }}
+                          className="flex items-center gap-1 rounded-md border border-[#2B2B2B] bg-[#161616] px-2 py-1 text-[11px] font-medium text-white hover:bg-[#222222]"
+                        >
+                          <Plus className="h-3 w-3 text-cyan-400" />
+                          Add Version
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGame(game)}
+                          className="rounded-md border border-[#2B2B2B] bg-[#161616] px-2 py-1 text-[11px] font-medium text-neutral-300 hover:text-white hover:bg-[#222222]"
+                        >
+                          {game.is_enabled ? "Disable" : "Enable"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGame(game.id, game.title)}
+                          title="Delete game from server and loader"
+                          className="rounded-md border border-[#2B2B2B] bg-[#161616] p-1 text-neutral-400 hover:text-red-400 hover:bg-red-950/20"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Versions Section */}
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                        VERSIONS ({game.versions ? game.versions.length : 0})
+                      </div>
+
+                      {!game.versions || game.versions.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-[#262626] bg-[#121212] p-3 text-center text-[11px] text-neutral-500">
+                          No versions added yet. Click &quot;Add Version&quot; to configure v4.5.0, v4.6.0, etc.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {game.versions.map((ver) => {
+                            const tagColor =
+                              ver.tag === "LATEST"
+                                ? "bg-emerald-950/50 text-emerald-400 border-emerald-800/40"
+                                : ver.tag === "BETA"
+                                ? "bg-amber-950/50 text-amber-400 border-amber-800/40"
+                                : ver.tag === "TEST"
+                                ? "bg-cyan-950/50 text-cyan-400 border-cyan-800/40"
+                                : "bg-neutral-800 text-neutral-300 border-neutral-700";
+
+                            return (
+                              <div
+                                key={ver.id}
+                                className="rounded-lg border border-[#222222] bg-[#141414] p-2.5 flex items-center justify-between"
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-white text-xs">v{ver.version_name}</span>
+                                    <span className={`text-[9px] uppercase font-mono px-1 py-0.2 rounded border ${tagColor}`}>
+                                      {ver.tag}
+                                    </span>
+                                    {ver.is_default && (
+                                      <span className="text-[9px] uppercase font-mono px-1 py-0.2 rounded border bg-purple-950/50 text-purple-400 border-purple-800/40">
+                                        DEFAULT
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-neutral-400 font-mono">
+                                    Code: {ver.version_code} &bull; Lib: v{ver.lib_version}
+                                  </div>
+                                  <div className="text-[10px] text-neutral-500 font-mono truncate max-w-[200px]">
+                                    {ver.obb_name}
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteVersion(ver.id, ver.version_name)}
+                                  title="Delete this version"
+                                  className="text-neutral-500 hover:text-red-400 p-1.5 rounded"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-3 border-t border-[#202020]">
+              <button
+                type="button"
+                onClick={() => setShowGamesModal(false)}
+                className="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-black hover:bg-neutral-200"
+              >
+                CLOSE
+              </button>
+            </div>
           </div>
         </div>
       )}

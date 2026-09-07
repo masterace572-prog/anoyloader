@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
+import { ManagedGame, GameVersion, DEFAULT_GAMES } from '@/lib/types';
+
 // System Config Response Model
 export interface SystemConfigResponse {
   success: boolean;
@@ -16,6 +18,7 @@ export interface SystemConfigResponse {
   bgmi_status: string;
   pubg_enabled: boolean;
   pubg_status: string;
+  games: ManagedGame[];
   updated_at?: string;
   error?: string;
 }
@@ -34,6 +37,7 @@ const DEFAULT_CONFIG: SystemConfigResponse = {
   bgmi_status: 'OBB Ready',
   pubg_enabled: true,
   pubg_status: 'OBB Ready',
+  games: DEFAULT_GAMES,
   updated_at: new Date().toISOString(),
 };
 
@@ -46,7 +50,54 @@ export async function GET() {
   };
 
   try {
+    let resolvedGames: ManagedGame[] = DEFAULT_GAMES;
+
     if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data: dbGames, error: gamesErr } = await supabase
+          .from('managed_games')
+          .select('*')
+          .order('sort_order', { ascending: true });
+
+        if (!gamesErr && dbGames && dbGames.length > 0) {
+          const { data: dbVersions } = await supabase
+            .from('game_versions')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
+
+          const versionsList = dbVersions || [];
+          resolvedGames = dbGames.map((g: any) => ({
+            id: g.id,
+            title: g.title,
+            package_name: g.package_name,
+            lib_name: g.lib_name || 'libbgmi.so',
+            icon_type: g.icon_type || g.id,
+            is_enabled: g.is_enabled !== undefined ? !!g.is_enabled : true,
+            status_text: g.status_text || 'Ready',
+            sort_order: g.sort_order || 0,
+            versions: versionsList
+              .filter((v: any) => v.game_id === g.id)
+              .map((v: any) => ({
+                id: v.id,
+                game_id: v.game_id,
+                version_name: v.version_name,
+                version_code: v.version_code,
+                obb_name: v.obb_name,
+                tag: v.tag || 'LATEST',
+                status_text: v.status_text || 'Ready',
+                lib_version: v.lib_version || '1.0',
+                lib_download_url: v.lib_download_url || '',
+                is_default: !!v.is_default,
+                is_active: !!v.is_active,
+                sort_order: v.sort_order || 0,
+              })),
+          }));
+        }
+      } catch (e) {
+        console.warn('Could not query managed_games from Supabase, using default games:', e);
+      }
+
       const { data, error } = await supabase
         .from('system_config')
         .select('*')
@@ -69,6 +120,7 @@ export async function GET() {
             bgmi_status: data.bgmi_status || 'OBB Ready',
             pubg_enabled: data.pubg_enabled !== undefined ? !!data.pubg_enabled : true,
             pubg_status: data.pubg_status || 'OBB Ready',
+            games: resolvedGames,
             updated_at: data.updated_at || new Date().toISOString(),
           },
           { headers: corsHeaders }
@@ -76,7 +128,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json(DEFAULT_CONFIG, { headers: corsHeaders });
+    return NextResponse.json({ ...DEFAULT_CONFIG, games: resolvedGames }, { headers: corsHeaders });
   } catch (error: any) {
     return NextResponse.json(
       {
