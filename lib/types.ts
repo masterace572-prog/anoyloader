@@ -70,7 +70,7 @@ export interface ManagedGame {
 export const DEFAULT_GAMES: ManagedGame[] = [
   {
     id: 'bgmi',
-    title: 'BGMI (BATTLEGROUNDS)',
+    title: 'BGMI',
     package_name: 'com.pubg.imobile',
     lib_name: 'libbgmi.so',
     icon_type: 'bgmi',
@@ -110,7 +110,7 @@ export const DEFAULT_GAMES: ManagedGame[] = [
   },
   {
     id: 'pubg_global',
-    title: 'PUBG MOBILE (GLOBAL)',
+    title: 'PUBG GL',
     package_name: 'com.tencent.ig',
     lib_name: 'libpubgm.so',
     icon_type: 'pubg_global',
