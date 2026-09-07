@@ -164,6 +164,7 @@ export default function AdminDashboard() {
   const [maxDevices, setMaxDevices] = useState<number>(1);
   const [keyNotes, setKeyNotes] = useState("");
   const [extendingSeconds, setExtendingSeconds] = useState<number>(86400);
+  const [activationTiming, setActivationTiming] = useState<"ON_FIRST_USE" | "IMMEDIATE">("ON_FIRST_USE");
 
   // Supabase live indicator
   const [isLiveDatabase, setIsLiveDatabase] = useState(false);
@@ -304,7 +305,7 @@ export default function AdminDashboard() {
     return (
       (k.notes && k.notes.includes("BCORE_SDK")) ||
       k.key.startsWith("SDK-") ||
-      k.key.startsWith("BCORE-")
+      k.key.startsWith("BCORE")
     );
   };
 
@@ -361,7 +362,7 @@ export default function AdminDashboard() {
 
   const createFormattedKey = (type: "LOADER" | "BCORE_SDK") => {
     if (type === "BCORE_SDK") {
-      return `SDK-BCORE-${generateRandomSegment()}-${generateRandomSegment()}`;
+      return `BCORE-SDK-${generateRandomSegment()}-${generateRandomSegment()}`;
     }
     return `ANOY-${generateRandomSegment()}-${generateRandomSegment()}-${generateRandomSegment()}`;
   };
@@ -374,6 +375,15 @@ export default function AdminDashboard() {
       ? (keyNotes ? `BCORE_SDK - ${keyNotes}` : "BCORE_SDK")
       : keyNotes;
 
+    const isTimed = selectedDuration.seconds > 0;
+    const isImmediate = isTimed && activationTiming === "IMMEDIATE";
+    const now = new Date();
+    const expiresAt = isImmediate
+      ? new Date(now.getTime() + selectedDuration.seconds * 1000).toISOString()
+      : null;
+    const keyStatus: KeyStatus = isImmediate ? "ACTIVE" : "UNUSED";
+    const activatedAt = isImmediate ? now.toISOString() : null;
+
     if (createMode === "single") {
       const generatedKey = customKeyName.trim()
         ? customKeyName.trim().toUpperCase()
@@ -385,8 +395,10 @@ export default function AdminDashboard() {
         duration_seconds: selectedDuration.seconds,
         max_devices: maxDevices,
         hwid_list: [],
-        status: "UNUSED",
-        created_at: new Date().toISOString(),
+        status: keyStatus,
+        created_at: now.toISOString(),
+        activated_at: activatedAt,
+        expires_at: expiresAt,
         notes: notesToSave || null,
       };
 
@@ -408,10 +420,10 @@ export default function AdminDashboard() {
           duration_seconds: selectedDuration.seconds,
           max_devices: maxDevices,
           hwid_list: [],
-          status: "UNUSED",
-          created_at: new Date().toISOString(),
-          activated_at: null,
-          expires_at: null,
+          status: keyStatus,
+          created_at: now.toISOString(),
+          activated_at: activatedAt,
+          expires_at: expiresAt,
           last_login_at: null,
           last_ip: null,
           notes: notesToSave || null,
@@ -433,8 +445,10 @@ export default function AdminDashboard() {
           duration_seconds: selectedDuration.seconds,
           max_devices: maxDevices,
           hwid_list: [],
-          status: "UNUSED",
-          created_at: new Date().toISOString(),
+          status: keyStatus,
+          created_at: now.toISOString(),
+          activated_at: activatedAt,
+          expires_at: expiresAt,
           notes: notesToSave || null,
         });
       }
@@ -457,10 +471,10 @@ export default function AdminDashboard() {
           duration_seconds: selectedDuration.seconds,
           max_devices: maxDevices,
           hwid_list: [],
-          status: "UNUSED",
-          created_at: new Date().toISOString(),
-          activated_at: null,
-          expires_at: null,
+          status: keyStatus,
+          created_at: now.toISOString(),
+          activated_at: activatedAt,
+          expires_at: expiresAt,
           last_login_at: null,
           last_ip: null,
           notes: notesToSave || null,
@@ -473,6 +487,7 @@ export default function AdminDashboard() {
     setShowCreateModal(false);
     setCustomKeyName("");
     setKeyNotes("");
+    setActivationTiming("ON_FIRST_USE");
   };
 
   // Reset HWID
@@ -737,7 +752,7 @@ export default function AdminDashboard() {
   };
 
   const formatDate = (isoStr: string | null) => {
-    if (!isoStr) return "Never / Lifetime";
+    if (!isoStr) return "Lifetime";
     try {
       const d = new Date(isoStr);
       return d.toLocaleDateString("en-US", {
@@ -750,6 +765,36 @@ export default function AdminDashboard() {
     } catch {
       return isoStr;
     }
+  };
+
+  const renderKeyExpiry = (k: LicenseKey) => {
+    if (k.expires_at) {
+      const expDate = new Date(k.expires_at);
+      const isExpired = expDate.getTime() <= Date.now();
+      return (
+        <span className={isExpired ? "text-red-400 font-medium" : "text-neutral-200"}>
+          {formatDate(k.expires_at)}
+        </span>
+      );
+    }
+
+    if (k.duration_seconds === 0 || k.duration_label === "Lifetime") {
+      return (
+        <span className="text-emerald-400 font-medium">
+          Lifetime
+        </span>
+      );
+    }
+
+    if (k.status === "UNUSED") {
+      return (
+        <span className="text-amber-400/90 text-xs font-mono" title="Timer countdown begins upon first device connection">
+          Pending first use ({k.duration_label})
+        </span>
+      );
+    }
+
+    return <span className="text-neutral-400">{k.duration_label} (Active)</span>;
   };
 
   // -------------------------------------------------------------
@@ -1113,7 +1158,7 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <span className="text-neutral-500 uppercase">Expires: </span>
-                        <span className="text-white truncate">{formatDate(k.expires_at)}</span>
+                        <span className="text-white truncate">{renderKeyExpiry(k)}</span>
                       </div>
                     </div>
 
@@ -1234,7 +1279,7 @@ export default function AdminDashboard() {
                         </td>
 
                         <td className="px-4 py-3.5 text-neutral-300">
-                          {formatDate(k.expires_at)}
+                          {renderKeyExpiry(k)}
                         </td>
 
                         <td className="px-4 py-3.5 font-mono text-[11px] text-neutral-400">
@@ -1426,6 +1471,44 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
+
+              {/* Activation Timing for Timed Keys */}
+              {selectedDuration.seconds > 0 && (
+                <div>
+                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                    ACTIVATION TIMING
+                  </label>
+                  <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setActivationTiming("ON_FIRST_USE")}
+                      className={`rounded-md py-2 px-2 text-center text-[11px] font-medium transition-colors ${
+                        activationTiming === "ON_FIRST_USE"
+                          ? "bg-white text-black font-semibold"
+                          : "border border-[#262626] bg-[#0A0A0A] text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      On First Launch
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivationTiming("IMMEDIATE")}
+                      className={`rounded-md py-2 px-2 text-center text-[11px] font-medium transition-colors ${
+                        activationTiming === "IMMEDIATE"
+                          ? "bg-white text-black font-semibold"
+                          : "border border-[#262626] bg-[#0A0A0A] text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      Immediate (Now)
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[10px] text-neutral-500 font-mono">
+                    {activationTiming === "ON_FIRST_USE"
+                      ? "Timer begins when app/Bcore first connects from a device"
+                      : "Timer starts immediately upon creation"}
+                  </p>
+                </div>
+              )}
 
               {/* Device Limit */}
               <div>

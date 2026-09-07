@@ -7,7 +7,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 // Fallback default in case database is empty or unconfigured
 const DEFAULT_LIB_UPDATE = {
   version: '1.0',
-  download_url: 'https://github.com/AkhilRyzen/Ryzen/releases/download/Ryzen/hb.zip',
+  download_url: '',
   updated_at: new Date().toISOString(),
 };
 

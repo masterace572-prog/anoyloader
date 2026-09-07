@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const trimmedKey = key.trim();
-    if (trimmedKey.startsWith('BCORE-') || trimmedKey.startsWith('SDK-')) {
+    if (trimmedKey.startsWith('BCORE') || trimmedKey.startsWith('SDK-')) {
       return NextResponse.json({
         success: false,
         error: 'This is a Bcore SDK Key. Please use a valid Loader key.',

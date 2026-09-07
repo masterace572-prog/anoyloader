@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     // 3. ENFORCE BCORE SEPARATION: Loader keys CANNOT be used as Bcore SDK keys!
     const isBcoreKey = (keyData.notes && keyData.notes.includes('BCORE_SDK')) ||
-                       userKey.startsWith('BCORE-') ||
+                       userKey.startsWith('BCORE') ||
                        userKey.startsWith('SDK-');
 
     if (!isBcoreKey) {
@@ -150,6 +150,10 @@ export async function POST(req: NextRequest) {
           });
         }
         hwidList.push(deviceId);
+      }
+      if (!updatedExpiresAt && keyData.duration_seconds > 0) {
+        const exp = new Date(now.getTime() + keyData.duration_seconds * 1000);
+        updatedExpiresAt = exp.toISOString();
       }
     }
 
