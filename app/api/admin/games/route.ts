@@ -45,6 +45,7 @@ export async function GET() {
               obb_name: v.obb_name,
               tag: v.tag || 'LATEST',
               status_text: v.status_text || 'Ready',
+              lib_name: v.lib_name || (v.lib_version && v.lib_version.endsWith('.so') ? v.lib_version : ''),
               lib_version: v.lib_version || '1.0',
               lib_download_url: v.lib_download_url || '',
               is_default: !!v.is_default,
@@ -153,6 +154,7 @@ export async function POST(req: NextRequest) {
       }
 
       const vCode = version.version_code ? parseInt(version.version_code, 10) : 0;
+      const assignedLib = (version.lib_name || version.lib_version || '').trim() || (version.game_id === 'pubg_global' ? 'libpubgm.so' : 'libbgmi.so');
       const payload: any = {
         game_id: version.game_id,
         version_name: version.version_name.trim(),
@@ -160,7 +162,8 @@ export async function POST(req: NextRequest) {
         obb_name: version.obb_name?.trim() || (vCode > 0 ? `main.${vCode}.${version.package_name || 'com.pubg.imobile'}.obb` : ''),
         tag: version.tag?.trim().toUpperCase() || (isComingSoon ? 'COMING SOON' : 'LATEST'),
         status_text: version.status_text?.trim() || (isComingSoon ? 'Coming Soon' : 'Ready'),
-        lib_version: (version.lib_name || version.lib_version || '').trim() || '1.0',
+        lib_name: assignedLib,
+        lib_version: assignedLib,
         lib_download_url: '',
         is_default: !!version.is_default,
         is_active: version.is_active !== undefined ? !!version.is_active : true,
@@ -172,11 +175,22 @@ export async function POST(req: NextRequest) {
         payload.id = version.id;
       }
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('game_versions')
         .upsert(payload)
         .select()
         .single();
+
+      if (error && error.message && error.message.includes('lib_name')) {
+        delete payload.lib_name;
+        const retry = await supabase
+          .from('game_versions')
+          .upsert(payload)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
