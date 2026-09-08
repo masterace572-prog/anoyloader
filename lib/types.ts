@@ -42,7 +42,7 @@ export interface GameVersion {
   version_name: string;
   version_code: number;
   obb_name: string;
-  tag: 'LATEST' | 'BETA' | 'TEST' | 'STABLE' | string;
+  tag: 'LATEST' | 'BETA' | 'TEST' | 'STABLE' | 'COMING SOON' | string;
   status_text: string;
   lib_version: string;
   lib_download_url: string;

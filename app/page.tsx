@@ -394,6 +394,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUpdateGameStatus = async (game: ManagedGame, newStatus: string) => {
+    try {
+      const res = await fetch("/api/admin/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert_game",
+          game: {
+            ...game,
+            status_text: newStatus,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      await fetchManagedGames();
+    } catch (err: any) {
+      alert(`Error updating game status: ${err.message || err}`);
+    }
+  };
+
   const handleDeleteGame = async (id: string, title: string) => {
     if (!confirm(`Are you sure you want to delete ${title} (${id})?\n\nThis will also remove this game from the loader app immediately!`)) {
       return;
@@ -2547,13 +2568,29 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-neutral-400 uppercase">Status Text</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. OBB Ready"
-                      value={newGameStatus}
-                      onChange={(e) => setNewGameStatus(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
-                    />
+                    <div className="flex gap-1.5 mt-1">
+                      <input
+                        type="text"
+                        placeholder="e.g. OBB Ready or Coming Soon"
+                        value={newGameStatus}
+                        onChange={(e) => setNewGameStatus(e.target.value)}
+                        className="w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNewGameStatus("Coming Soon")}
+                        className="shrink-0 rounded bg-purple-950/60 border border-purple-800/60 px-2 py-1 text-[10px] font-semibold text-purple-300 hover:bg-purple-900/60"
+                      >
+                        Coming Soon
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewGameStatus("OBB Ready")}
+                        className="shrink-0 rounded bg-emerald-950/60 border border-emerald-800/60 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-900/60"
+                      >
+                        OBB Ready
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-2">
@@ -2640,6 +2677,7 @@ export default function AdminDashboard() {
                     >
                       <option value="LATEST">LATEST (Official Current)</option>
                       <option value="BETA">BETA (Upcoming Build e.g. 4.6.0)</option>
+                      <option value="COMING SOON">COMING SOON (Unreleased Version)</option>
                       <option value="TEST">TEST (Internal Testing)</option>
                       <option value="STABLE">STABLE (Legacy Stable)</option>
                     </select>
@@ -2711,6 +2749,11 @@ export default function AdminDashboard() {
                           >
                             {game.is_enabled ? "ACTIVE" : "DISABLED"}
                           </span>
+                          {game.status_text && game.status_text.toLowerCase().includes("soon") && (
+                            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded font-semibold bg-purple-950/50 text-purple-400 border border-purple-800/40">
+                              COMING SOON
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-neutral-400 font-mono mt-0.5">
                           Pkg: {game.package_name} &bull; Lib: {game.lib_name} &bull; Status: {game.status_text}
@@ -2718,6 +2761,17 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const isSoon = game.status_text.toLowerCase().includes("soon");
+                            handleUpdateGameStatus(game, isSoon ? "OBB Ready" : "Coming Soon");
+                          }}
+                          className="rounded-md border border-[#2B2B2B] bg-[#161616] px-2 py-1 text-[11px] font-medium text-purple-300 hover:text-white hover:bg-purple-950/40"
+                          title="Toggle Coming Soon status in loader"
+                        >
+                          {game.status_text.toLowerCase().includes("soon") ? "Mark Ready" : "Set Coming Soon"}
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
