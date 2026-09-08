@@ -802,36 +802,17 @@ export default function AdminDashboard() {
     setShowExtendModal(null);
   };
 
-  // Save Lib Update
+  // Save Lib Update (Direct ZIP Package URL)
   const handleSaveLibUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUploadingLib(true);
     setLibSuccessMsg(null);
 
-    let finalUrl = libDirectUrl.trim();
+    const finalUrl = libDirectUrl.trim();
 
     try {
-      if (libUploadMode === "upload" && libFile) {
-        if (!supabase) throw new Error("Supabase storage client not connected.");
-
-        const filePath = `libs/${Date.now()}_${libFile.name}`;
-        let uploadRes = await supabase.storage.from("libs").upload(filePath, libFile);
-        let targetBucket = "libs";
-        if (uploadRes.error) {
-          uploadRes = await supabase.storage.from("loader-files").upload(filePath, libFile);
-          targetBucket = "loader-files";
-        }
-        if (uploadRes.error) throw uploadRes.error;
-
-        const { data: publicUrlData } = supabase.storage
-          .from(targetBucket)
-          .getPublicUrl(filePath);
-
-        finalUrl = publicUrlData.publicUrl;
-      }
-
       if (!finalUrl) {
-        alert("Please provide a valid download URL or select a library file.");
+        alert("Please provide a valid direct ZIP download URL.");
         setIsUploadingLib(false);
         return;
       }
@@ -2004,69 +1985,50 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <form onSubmit={handleSaveLibUpdate} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLibUploadMode("upload")}
-                  className={`rounded-lg py-2 font-medium transition-colors ${
-                    libUploadMode === "upload"
-                      ? "bg-white text-black font-semibold"
-                      : "border border-[#262626] bg-[#141414] text-neutral-300"
-                  }`}
-                >
-                  UPLOAD ZIP / SO
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLibUploadMode("url")}
-                  className={`rounded-lg py-2 font-medium transition-colors ${
-                    libUploadMode === "url"
-                      ? "bg-white text-black font-semibold"
-                      : "border border-[#262626] bg-[#141414] text-neutral-300"
-                  }`}
-                >
-                  DIRECT URL
-                </button>
+            {/* Guide Card */}
+            <div className="rounded-lg border border-cyan-900/40 bg-cyan-950/20 p-3 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-cyan-400">
+                <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                All-in-One Multi-Game Library ZIP
               </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                Host a single ZIP archive containing all your versioned libraries (e.g.{' '}
+                <code className="text-cyan-300 font-mono">libbgmi450.so</code>,{' '}
+                <code className="text-cyan-300 font-mono">libbgmi460.so</code>,{' '}
+                <code className="text-cyan-300 font-mono">libpubgm450.so</code>).
+                When you deploy a new version number below, the loader automatically downloads and unpacks it for all players.
+              </p>
+            </div>
 
+            <form onSubmit={handleSaveLibUpdate} className="space-y-3 text-xs">
               <div>
                 <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
-                  NEW VERSION NUMBER
+                  LIB PACKAGE VERSION (e.g. 1.0, 1.1, 2.0)
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. 1.1"
                   value={libNewVersion}
                   onChange={(e) => setLibNewVersion(e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
                 />
+                <p className="text-[10px] text-neutral-500 mt-1">Changing this version triggers all client loaders to download the new ZIP.</p>
               </div>
 
-              {libUploadMode === "upload" ? (
-                <div>
-                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
-                    SELECT FILE (.ZIP OR .SO)
-                  </label>
-                  <input
-                    type="file"
-                    accept=".zip,.so"
-                    onChange={(e) => setLibFile(e.target.files ? e.target.files[0] : null)}
-                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs text-neutral-300 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-black hover:file:bg-neutral-200"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
-                    DIRECT DOWNLOAD URL
-                  </label>
-                  <input
-                    type="text"
-                    value={libDirectUrl}
-                    onChange={(e) => setLibDirectUrl(e.target.value)}
-                    className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
+                  DIRECT ZIP DOWNLOAD URL
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="https://example.com/downloads/libs.zip"
+                  value={libDirectUrl}
+                  onChange={(e) => setLibDirectUrl(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">Direct link to the ZIP file (GitHub release, Discord CDN, Dropbox direct, or VPS).</p>
+              </div>
 
               {libSuccessMsg && (
                 <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-2 text-center text-xs text-emerald-400">
@@ -2800,16 +2762,6 @@ export default function AdminDashboard() {
                     <p className="mt-1 text-[10px] text-neutral-500">
                       Loader strictly loads <strong>ONLY</strong> this assigned .so file. Outdated fallbacks (e.g. 4.5.0 on 4.6.0) are blocked.
                     </p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Lib Download URL (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. https://.../libbgmi_4.6.0.so"
-                      value={newVerLibUrl}
-                      onChange={(e) => setNewVerLibUrl(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
-                    />
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-2">

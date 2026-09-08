@@ -44,8 +44,9 @@ export interface GameVersion {
   obb_name: string;
   tag: 'LATEST' | 'BETA' | 'TEST' | 'STABLE' | 'COMING SOON' | string;
   status_text: string;
+  lib_name?: string;
   lib_version: string;
-  lib_download_url: string;
+  lib_download_url?: string;
   is_default: boolean;
   is_active: boolean;
   sort_order: number;

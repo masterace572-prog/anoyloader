@@ -86,6 +86,7 @@ export async function GET() {
                 obb_name: v.obb_name,
                 tag: v.tag || 'LATEST',
                 status_text: v.status_text || 'Ready',
+                lib_name: v.lib_name || (v.lib_version && v.lib_version.endsWith('.so') ? v.lib_version : ''),
                 lib_version: v.lib_version || '1.0',
                 lib_download_url: v.lib_download_url || '',
                 is_default: !!v.is_default,
