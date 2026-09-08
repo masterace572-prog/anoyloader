@@ -141,7 +141,7 @@ export default function AdminDashboard() {
 
   // Lib Update State
   const [libActiveVersion, setLibActiveVersion] = useState('1.0');
-  const [libDownloadUrl, setLibDownloadUrl] = useState('https://github.com/AkhilRyzen/Ryzen/releases/download/Ryzen/hb.zip');
+  const [libDownloadUrl, setLibDownloadUrl] = useState('https://github.com/masterace572-prog/anoyloader/releases/download/1.0.0/libs.zip');
   const [libUpdatedAt, setLibUpdatedAt] = useState<string>(new Date().toISOString());
   const [libNewVersion, setLibNewVersion] = useState('');
   const [libDirectUrl, setLibDirectUrl] = useState('');
