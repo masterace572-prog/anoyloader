@@ -151,7 +151,7 @@ export default function AdminDashboard() {
   const [newVerName, setNewVerName] = useState("");
   const [newVerCode, setNewVerCode] = useState("");
   const [newVerObb, setNewVerObb] = useState("");
-  const [newVerTag, setNewVerTag] = useState<"LATEST" | "BETA" | "TEST" | "STABLE">("LATEST");
+  const [newVerTag, setNewVerTag] = useState<"LATEST" | "BETA" | "TEST" | "STABLE" | "COMING SOON">("LATEST");
   const [newVerStatus, setNewVerStatus] = useState("Ready");
   const [newVerLibVersion, setNewVerLibVersion] = useState("1.0");
   const [newVerLibUrl, setNewVerLibUrl] = useState("");
@@ -439,14 +439,18 @@ export default function AdminDashboard() {
   const handleSaveVersion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetGameForVersion) return;
-    if (!newVerName.trim() || !newVerCode.trim()) {
-      alert("Version Name and Version Code are required");
+    if (!newVerName.trim()) {
+      alert("Version Name is required");
+      return;
+    }
+    if (newVerTag !== "COMING SOON" && !newVerCode.trim()) {
+      alert("Version Code is required for playable versions");
       return;
     }
     setIsSavingGameData(true);
     try {
-      const vCode = parseInt(newVerCode.trim(), 10);
-      const defaultObb = `main.${vCode}.${targetGameForVersion.package_name}.obb`;
+      const vCode = newVerCode.trim() ? parseInt(newVerCode.trim(), 10) : 0;
+      const defaultObb = vCode > 0 ? `main.${vCode}.${targetGameForVersion.package_name}.obb` : "";
       const res = await fetch("/api/admin/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -458,7 +462,7 @@ export default function AdminDashboard() {
             version_code: vCode,
             obb_name: newVerObb.trim() || defaultObb,
             tag: newVerTag,
-            status_text: newVerStatus.trim() || "Ready",
+            status_text: newVerStatus.trim() || (newVerTag === "COMING SOON" ? "Coming Soon" : "Ready"),
             lib_version: newVerLibVersion.trim() || "1.0",
             lib_download_url: newVerLibUrl.trim(),
             is_default: newVerIsDefault,
@@ -2643,11 +2647,13 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Version Code (Android versionCode)</label>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">
+                      Version Code {newVerTag === "COMING SOON" ? "(Optional for Coming Soon)" : "(Android versionCode)"}
+                    </label>
                     <input
                       type="number"
-                      required
-                      placeholder="e.g. 21325 for 4.5.0 or 21455 for 4.6.0"
+                      required={newVerTag !== "COMING SOON"}
+                      placeholder={newVerTag === "COMING SOON" ? "Optional for Coming Soon" : "e.g. 21325 for 4.5.0 or 21455 for 4.6.0"}
                       value={newVerCode}
                       onChange={(e) => {
                         setNewVerCode(e.target.value);
@@ -2659,10 +2665,12 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">OBB File Name</label>
+                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">
+                      OBB File Name {newVerTag === "COMING SOON" ? "(Optional)" : ""}
+                    </label>
                     <input
                       type="text"
-                      placeholder={`e.g. main.${newVerCode || "21325"}.${targetGameForVersion.package_name}.obb`}
+                      placeholder={newVerTag === "COMING SOON" ? "Optional for Coming Soon" : `e.g. main.${newVerCode || "21325"}.${targetGameForVersion.package_name}.obb`}
                       value={newVerObb}
                       onChange={(e) => setNewVerObb(e.target.value)}
                       className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"

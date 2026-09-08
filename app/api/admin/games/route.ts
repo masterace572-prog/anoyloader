@@ -136,9 +136,10 @@ export async function POST(req: NextRequest) {
 
     if (action === 'upsert_version') {
       const { version } = body;
-      if (!version || !version.game_id || !version.version_name || !version.version_code) {
+      const isComingSoon = version?.tag === 'COMING SOON' || version?.status_text?.toLowerCase().includes('soon');
+      if (!version || !version.game_id || !version.version_name || (!isComingSoon && !version.version_code)) {
         return NextResponse.json(
-          { success: false, error: 'Game ID, version_name, and version_code are required' },
+          { success: false, error: 'Game ID and version_name are required' },
           { status: 400, headers: corsHeaders }
         );
       }
@@ -151,13 +152,14 @@ export async function POST(req: NextRequest) {
           .eq('game_id', version.game_id);
       }
 
+      const vCode = version.version_code ? parseInt(version.version_code, 10) : 0;
       const payload: any = {
         game_id: version.game_id,
         version_name: version.version_name.trim(),
-        version_code: parseInt(version.version_code, 10),
-        obb_name: version.obb_name?.trim() || `main.${version.version_code}.${version.package_name || 'com.pubg.imobile'}.obb`,
-        tag: version.tag?.trim().toUpperCase() || 'LATEST',
-        status_text: version.status_text?.trim() || 'Ready',
+        version_code: vCode,
+        obb_name: version.obb_name?.trim() || (vCode > 0 ? `main.${vCode}.${version.package_name || 'com.pubg.imobile'}.obb` : ''),
+        tag: version.tag?.trim().toUpperCase() || (isComingSoon ? 'COMING SOON' : 'LATEST'),
+        status_text: version.status_text?.trim() || (isComingSoon ? 'Coming Soon' : 'Ready'),
         lib_version: version.lib_version?.trim() || '1.0',
         lib_download_url: version.lib_download_url?.trim() || '',
         is_default: !!version.is_default,
