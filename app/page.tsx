@@ -2515,6 +2515,64 @@ export default function AdminDashboard() {
                     Cancel
                   </button>
                 </div>
+
+                {/* 1-Click Auto-Fill Preset */}
+                <div className="rounded-lg bg-[#141414] border border-[#222222] p-3 space-y-2">
+                  <div className="text-[11px] font-semibold text-neutral-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                      1-Click Game Presets (Auto-fills Title, Package, Lib & Icon)
+                    </span>
+                    <span className="text-[10px] text-neutral-500 font-normal">Click to auto-populate</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewGameId("bgmi");
+                        setNewGameTitle("BGMI");
+                        setNewGamePackage("com.pubg.imobile");
+                        setNewGameLib("libbgmi.so");
+                        setNewGameIcon("bgmi");
+                        setNewGameStatus("OBB Ready");
+                        setNewGameEnabled(true);
+                      }}
+                      className="flex items-center justify-between rounded-lg border border-amber-600/30 bg-amber-950/20 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-900/30 hover:border-amber-500 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🇮🇳</span>
+                        <div>
+                          <div className="text-white font-bold text-[11px]">BGMI (Battlegrounds Mobile India)</div>
+                          <div className="text-[10px] text-amber-300/80 font-mono">com.pubg.imobile &bull; libbgmi.so</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] bg-amber-900/60 text-amber-200 px-1.5 py-0.5 rounded">SELECT</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewGameId("pubg_gl");
+                        setNewGameTitle("PUBG Mobile (Global)");
+                        setNewGamePackage("com.tencent.ig");
+                        setNewGameLib("libpubgm.so");
+                        setNewGameIcon("pubg_global");
+                        setNewGameStatus("OBB Ready");
+                        setNewGameEnabled(true);
+                      }}
+                      className="flex items-center justify-between rounded-lg border border-cyan-600/30 bg-cyan-950/20 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-900/30 hover:border-cyan-500 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🌐</span>
+                        <div>
+                          <div className="text-white font-bold text-[11px]">PUBG Mobile (Global)</div>
+                          <div className="text-[10px] text-cyan-300/80 font-mono">com.tencent.ig &bull; libpubgm.so</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] bg-cyan-900/60 text-cyan-200 px-1.5 py-0.5 rounded">SELECT</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="block text-[11px] font-medium text-neutral-400 uppercase">Game ID (Slug)</label>
@@ -2642,7 +2700,15 @@ export default function AdminDashboard() {
                       required
                       placeholder="e.g. 4.5.0 or 4.6.0"
                       value={newVerName}
-                      onChange={(e) => setNewVerName(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewVerName(val);
+                        const clean = val.replace(/\./g, "").trim();
+                        if (clean && (!newVerLibVersion || newVerLibVersion === "1.0" || newVerLibVersion.startsWith("lib"))) {
+                          const pfx = targetGameForVersion.package_name === "com.pubg.imobile" ? "libbgmi" : "libpubgm";
+                          setNewVerLibVersion(`${pfx}${clean}.so`);
+                        }
+                      }}
                       className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-white text-xs focus:border-white focus:outline-none"
                     />
                   </div>
@@ -2691,14 +2757,49 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-400 uppercase">Lib Version</label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-medium text-neutral-400 uppercase">
+                        Assigned Native Lib (.so file)
+                      </label>
+                      <span className="text-[10px] text-cyan-400 font-mono">Strict Version Binding</span>
+                    </div>
                     <input
                       type="text"
-                      placeholder="e.g. 1.0 or 1.1-beta"
+                      placeholder={targetGameForVersion.package_name === "com.pubg.imobile" ? "e.g. libbgmi460.so" : "e.g. libpubgm360.so"}
                       value={newVerLibVersion}
                       onChange={(e) => setNewVerLibVersion(e.target.value)}
                       className="mt-1 w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 font-mono text-white text-xs focus:border-white focus:outline-none"
                     />
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px]">
+                      <span className="text-neutral-500">Suggestions:</span>
+                      {(() => {
+                        const clean = (newVerName || "").replace(/\./g, "").trim();
+                        const isBgmi = targetGameForVersion.package_name === "com.pubg.imobile";
+                        const pfx = isBgmi ? "libbgmi" : "libpubgm";
+                        const suggestions = [
+                          clean ? `${pfx}${clean}.so` : `${pfx}460.so`,
+                          isBgmi ? "libbgmi450.so" : "libpubgm350.so",
+                          `${pfx}.so`
+                        ];
+                        return suggestions.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setNewVerLibVersion(s)}
+                            className={`rounded px-1.5 py-0.5 font-mono border transition-all ${
+                              newVerLibVersion === s
+                                ? "bg-cyan-950 border-cyan-500 text-cyan-300"
+                                : "bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-white hover:border-neutral-500"
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ));
+                      })()}
+                    </div>
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      Loader strictly loads <strong>ONLY</strong> this assigned .so file. Outdated fallbacks (e.g. 4.5.0 on 4.6.0) are blocked.
+                    </p>
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-neutral-400 uppercase">Lib Download URL (Optional)</label>
@@ -2731,6 +2832,21 @@ export default function AdminDashboard() {
                 </div>
               </form>
             )}
+
+            {/* Architecture Guide: Multi-Version Lib Handling */}
+            <div className="rounded-lg border border-cyan-900/30 bg-cyan-950/20 p-3 text-xs text-neutral-300 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-semibold text-cyan-400">
+                <Sparkles className="h-4 w-4 text-cyan-400" />
+                Multi-Version Library Guide
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                To serve multiple game versions without conflicts, upload a single ZIP archive to <strong>Core Lib Updates</strong> containing your versioned libraries (e.g.{' '}
+                <code className="text-cyan-300 font-mono">libbgmi450.so</code> and{' '}
+                <code className="text-cyan-300 font-mono">libbgmi460.so</code>).
+                In each version&apos;s settings below, enter the matching library name. When a user launches a version (e.g. 4.6.0), the loader strictly loads{' '}
+                <strong>ONLY its assigned library</strong> and rejects mismatched versions to prevent bans or crashes.
+              </p>
+            </div>
 
             {/* Managed Games List */}
             <div className="space-y-4">
@@ -2853,7 +2969,7 @@ export default function AdminDashboard() {
                                     )}
                                   </div>
                                   <div className="text-[10px] text-neutral-400 font-mono">
-                                    Code: {ver.version_code} &bull; Lib: v{ver.lib_version}
+                                    Code: {ver.version_code} &bull; Lib: {ver.lib_version.startsWith('lib') ? ver.lib_version : 'v' + ver.lib_version}
                                   </div>
                                   <div className="text-[10px] text-neutral-500 font-mono truncate max-w-[200px]">
                                     {ver.obb_name}
