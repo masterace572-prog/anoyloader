@@ -50,55 +50,9 @@ export async function GET() {
   };
 
   try {
-    let resolvedGames: ManagedGame[] = DEFAULT_GAMES;
+    const resolvedGames: ManagedGame[] = DEFAULT_GAMES;
 
     if (isSupabaseConfigured() && supabase) {
-      try {
-        const { data: dbGames, error: gamesErr } = await supabase
-          .from('managed_games')
-          .select('*')
-          .order('sort_order', { ascending: true });
-
-        if (!gamesErr && dbGames && dbGames.length > 0) {
-          const { data: dbVersions } = await supabase
-            .from('game_versions')
-            .select('*')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true });
-
-          const versionsList = dbVersions || [];
-          resolvedGames = dbGames.map((g: any) => ({
-            id: g.id,
-            title: g.title,
-            package_name: g.package_name,
-            lib_name: g.lib_name || 'libbgmi.so',
-            icon_type: g.icon_type || g.id,
-            is_enabled: g.is_enabled !== undefined ? !!g.is_enabled : true,
-            status_text: g.status_text || 'Ready',
-            sort_order: g.sort_order || 0,
-            versions: versionsList
-              .filter((v: any) => v.game_id === g.id)
-              .map((v: any) => ({
-                id: v.id,
-                game_id: v.game_id,
-                version_name: v.version_name,
-                version_code: v.version_code,
-                obb_name: v.obb_name,
-                tag: v.tag || 'LATEST',
-                status_text: v.status_text || 'Ready',
-                lib_name: v.lib_name || (v.lib_version && v.lib_version.endsWith('.so') ? v.lib_version : ''),
-                lib_version: v.lib_version || '1.0',
-                lib_download_url: v.lib_download_url || '',
-                is_default: !!v.is_default,
-                is_active: !!v.is_active,
-                sort_order: v.sort_order || 0,
-              })),
-          }));
-        }
-      } catch (e) {
-        console.warn('Could not query managed_games from Supabase, using default games:', e);
-      }
-
       const { data, error } = await supabase
         .from('system_config')
         .select('*')
