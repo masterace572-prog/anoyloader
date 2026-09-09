@@ -19,6 +19,8 @@ on:
     branches:
       - "arena/**"
       - main
+    tags:
+      - "v*"
     paths-ignore:
       - "admin-panel/**"
       - "supabase/**"
@@ -335,15 +337,38 @@ jobs:
           \`\`\`
           EOF
 
+      - name: Resolve release tag
+        id: rel
+        if: >-
+          success() && (
+            startsWith(github.ref, 'refs/tags/v')
+            || (github.event_name == 'workflow_dispatch'
+                && github.event.inputs.create_release == 'true'
+                && github.event.inputs.release_tag != '')
+          )
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${{ github.event.inputs.release_tag }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          if [[ "${TAG}" == *beta* || "${TAG}" == *alpha* || "${TAG}" == *rc* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved release tag: ${TAG}"
+
       - name: Create GitHub Release (optional)
         if: >-
-          github.event_name == 'workflow_dispatch'
-          && github.event.inputs.create_release == 'true'
-          && github.event.inputs.release_tag != ''
+          success() && steps.rel.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.release_tag }}
-          name: AnoyLoader ${{ github.event.inputs.release_tag }}
+          tag_name: ${{ steps.rel.outputs.tag }}
+          name: Anoy Loader ${{ steps.rel.outputs.tag }}
           body: |
             ## Anoy Loader ${{ github.event.inputs.release_tag }}
 
@@ -351,8 +376,9 @@ jobs:
 
             | | |
             |---|---|
-            | **versionName** | `1.1.0-beta` |
-            | **versionCode** | `2` |
+            | **Tag** | `${{ steps.rel.outputs.tag }}` |
+            | **versionName** | see app/build.gradle |
+            | **versionCode** | see app/build.gradle |
             | **ABI** | arm64-v8a |
             | **Min SDK** | 24 |
             | **Target SDK** | 33 |
@@ -371,7 +397,7 @@ jobs:
             ${{ steps.apk.outputs.path }}
           draft: false
           # Treat tags containing "beta"/"alpha"/"rc" as prereleases
-          prerelease: ${{ contains(github.event.inputs.release_tag, 'beta') || contains(github.event.inputs.release_tag, 'alpha') || contains(github.event.inputs.release_tag, 'rc') }}
+          prerelease: ${{ steps.rel.outputs.prerelease == 'true' }}
           generate_release_notes: true
           make_latest: true
         env:
