@@ -55,7 +55,53 @@ public class IAccountManagerProxy extends BinderInvocationStub {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         Slog.d(TAG, "call " + method.getName());
-        return super.invoke(proxy, method, args);
+        try {
+            return super.invoke(proxy, method, args);
+        } catch (SecurityException se) {
+            // Android 14–16: GMS AccountAuthenticator bind denials must not kill the process.
+            Slog.w(TAG, "AccountManager." + method.getName() + " SecurityException swallowed: " + se.getMessage());
+            return safeFallback(method, args, se);
+        } catch (Throwable t) {
+            Throwable cause = t;
+            while (cause.getCause() != null && cause.getCause() != cause) {
+                cause = cause.getCause();
+            }
+            if (cause instanceof SecurityException
+                    || (cause.getMessage() != null && cause.getMessage().contains("Not allowed to bind"))) {
+                Slog.w(TAG, "AccountManager." + method.getName() + " bind denial swallowed: " + cause.getMessage());
+                return safeFallback(method, args, cause);
+            }
+            throw t;
+        }
+    }
+
+    private static Object safeFallback(Method method, Object[] args, Throwable error) {
+        String name = method.getName();
+        // Async account APIs take IAccountManagerResponse first — deliver empty result.
+        if (args != null && args.length > 0 && args[0] instanceof IAccountManagerResponse) {
+            try {
+                IAccountManagerResponse response = (IAccountManagerResponse) args[0];
+                Bundle result = new Bundle();
+                result.putParcelableArray(android.accounts.AccountManager.KEY_ACCOUNTS, new Account[0]);
+                response.onResult(result);
+            } catch (Throwable ignored) {
+                try {
+                    IAccountManagerResponse response = (IAccountManagerResponse) args[0];
+                    response.onError(android.accounts.AccountManager.ERROR_CODE_REMOTE_EXCEPTION,
+                            error.getMessage() != null ? error.getMessage() : "bind failure");
+                } catch (Throwable ignored2) {
+                }
+            }
+            return 0;
+        }
+        Class<?> rt = method.getReturnType();
+        if (rt == boolean.class) return false;
+        if (rt == int.class) return 0;
+        if (rt == long.class) return 0L;
+        if (rt == Account[].class) return new Account[0];
+        if (rt == String.class) return null;
+        if (Map.class.isAssignableFrom(rt)) return new java.util.HashMap<>();
+        return null;
     }
 
     @ProxyMethod("getPassword")
@@ -108,7 +154,15 @@ public class IAccountManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            BAccountManager.get().getAccountByTypeAndFeatures((IAccountManagerResponse) args[0], (String) args[1], (String[]) args[2]);
+            try {
+                BAccountManager.get().getAccountByTypeAndFeatures(
+                        (IAccountManagerResponse) args[0],
+                        (String) args[1],
+                        (String[]) args[2]);
+            } catch (Throwable t) {
+                Slog.w(TAG, "getAccountByTypeAndFeatures failed safely: " + t.getMessage());
+                deliverEmpty((IAccountManagerResponse) args[0]);
+            }
             return 0;
         }
     }
@@ -118,8 +172,30 @@ public class IAccountManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            BAccountManager.get().getAccountsByFeatures((IAccountManagerResponse) args[0], (String) args[1], (String[]) args[2]);
+            try {
+                BAccountManager.get().getAccountsByFeatures(
+                        (IAccountManagerResponse) args[0],
+                        (String) args[1],
+                        (String[]) args[2]);
+            } catch (Throwable t) {
+                Slog.w(TAG, "getAccountsByFeatures failed safely: " + t.getMessage());
+                deliverEmpty((IAccountManagerResponse) args[0]);
+            }
             return 0;
+        }
+    }
+
+    @ProxyMethod("getAccountsByTypeAndFeatures")
+    public static class getAccountsByTypeAndFeatures extends getAccountsByFeatures {
+    }
+
+    private static void deliverEmpty(IAccountManagerResponse response) {
+        if (response == null) return;
+        try {
+            Bundle result = new Bundle();
+            result.putParcelableArray(android.accounts.AccountManager.KEY_ACCOUNTS, new Account[0]);
+            response.onResult(result);
+        } catch (Throwable ignored) {
         }
     }
 

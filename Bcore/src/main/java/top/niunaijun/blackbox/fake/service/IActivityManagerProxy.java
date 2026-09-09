@@ -290,7 +290,21 @@ public class IActivityManagerProxy extends ClassInvocationStub {
                 }
                 if (bindService != null) {
                     args[2] = bindService;
-                    return method.invoke(who, args);
+                    try {
+                        return method.invoke(who, args);
+                    } catch (SecurityException se) {
+                        Slog.w(TAG, "bindService SecurityException swallowed: " + se.getMessage());
+                        return 0;
+                    } catch (Throwable t) {
+                        Throwable c = t;
+                        while (c.getCause() != null && c.getCause() != c) c = c.getCause();
+                        if (c instanceof SecurityException
+                                || (c.getMessage() != null && c.getMessage().contains("Not allowed to bind"))) {
+                            Slog.w(TAG, "bindService bind denial swallowed: " + c.getMessage());
+                            return 0;
+                        }
+                        throw t;
+                    }
                 }
             }
             return 0;
