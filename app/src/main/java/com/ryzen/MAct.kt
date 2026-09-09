@@ -712,7 +712,9 @@ class MAct : AppCompatActivity() {
                 // Also reinstall if host has splitSourceDirs but sandbox lib dir is sparse.
                 val hostHasSplits = try {
                     val ai = packageManager.getApplicationInfo(packageName, 0)
-                    ai.splitSourceDirs != null && ai.splitSourceDirs.isNotEmpty()
+                    // Local val required: splitSourceDirs is a mutable Java field (no smart cast)
+                    val splits = ai.splitSourceDirs
+                    splits != null && splits.isNotEmpty()
                 } catch (_: Throwable) {
                     false
                 }
