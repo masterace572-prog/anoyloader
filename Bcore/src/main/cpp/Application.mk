@@ -4,4 +4,4 @@ APP_STL := c++_static
 APP_OPTIM := release
 APP_THIN_ARCHIVE := true
 APP_PIE := true
-APP_SUPPORT_FLEXIBLE_PAGE_SIZES := true
+# APP_SUPPORT_FLEXIBLE_PAGE_SIZES requires NDK r27+; project pins NDK 24.
