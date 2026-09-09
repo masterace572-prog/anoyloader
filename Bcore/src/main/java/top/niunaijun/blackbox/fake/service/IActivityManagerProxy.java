@@ -453,6 +453,13 @@ public class IActivityManagerProxy extends ClassInvocationStub {
         }
     }
 
+    /**
+     * Hook AMS broadcastIntent.
+     * Critical on Android 12–16: GMS (and many system libs) call
+     * Context.sendBroadcastAsUser(..., UserHandle.ALL) which becomes userId=-1 and
+     * throws SecurityException without INTERACT_ACROSS_USERS_FULL. Inside the sandbox
+     * we must rewrite USER_ALL/-1 to the host user id before the real AMS call.
+     */
     @ProxyMethod("broadcastIntent")
     public static class BroadcastIntent extends MethodHook {
 
@@ -460,23 +467,89 @@ public class IActivityManagerProxy extends ClassInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             int intentIndex = getIntentIndex(args);
             Intent intent = (Intent) args[intentIndex];
-            String resolvedType = (String) args[intentIndex + 1];
-
-            Intent proxyIntent = BlackBoxCore.getBActivityManager().sendBroadcast(intent, resolvedType, BActivityThread.getUserId());
-            if (proxyIntent != null) {
-                proxyIntent.setExtrasClassLoader(BActivityThread.getApplication().getClassLoader());
-
-                ProxyBroadcastRecord.saveStub(proxyIntent, intent, BActivityThread.getUserId());
-                args[intentIndex] = proxyIntent;
+            String resolvedType = null;
+            if (intentIndex + 1 < args.length && args[intentIndex + 1] instanceof String) {
+                resolvedType = (String) args[intentIndex + 1];
             }
-            // ignore permission
+
+            try {
+                Intent proxyIntent = BlackBoxCore.getBActivityManager()
+                        .sendBroadcast(intent, resolvedType, BActivityThread.getUserId());
+                if (proxyIntent != null) {
+                    Application app = BActivityThread.getApplication();
+                    if (app != null) {
+                        proxyIntent.setExtrasClassLoader(app.getClassLoader());
+                    }
+                    ProxyBroadcastRecord.saveStub(proxyIntent, intent, BActivityThread.getUserId());
+                    args[intentIndex] = proxyIntent;
+                }
+            } catch (Throwable t) {
+                Slog.w(TAG, "broadcast proxy failed, falling through to host AMS: " + t.getMessage());
+            }
+
+            // Drop required-permission arrays so sandbox apps are not blocked by perms they lack
             for (int i = 0; i < args.length; i++) {
-                Object o = args[i];
-                if (o instanceof String[]) {
+                if (args[i] instanceof String[]) {
                     args[i] = null;
                 }
             }
-            return method.invoke(who, args);
+
+            // Always rewrite userId sentinels (USER_ALL=-1 etc.) → host user
+            MethodParameterUtils.replaceLastUserId(args);
+            sanitizeBroadcastUserId(args);
+
+            try {
+                return method.invoke(who, args);
+            } catch (SecurityException se) {
+                // Last-resort: force host user id on every integer user sentinel and retry once
+                Slog.w(TAG, "broadcast SecurityException, retrying with host userId: " + se.getMessage());
+                MethodParameterUtils.replaceAllUserIdSentinels(args);
+                try {
+                    return method.invoke(who, args);
+                } catch (SecurityException se2) {
+                    // Swallow across-users denials from GMS sticky/system broadcasts so the
+                    // game process does not crash (NetworkMonitor etc. on Android 15/16).
+                    if (isAcrossUsersDenial(se2)) {
+                        Slog.w(TAG, "Swallowing INTERACT_ACROSS_USERS broadcast denial");
+                        return 0; // ActivityManager.BROADCAST_SUCCESS
+                    }
+                    throw se2;
+                }
+            }
+        }
+
+        private static boolean isAcrossUsersDenial(SecurityException se) {
+            String msg = se.getMessage();
+            return msg != null && (msg.contains("INTERACT_ACROSS_USERS")
+                    || msg.contains("asks to run as user")
+                    || msg.contains("Permission Denial: broadcast"));
+        }
+
+        /**
+         * After the Intent argument, any Integer equal to USER_ALL/CURRENT is a userId.
+         * Do not touch integers that appear before the Intent (caller pid/uid rarely appear as raw ints here).
+         */
+        private static void sanitizeBroadcastUserId(Object[] args) {
+            int intentIdx = -1;
+            for (int i = 0; i < args.length; i++) {
+                if (args[i] instanceof Intent) {
+                    intentIdx = i;
+                    break;
+                }
+            }
+            if (intentIdx < 0) {
+                MethodParameterUtils.replaceLastUserId(args);
+                return;
+            }
+            int host = BlackBoxCore.getHostUserId();
+            int bUser = BActivityThread.getUserId();
+            for (int i = intentIdx + 1; i < args.length; i++) {
+                if (!(args[i] instanceof Integer)) continue;
+                int v = (int) args[i];
+                if (v == -1 || v == -2 || v == -3 || v == bUser) {
+                    args[i] = host;
+                }
+            }
         }
 
         int getIntentIndex(Object[] args) {
@@ -488,6 +561,16 @@ public class IActivityManagerProxy extends ClassInvocationStub {
             }
             return 1;
         }
+    }
+
+    /**
+     * Android 12+ (API 31+) AMS entry used by ContextImpl.sendBroadcast* /
+     * sendBroadcastAsUser. Without this hook, only legacy broadcastIntent is
+     * intercepted and GMS crashes on Samsung One UI / Android 16 with
+     * INTERACT_ACROSS_USERS Permission Denial for user -1.
+     */
+    @ProxyMethod("broadcastIntentWithFeature")
+    public static class BroadcastIntentWithFeature extends BroadcastIntent {
     }
 
     @ProxyMethod("unregisterReceiver")
@@ -629,11 +712,28 @@ public class IActivityManagerProxy extends ClassInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             MethodParameterUtils.replaceLastUid(args);
             String permission = (String) args[0];
-            if (permission.equals(Manifest.permission.ACCOUNT_MANAGER) || permission.equals(Manifest.permission.SEND_SMS)) {
+            if (permission == null) {
+                return method.invoke(who, args);
+            }
+            // Grant cross-user broadcast / interaction perms inside the sandbox.
+            // Real host app never holds these privileged perms; GMS still queries them
+            // before sendBroadcastAsUser(UserHandle.ALL) on Android 14–16.
+            if (permission.equals(Manifest.permission.ACCOUNT_MANAGER)
+                    || permission.equals(Manifest.permission.SEND_SMS)
+                    || permission.equals("android.permission.INTERACT_ACROSS_USERS")
+                    || permission.equals("android.permission.INTERACT_ACROSS_USERS_FULL")
+                    || permission.equals("android.permission.INTERACT_ACROSS_PROFILES")
+                    || permission.equals(Manifest.permission.GET_ACCOUNTS)
+                    || permission.equals("android.permission.AUTHENTICATE_ACCOUNTS")
+                    || permission.equals("android.permission.MANAGE_ACCOUNTS")) {
                 return PackageManager.PERMISSION_GRANTED;
             }
             return method.invoke(who, args);
         }
+    }
+
+    @ProxyMethod("checkPermissionWithToken")
+    public static class checkPermissionWithToken extends checkPermission {
     }
 
     @ProxyMethod("checkUriPermission")
