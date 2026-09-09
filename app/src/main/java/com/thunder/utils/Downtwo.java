@@ -419,6 +419,25 @@ public class Downtwo {
         }
     }
 
+    /** Delete files whose names start with {@code prefix} (case-insensitive). */
+    private static void deleteMatchingLibs(File loaderDirectory, String prefix) {
+        if (loaderDirectory == null || !loaderDirectory.isDirectory() || prefix == null) return;
+        File[] files = loaderDirectory.listFiles();
+        if (files == null) return;
+        String p = prefix.toLowerCase();
+        for (File f : files) {
+            if (!f.isFile()) continue;
+            String n = f.getName().toLowerCase();
+            if (n.startsWith(p) && n.endsWith(".so")) {
+                // Keep libbgmi* when purging libpubg* leftovers
+                if (p.startsWith("libpubg") && n.startsWith("libbgmi")) continue;
+                if (f.delete()) {
+                    Log.i(TAG, "Purged leftover lib: " + f.getName());
+                }
+            }
+        }
+    }
+
     /**
      * If the generic target (libbgmi.so) is missing, promote the newest
      * versioned sibling (libbgmi460.so, …) so injection always has a fallback.
