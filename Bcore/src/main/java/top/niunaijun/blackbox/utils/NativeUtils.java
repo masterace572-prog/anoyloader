@@ -32,13 +32,45 @@ public class NativeUtils {
             nativeLibDir.mkdirs();
         }
         try (ZipFile zipfile = new ZipFile(apk.getAbsolutePath())) {
-            if (findAndCopyNativeLib(zipfile, Build.CPU_ABI, nativeLibDir)) {
-                return;
+            // Prefer the device primary ABI, then fall back through the full supported list.
+            // Modern PUBG Global / BGMI ship arm64-v8a only (often inside split APKs).
+            String[] abis;
+            if (Build.SUPPORTED_ABIS != null && Build.SUPPORTED_ABIS.length > 0) {
+                abis = Build.SUPPORTED_ABIS;
+            } else {
+                abis = new String[]{Build.CPU_ABI, "arm64-v8a", "armeabi-v7a", "armeabi"};
             }
-
-            findAndCopyNativeLib(zipfile, "armeabi", nativeLibDir);
+            for (String abi : abis) {
+                if (abi == null || abi.isEmpty()) continue;
+                if (findAndCopyNativeLib(zipfile, abi, nativeLibDir)) {
+                    return;
+                }
+            }
+            // Last-chance legacy names
+            if (!findAndCopyNativeLib(zipfile, "armeabi-v7a", nativeLibDir)) {
+                findAndCopyNativeLib(zipfile, "armeabi", nativeLibDir);
+            }
         } finally {
             Log.d(TAG, "Done! +" + (System.currentTimeMillis() - startTime) + "ms");
+        }
+    }
+
+    /**
+     * Copy native libraries from every split APK (base + config.arm64_v8a + ...) into nativeLibDir.
+     * Required for Play Store installs of PUBG Global which ship .so files only inside ABI splits.
+     */
+    public static void copyNativeLibFromSplits(File[] apkFiles, File nativeLibDir) throws Exception {
+        if (apkFiles == null || apkFiles.length == 0) return;
+        if (!nativeLibDir.exists()) {
+            nativeLibDir.mkdirs();
+        }
+        for (File apk : apkFiles) {
+            if (apk == null || !apk.exists() || !apk.isFile()) continue;
+            try {
+                copyNativeLib(apk, nativeLibDir);
+            } catch (Exception e) {
+                Log.w(TAG, "copyNativeLib failed for split " + apk.getName() + ": " + e.getMessage());
+            }
         }
     }
 

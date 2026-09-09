@@ -328,9 +328,42 @@ public class Downtwo {
             }
 
             if (isElf) {
-                Log.d(TAG, "Downloaded file is a raw ELF library. Deploying to both: " + targetBgmi.getName() + " & " + targetPubg.getName());
-                copyFile(pathOutput, targetBgmi);
-                copyFile(pathOutput, targetPubg);
+                // NEVER deploy the same raw ELF as both libbgmi.so and libpubgm.so.
+                // PUBG Global anti-cheat / UE runtime will crash within seconds if a BGMI-built
+                // library is loaded into com.tencent.ig (and vice-versa).
+                // Prefer URL / version hints; otherwise keep whichever was already present and
+                // only fill the missing slot when both are empty (admin uploaded a single shared build).
+                String hint = (urlString != null ? urlString : "").toLowerCase();
+                String verHint = (targetVersion != null ? targetVersion : "").toLowerCase();
+                boolean looksBgmi = hint.contains("bgmi") || hint.contains("imobile")
+                        || verHint.contains("bgmi") || hint.contains("libbgmi");
+                boolean looksPubg = hint.contains("pubg") || hint.contains("tencent")
+                        || hint.contains("libpubgm") || hint.contains("global")
+                        || verHint.contains("pubg") || verHint.contains("global");
+
+                if (looksBgmi && !looksPubg) {
+                    Log.d(TAG, "Raw ELF looks BGMI-specific. Deploying only to " + targetBgmi.getName());
+                    copyFile(pathOutput, targetBgmi);
+                } else if (looksPubg && !looksBgmi) {
+                    Log.d(TAG, "Raw ELF looks PUBG-Global-specific. Deploying only to " + targetPubg.getName());
+                    copyFile(pathOutput, targetPubg);
+                } else {
+                    // Ambiguous single ELF: write to a neutral name and only fill empty slots
+                    File neutral = new File(loaderDirectory, "libshared_payload.so");
+                    copyFile(pathOutput, neutral);
+                    if (!targetBgmi.exists() || targetBgmi.length() < 100) {
+                        copyFile(pathOutput, targetBgmi);
+                        Log.d(TAG, "Filled missing " + targetBgmi.getName() + " from shared ELF");
+                    }
+                    if (!targetPubg.exists() || targetPubg.length() < 100) {
+                        copyFile(pathOutput, targetPubg);
+                        Log.d(TAG, "Filled missing " + targetPubg.getName() + " from shared ELF");
+                    }
+                    if (targetBgmi.exists() && targetBgmi.length() >= 100
+                            && targetPubg.exists() && targetPubg.length() >= 100) {
+                        Log.w(TAG, "Shared ELF received but both game libs already present — left existing files intact to avoid cross-game corruption");
+                    }
+                }
                 pathOutput.delete();
             } else if (isZip) {
                 Log.d(TAG, "Downloaded file is a ZIP archive. Extracting to: " + loaderDirectory.getAbsolutePath());
@@ -344,7 +377,7 @@ public class Downtwo {
                 // Flatten all .so files from nested subdirectories into loaderDirectory
                 flattenSoFiles(loaderDirectory, loaderDirectory);
 
-                // If libbgmi.so was in a subfolder inside the zip, move it to loaderDirectory
+                // Prefer explicitly named entries; never cross-copy bgmi <-> pubgm
                 if (!targetBgmi.exists() || targetBgmi.length() == 0) {
                     File nestedLib = findFileRecursive(loaderDirectory, "libbgmi.so");
                     if (nestedLib != null && !nestedLib.equals(targetBgmi)) {
@@ -352,17 +385,32 @@ public class Downtwo {
                     }
                 }
 
-                // If libpubgm.so was in a subfolder inside the zip, move it to loaderDirectory
                 if (!targetPubg.exists() || targetPubg.length() == 0) {
                     File nestedPubg = findFileRecursive(loaderDirectory, "libpubgm.so");
+                    if (nestedPubg == null) {
+                        // Alternate names some packs use for Global
+                        nestedPubg = findFileRecursive(loaderDirectory, "libpubg.so");
+                    }
                     if (nestedPubg != null && !nestedPubg.equals(targetPubg)) {
                         copyFile(nestedPubg, targetPubg);
                     }
                 }
+
+                // Promote versioned libs if generic is still missing
+                promoteVersionedLib(loaderDirectory, "libbgmi", targetBgmi);
+                promoteVersionedLib(loaderDirectory, "libpubgm", targetPubg);
             } else {
-                Log.w(TAG, "Unrecognized magic bytes. Assuming direct library file.");
-                copyFile(pathOutput, targetBgmi);
-                copyFile(pathOutput, targetPubg);
+                Log.w(TAG, "Unrecognized magic bytes. Treating as raw library with URL-based targeting.");
+                String hint = (urlString != null ? urlString : "").toLowerCase();
+                if (hint.contains("pubg") || hint.contains("tencent") || hint.contains("libpubgm")) {
+                    copyFile(pathOutput, targetPubg);
+                } else if (hint.contains("bgmi") || hint.contains("imobile") || hint.contains("libbgmi")) {
+                    copyFile(pathOutput, targetBgmi);
+                } else {
+                    // Fill only empty slots — never overwrite a working game-specific lib
+                    if (!targetBgmi.exists() || targetBgmi.length() < 100) copyFile(pathOutput, targetBgmi);
+                    if (!targetPubg.exists() || targetPubg.length() < 100) copyFile(pathOutput, targetPubg);
+                }
                 pathOutput.delete();
             }
 
@@ -420,6 +468,40 @@ public class Downtwo {
                 out.write(buffer, 0, length);
             }
             out.flush();
+        }
+    }
+
+    /**
+     * If the generic target (libbgmi.so / libpubgm.so) is missing, promote the newest
+     * versioned sibling (libbgmi460.so, libpubgm_21525.so, …) so injection always has a fallback.
+     */
+    private static void promoteVersionedLib(File loaderDirectory, String prefix, File genericTarget) {
+        try {
+            if (genericTarget.exists() && genericTarget.isFile() && genericTarget.length() >= 100) {
+                return;
+            }
+            File[] files = loaderDirectory.listFiles((dir, name) -> {
+                if (name == null) return false;
+                String lower = name.toLowerCase();
+                return lower.startsWith(prefix.toLowerCase()) && lower.endsWith(".so")
+                        && !lower.equals(prefix.toLowerCase() + ".so")
+                        && !lower.contains("_active");
+            });
+            if (files == null || files.length == 0) return;
+            File best = null;
+            for (File f : files) {
+                if (f.isFile() && f.length() >= 100) {
+                    if (best == null || f.lastModified() > best.lastModified() || f.length() > best.length()) {
+                        best = f;
+                    }
+                }
+            }
+            if (best != null) {
+                copyFile(best, genericTarget);
+                Log.i(TAG, "Promoted versioned lib " + best.getName() + " -> " + genericTarget.getName());
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "promoteVersionedLib failed for " + prefix + ": " + e.getMessage());
         }
     }
 

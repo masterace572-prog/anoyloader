@@ -293,8 +293,13 @@ public class PackageManagerCompat {
             ai.metaData = p.mAppMetaData;
         }
         ai.dataDir = BEnvironment.getDataDir(ai.packageName, userId).getAbsolutePath();
-        if (!p.installOption.isFlag(InstallOption.FLAG_SYSTEM)) {
-            ai.nativeLibraryDir = BEnvironment.getAppLibDir(ai.packageName).getAbsolutePath();
+        // ALWAYS point nativeLibraryDir at the BlackBox-extracted lib folder.
+        // Even FLAG_SYSTEM installs cannot rely on the host app's /data/app/.../lib path
+        // (SELinux blocks cross-UID reads). PUBG Global crashes when libUE4.so is unreachable.
+        ai.nativeLibraryDir = BEnvironment.getAppLibDir(ai.packageName).getAbsolutePath();
+        try {
+            FileUtils.mkdirs(ai.nativeLibraryDir);
+        } catch (Throwable ignored) {
         }
         ai.processName = BPackageManagerService.fixProcessName(p.packageName, ai.packageName);
         ai.publicSourceDir = sourceDir;
@@ -302,8 +307,34 @@ public class PackageManagerCompat {
         ai.uid = p.mExtras.appId;
 //        ai.uid = baseApplication.uid;
 
+        // Preserve split APK paths from the real host install when available.
+        // Without splitSourceDirs, ClassLoader only sees base.apk and PUBG Global
+        // (Play Asset Delivery / config.arm64_v8a) crashes after a few seconds.
+        try {
+            ApplicationInfo hostAi = BlackBoxCore.getPackageManager()
+                    .getApplicationInfo(p.packageName, 0);
+            if (hostAi != null) {
+                if (hostAi.splitSourceDirs != null && hostAi.splitSourceDirs.length > 0) {
+                    ai.splitSourceDirs = hostAi.splitSourceDirs.clone();
+                    ai.splitPublicSourceDirs = hostAi.splitSourceDirs.clone();
+                }
+                // splitNames requires API 26+
+                if (Build.VERSION.SDK_INT >= 26 && hostAi.splitNames != null) {
+                    ai.splitNames = hostAi.splitNames.clone();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
         if (BuildCompat.isL()) {
             BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.CPU_ABI);
+            // Prefer 64-bit primary ABI explicitly on arm64 devices
+            try {
+                if (Build.SUPPORTED_64_BIT_ABIS != null && Build.SUPPORTED_64_BIT_ABIS.length > 0) {
+                    BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.SUPPORTED_64_BIT_ABIS[0]);
+                }
+            } catch (Throwable ignored) {
+            }
             BRApplicationInfoL.get(ai)._set_scanPublicSourceDir(BRApplicationInfoL.get(baseApplication).scanPublicSourceDir());
             BRApplicationInfoL.get(ai)._set_scanSourceDir(BRApplicationInfoL.get(baseApplication).scanSourceDir());
         }
