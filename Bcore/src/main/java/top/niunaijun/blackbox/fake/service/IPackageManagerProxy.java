@@ -138,15 +138,13 @@ public class IPackageManagerProxy extends BinderInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             String packageName = (String) args[0];
             int flags = MethodParameterUtils.toInt(args[1]);
-			if (GmsCore.isGoogleAppOrService(packageName)) {
-				return method.invoke(who, args);
-			}
+            // Prefer sandbox-installed GMS so Dynamite/client ClassLoaders stay consistent.
+            // Falling back to host GMS when virtual install is missing.
             PackageInfo packageInfo = BlackBoxCore.getBPackageManager().getPackageInfo(packageName, flags, BActivityThread.getUserId());
             if (packageInfo != null) {
                 return packageInfo;
             }
-            
-            if (AppSystemEnv.isOpenPackage(packageName)) {
+            if (GmsCore.isGoogleAppOrService(packageName) || AppSystemEnv.isOpenPackage(packageName)) {
                 return method.invoke(who, args);
             }
             return null;
@@ -266,14 +264,13 @@ public class IPackageManagerProxy extends BinderInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             String packageName = (String) args[0];
             int flags = MethodParameterUtils.toInt(args[1]);
+            // Prefer sandbox ApplicationInfo for GMS (same sourceDir family as virtual process)
+            // to avoid dual ClassLoader Dynamite ClassCastException on Android 14–16.
             ApplicationInfo applicationInfo = BlackBoxCore.getBPackageManager().getApplicationInfo(packageName, flags, BActivityThread.getUserId());
-            if (GmsCore.isGoogleAppOrService(packageName)) {
-				return method.invoke(who, args);
-			}
             if (applicationInfo != null) {
-				return applicationInfo;
-			}
-            if (AppSystemEnv.isOpenPackage(packageName)) {
+                return applicationInfo;
+            }
+            if (GmsCore.isGoogleAppOrService(packageName) || AppSystemEnv.isOpenPackage(packageName)) {
                 return method.invoke(who, args);
             }
             return null;

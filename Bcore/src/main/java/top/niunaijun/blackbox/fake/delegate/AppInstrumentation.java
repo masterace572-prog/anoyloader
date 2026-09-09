@@ -164,7 +164,9 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 	public Application newApplication(ClassLoader cl, String className, Context context)
 	throws InstantiationException, IllegalAccessException, ClassNotFoundException {
 		ContextCompat.fix(context);
-		//fixSharedLibraryLoaders(cl);
+		// Share host library ClassLoaders with the app ClassLoader so GMS Dynamite
+		// modules do not load the same type twice (ClassCastException aqhy/adzp).
+		fixSharedLibraryLoaders(cl);
 		BActivityThread.currentActivityThread().loadXposed(context);
 		delegateAppClassLoader = context.getClassLoader();
 		return super.newApplication(cl, className, context);
