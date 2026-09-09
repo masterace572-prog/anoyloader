@@ -1,4 +1,4 @@
-﻿package com.ryzen.model
+package com.ryzen.model
 
 enum class TargetGame(
     val id: String,

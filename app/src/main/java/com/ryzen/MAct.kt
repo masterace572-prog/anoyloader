@@ -547,7 +547,7 @@ class MAct : AppCompatActivity() {
     /**
      * Resolves and sets up the active native library matching the running game and version.
      * Enforces strict version isolation so BGMI only loads libbgmi* and PUBG Global only loads libpubgm*.
-     * Never cross-wires the two — that is a primary cause of PUBG GL crash-after-launch.
+     * Never cross-wires the two - that is a primary cause of PUBG GL crash-after-launch.
      */
     private fun prepareActiveLibForGame(game: ManagedGame, version: GameVersion?, appInfo: InstalledAppInfo): Boolean {
         try {
@@ -565,7 +565,7 @@ class MAct : AppCompatActivity() {
 
             val assignedLib = version?.getAssignedLibFileName(prefix) ?: (prefix + cleanVer + ".so")
 
-            // Priority order: assigned → versioned → generic real lib → active copy
+            // Priority order: assigned -> versioned -> generic real lib -> active copy
             val candidateNames = mutableListOf<String>()
             if (assignedLib.isNotBlank()
                 && assignedLib.startsWith(prefix, ignoreCase = true)
@@ -657,7 +657,7 @@ class MAct : AppCompatActivity() {
         try {
             val core = BlackBoxCore.get() ?: return
             if (!core.isSupportGms) {
-                Log.w("MAct", "Host device has no GMS — skipping sandbox GMS install")
+                Log.w("MAct", "Host device has no GMS - skipping sandbox GMS install")
                 return
             }
             if (!core.isInstallGms(USER_ID)) {
@@ -708,7 +708,7 @@ class MAct : AppCompatActivity() {
                     null
                 }
                 val libCount = libDir?.listFiles()?.count { it.isFile && it.name.endsWith(".so") } ?: 0
-                // PUBG Global almost always ships native code in ABI splits — empty dir is a red flag.
+                // PUBG Global almost always ships native code in ABI splits - empty dir is a red flag.
                 // Also reinstall if host has splitSourceDirs but sandbox lib dir is sparse.
                 val hostHasSplits = try {
                     val ai = packageManager.getApplicationInfo(packageName, 0)
@@ -717,7 +717,7 @@ class MAct : AppCompatActivity() {
                     false
                 }
                 if (libCount == 0 && (packageName != "com.pubg.imobile" || hostHasSplits)) {
-                    Log.w("MAct", "Sandbox native lib dir empty for $packageName (splits=$hostHasSplits) — forcing reinstall")
+                    Log.w("MAct", "Sandbox native lib dir empty for $packageName (splits=$hostHasSplits) - forcing reinstall")
                     installRes = try {
                         core.reinstallPackageAsUser(packageName, USER_ID)
                     } catch (t: Throwable) {
@@ -809,7 +809,7 @@ class MAct : AppCompatActivity() {
                         }
                         return@Thread
                     }
-                    Log.i("MAct", "Install reported failure but package is present in sandbox — continuing")
+                    Log.i("MAct", "Install reported failure but package is present in sandbox - continuing")
                 }
 
                 // 2. Prepare OBB
@@ -831,7 +831,7 @@ class MAct : AppCompatActivity() {
                 }
                 val libOk = prepareActiveLibForGame(currentGame, currentVersion, appInfo)
                 if (!libOk) {
-                    Log.w("MAct", "Native lib not ready for ${currentGame.packageName} — launch may be unstable until lib update finishes")
+                    Log.w("MAct", "Native lib not ready for ${currentGame.packageName} - launch may be unstable until lib update finishes")
                 }
 
                 // 4. Record cloned version code in Prefs
@@ -923,7 +923,7 @@ class MAct : AppCompatActivity() {
                 if (currentGame.packageName == "com.pubg.imobile") "libbgmi" else "libpubgm"
             ) ?: if (currentGame.packageName == "com.pubg.imobile") "libbgmi.so" else "libpubgm.so"
             Log.w("MAct", "Launch notice: Assigned native lib ($assigned) not yet downloaded in loader storage")
-            // Still allow launch — some configs run without injected payload — but warn user
+            // Still allow launch - some configs run without injected payload - but warn user
             Toast.makeText(
                 this,
                 "Native library for ${currentGame.getDisplayTitle()} is missing. Game may be unstable.",
