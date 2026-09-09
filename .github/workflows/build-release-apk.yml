@@ -345,16 +345,34 @@ jobs:
           tag_name: ${{ github.event.inputs.release_tag }}
           name: AnoyLoader ${{ github.event.inputs.release_tag }}
           body: |
-            Automated release build from `${{ github.ref_name }}` @ `${{ steps.meta.outputs.short_sha }}`.
+            ## Anoy Loader ${{ github.event.inputs.release_tag }}
+
+            Automated signed release from `${{ github.ref_name }}` @ `${{ steps.meta.outputs.short_sha }}`.
+
+            | | |
+            |---|---|
+            | **versionName** | `1.1.0-beta` |
+            | **versionCode** | `2` |
+            | **ABI** | arm64-v8a |
+            | **Min SDK** | 24 |
+            | **Target SDK** | 33 |
+
+            ### Changelog (Android 16 / PUBG Global)
+            - Survive GMS `INTERACT_ACROSS_USERS` broadcast denials
+            - Skip privileged GMS AccountAuthenticator binds (empty/cache accounts)
+            - Survive GMS Dynamite BackgroundExecutor ClassCast on worker threads
+            - Inject `org.apache.http.legacy` for IMSDK Volley (`ProtocolVersion`)
 
             ### Install
-            1. Uninstall any previous AnoyLoader build if signature differs
-            2. Install `${{ steps.apk.outputs.name }}`
+            1. Uninstall any previous AnoyLoader build if the signature differs
+            2. Install `${{ steps.apk.outputs.name }}` (or the APK attached to this release)
             3. For PUBG GL: open app → INSTALL again → LAUNCH
           files: |
             ${{ steps.apk.outputs.path }}
           draft: false
-          prerelease: false
+          # Treat tags containing "beta"/"alpha"/"rc" as prereleases
+          prerelease: ${{ contains(github.event.inputs.release_tag, 'beta') || contains(github.event.inputs.release_tag, 'alpha') || contains(github.event.inputs.release_tag, 'rc') }}
           generate_release_notes: true
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
