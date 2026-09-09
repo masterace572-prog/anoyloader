@@ -9,10 +9,8 @@ import androidx.compose.ui.unit.sp
 import com.ryzen.R
 
 // =====================================================
-// TYPOGRAPHY SYSTEM (Claude Editorial Hierarchy)
-// Display & Major Titles: Elegant Serif (Source Serif style)
-// Body, Inputs & UI Labels: Clean Grotesque Sans (Inter style)
-// Code, Hashes & Metrics: Tabular Monospace (JetBrains Mono style)
+// TYPOGRAPHY — Source Serif 4 display, Inter UI, Mono code
+// Letter spacing 0 everywhere. Sentence case in copy.
 // =====================================================
 
 val SerifFontFamily = FontFamily(
@@ -35,106 +33,121 @@ val MonoFontFamily = FontFamily(
     Font(R.font.jetbrains_mono_semibold, FontWeight.SemiBold)
 )
 
+private val ZeroTracking = 0.sp
+
 val AppTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 38.sp,
-        letterSpacing = (-0.5).sp
+        fontWeight = FontWeight.Normal,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
+        letterSpacing = ZeroTracking
     ),
     displayMedium = TextStyle(
         fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 26.sp,
-        lineHeight = 32.sp,
-        letterSpacing = (-0.3).sp
+        fontWeight = FontWeight.Normal,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = ZeroTracking
     ),
     displaySmall = TextStyle(
         fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = (-0.2).sp
+        fontWeight = FontWeight.Normal,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = ZeroTracking
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = SerifFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = ZeroTracking
     ),
     headlineMedium = TextStyle(
         fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 26.sp,
-        letterSpacing = (-0.15).sp
+        fontWeight = FontWeight.Normal,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = ZeroTracking
     ),
     headlineSmall = TextStyle(
         fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
+        fontWeight = FontWeight.Normal,
+        fontSize = 20.sp,
+        lineHeight = 28.sp,
+        letterSpacing = ZeroTracking
     ),
     titleLarge = TextStyle(
-        fontFamily = SerifFontFamily,
+        fontFamily = SansFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
+        fontSize = 20.sp,
+        lineHeight = 28.sp,
+        letterSpacing = ZeroTracking
     ),
     titleMedium = TextStyle(
         fontFamily = SansFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = ZeroTracking
+    ),
+    titleSmall = TextStyle(
+        fontFamily = SansFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = ZeroTracking
     ),
     bodyLarge = TextStyle(
         fontFamily = SansFontFamily,
         fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = ZeroTracking
     ),
     bodyMedium = TextStyle(
         fontFamily = SansFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.sp
+        letterSpacing = ZeroTracking
     ),
     bodySmall = TextStyle(
         fontFamily = SansFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.sp
+        letterSpacing = ZeroTracking
     ),
     labelLarge = TextStyle(
         fontFamily = SansFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.1.sp
+        lineHeight = 20.sp,
+        letterSpacing = ZeroTracking
     ),
     labelMedium = TextStyle(
         fontFamily = SansFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 13.sp,
+        fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.1.sp
+        letterSpacing = ZeroTracking
     ),
     labelSmall = TextStyle(
         fontFamily = SansFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 15.sp,
-        letterSpacing = 0.2.sp
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = ZeroTracking
     )
 )
 
-// Monospace / Tabular Figures style for countdowns, clock ticks, and metrics
 val TabularNumberStyle = TextStyle(
     fontFamily = MonoFontFamily,
-    fontWeight = FontWeight.Medium,
-    fontSize = 20.sp,
-    lineHeight = 26.sp,
-    letterSpacing = 0.5.sp,
+    fontWeight = FontWeight.Normal,
+    fontSize = 16.sp,
+    lineHeight = 24.sp,
+    letterSpacing = ZeroTracking,
     fontFeatureSettings = "tnum"
 )

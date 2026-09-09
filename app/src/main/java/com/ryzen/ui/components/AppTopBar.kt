@@ -1,16 +1,18 @@
 package com.ryzen.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,15 +34,14 @@ fun AppTopBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .background(AppTheme.colors.surface)
             .statusBarsPadding()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    horizontal = AppTheme.spacing.screenHorizontal,
-                    vertical = AppTheme.spacing.md
-                ),
+                .height(56.dp)
+                .padding(horizontal = AppTheme.spacing.screenHorizontal),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -54,7 +55,7 @@ fun AppTopBar(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
                             modifier = Modifier.size(24.dp),
                             tint = AppTheme.colors.textPrimary
@@ -86,7 +87,7 @@ fun AppTopBar(
 
         HorizontalDivider(
             thickness = 1.dp,
-            color = AppTheme.colors.borderSubtle.copy(alpha = 0.7f)
+            color = AppTheme.colors.outline
         )
     }
 }

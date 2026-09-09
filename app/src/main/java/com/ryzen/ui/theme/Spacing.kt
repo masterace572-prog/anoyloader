@@ -6,7 +6,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 // =====================================================
-// SPACING SYSTEM (Strict 4dp / 8dp Grid Tokens)
+// SPACING — 8dp grid: 4, 8, 12, 16, 20, 24, 32, 40, 48
 // =====================================================
 
 @Immutable
@@ -18,11 +18,13 @@ data class Spacing(
     val lg: Dp = 20.dp,
     val xl: Dp = 24.dp,
     val xxl: Dp = 32.dp,
-    val section: Dp = 40.dp,
-    val huge: Dp = 48.dp,
-    val massive: Dp = 64.dp,
+    val section: Dp = 32.dp,
+    val huge: Dp = 40.dp,
+    val massive: Dp = 48.dp,
     val screenHorizontal: Dp = 20.dp,
-    val screenHorizontalCompact: Dp = 16.dp
+    val screenHorizontalCompact: Dp = 16.dp,
+    val listItemVertical: Dp = 16.dp,
+    val minTouch: Dp = 48.dp
 )
 
 val LocalSpacing = staticCompositionLocalOf { Spacing() }

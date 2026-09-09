@@ -5,15 +5,17 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 // =====================================================
-// SHAPE SYSTEM — slightly softer radii for modern feel
+// SHAPE — buttons 10, inputs 8, cards 12, dialogs 16,
+// sheets 24 top, avatars circle
 // =====================================================
 
 object AppRadii {
-    val xs = 8.dp      // Chips, badges, tags
-    val sm = 12.dp     // Inputs, buttons, compact items
-    val md = 16.dp     // Standard cards, segmented panels
-    val lg = 22.dp     // Sheets, dialogs, hero cards
-    val pill = 999.dp  // Full pill
+    val xs = 8.dp       // inputs
+    val sm = 10.dp      // buttons
+    val md = 12.dp      // cards, images
+    val lg = 16.dp      // dialogs
+    val xl = 24.dp      // bottom sheets (top)
+    val pill = 999.dp
 }
 
 val AppShapes = Shapes(
@@ -21,5 +23,5 @@ val AppShapes = Shapes(
     small = RoundedCornerShape(AppRadii.sm),
     medium = RoundedCornerShape(AppRadii.md),
     large = RoundedCornerShape(AppRadii.lg),
-    extraLarge = RoundedCornerShape(28.dp)
+    extraLarge = RoundedCornerShape(AppRadii.xl)
 )

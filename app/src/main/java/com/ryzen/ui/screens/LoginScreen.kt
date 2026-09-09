@@ -26,13 +26,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,7 +46,6 @@ import com.ryzen.ui.components.BadgeTone
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -135,22 +134,6 @@ fun LoginScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Soft top glow
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 40.dp)
-                    .size(260.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                AppTheme.colors.accentGlow,
-                                androidx.compose.ui.graphics.Color.Transparent
-                            )
-                        ),
-                        shape = androidx.compose.foundation.shape.CircleShape
-                    )
-            )
 
             Column(
                 modifier = Modifier
@@ -241,7 +224,7 @@ fun LoginScreen(
                         AppTextField(
                             value = keyText,
                             onValueChange = onKeyChange,
-                            leadingIcon = Icons.Rounded.Key,
+                            leadingIcon = Icons.Outlined.Key,
                             visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Ascii,
@@ -259,7 +242,7 @@ fun LoginScreen(
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (isKeyVisible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                                            imageVector = if (isKeyVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                                             contentDescription = if (isKeyVisible) "Hide license key" else "Show license key",
                                             tint = AppTheme.colors.textSecondary,
                                             modifier = Modifier.size(18.dp)
@@ -273,7 +256,7 @@ fun LoginScreen(
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.ContentPaste,
+                                            imageVector = Icons.Outlined.ContentPaste,
                                             contentDescription = "Paste license key from clipboard",
                                             tint = AppTheme.colors.accent,
                                             modifier = Modifier.size(18.dp)
@@ -301,7 +284,7 @@ fun LoginScreen(
                                 colors = CheckboxDefaults.colors(
                                     checkedColor = AppTheme.colors.accent,
                                     uncheckedColor = AppTheme.colors.border,
-                                    checkmarkColor = androidx.compose.ui.graphics.Color.White
+                                    checkmarkColor = AppTheme.colors.onAccent
                                 ),
                                 modifier = Modifier.size(24.dp)
                             )
@@ -387,13 +370,13 @@ fun LoginScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(AppTheme.colors.errorContainer),
+                                .background(AppTheme.colors.surfaceSubtle),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Warning,
+                                imageVector = Icons.Outlined.Warning,
                                 contentDescription = null,
-                                tint = AppTheme.colors.error,
+                                tint = AppTheme.colors.textSecondary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -467,13 +450,13 @@ fun LoginScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(AppTheme.colors.warningContainer),
+                            .background(AppTheme.colors.surfaceSubtle),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Warning,
+                            imageVector = Icons.Outlined.Warning,
                             contentDescription = null,
-                            tint = AppTheme.colors.warning,
+                            tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -501,7 +484,7 @@ fun LoginScreen(
                         text = "Refresh Status",
                         onClick = maintenanceDialogState.onRefresh,
                         variant = ButtonVariant.PRIMARY,
-                        leadingIcon = Icons.Rounded.Refresh,
+                        leadingIcon = Icons.Outlined.Refresh,
                         fullWidth = true
                     )
 
@@ -540,7 +523,7 @@ fun LoginScreen(
                             text = "Open Link",
                             onClick = announcementDialogState.onOpenLink,
                             variant = ButtonVariant.PRIMARY,
-                            leadingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                            leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
                             fullWidth = true
                         )
                         Spacer(modifier = Modifier.height(AppTheme.spacing.xs))

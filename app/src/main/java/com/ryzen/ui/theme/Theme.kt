@@ -14,54 +14,66 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // =====================================================
-// THEME — Material 3 + extended tokens + ambient canvas
+// THEME — Material 3 mapped from warm tokens
+// Dynamic color disabled. Flat surfaces. Edge-to-edge.
 // =====================================================
 
 private val DarkMaterialColorScheme = darkColorScheme(
-    primary = AccentEmberDark,
-    onPrimary = Color(0xFF1A0F0C),
-    primaryContainer = AccentTintDark,
+    primary = DarkAccent,
+    onPrimary = DarkOnAccent,
+    primaryContainer = DarkAccentSubtle,
     onPrimaryContainer = DarkTextPrimary,
-    secondary = VioletDark,
-    onSecondary = Color(0xFF1A1528),
-    secondaryContainer = VioletTintDark,
+    secondary = DarkTextSecondary,
+    onSecondary = DarkBackground,
+    secondaryContainer = DarkSurfaceSubtle,
     onSecondaryContainer = DarkTextPrimary,
+    tertiary = DarkTextTertiary,
+    onTertiary = DarkBackground,
     background = DarkBackground,
     onBackground = DarkTextPrimary,
     surface = DarkSurface,
     onSurface = DarkTextPrimary,
-    surfaceVariant = DarkSurfaceElevated,
+    surfaceVariant = DarkSurfaceSubtle,
     onSurfaceVariant = DarkTextSecondary,
-    outline = DarkBorder,
-    outlineVariant = DarkBorderSubtle,
-    error = ErrorDark,
-    onError = Color(0xFF1A0F0C)
+    outline = DarkOutline,
+    outlineVariant = DarkOutline,
+    error = DarkError,
+    onError = DarkOnAccent,
+    inverseSurface = LightSurface,
+    inverseOnSurface = LightTextPrimary,
+    inversePrimary = LightAccent,
+    scrim = Color.Black.copy(alpha = 0.4f)
 )
 
 private val LightMaterialColorScheme = lightColorScheme(
-    primary = AccentEmberLight,
-    onPrimary = Color.White,
-    primaryContainer = AccentTintLight,
+    primary = LightAccent,
+    onPrimary = LightOnAccent,
+    primaryContainer = LightAccentSubtle,
     onPrimaryContainer = LightTextPrimary,
-    secondary = VioletLight,
-    onSecondary = Color.White,
-    secondaryContainer = VioletTintLight,
+    secondary = LightTextSecondary,
+    onSecondary = LightBackground,
+    secondaryContainer = LightSurfaceSubtle,
     onSecondaryContainer = LightTextPrimary,
+    tertiary = LightTextTertiary,
+    onTertiary = LightBackground,
     background = LightBackground,
     onBackground = LightTextPrimary,
     surface = LightSurface,
     onSurface = LightTextPrimary,
-    surfaceVariant = LightSurfaceElevated,
+    surfaceVariant = LightSurfaceSubtle,
     onSurfaceVariant = LightTextSecondary,
-    outline = LightBorder,
-    outlineVariant = LightBorderSubtle,
-    error = ErrorLight,
-    onError = Color.White
+    outline = LightOutline,
+    outlineVariant = LightOutline,
+    error = LightError,
+    onError = LightOnAccent,
+    inverseSurface = DarkSurface,
+    inverseOnSurface = DarkTextPrimary,
+    inversePrimary = DarkAccent,
+    scrim = Color.Black.copy(alpha = 0.32f)
 )
 
 @Composable
@@ -100,10 +112,7 @@ fun AppTheme(
     }
 }
 
-/**
- * Full-screen ambient gradient canvas — use as the root of each screen
- * for smoother depth than a flat background color.
- */
+/** Flat canvas root — solid background token only. */
 @Composable
 fun AppBackground(
     modifier: Modifier = Modifier,
@@ -112,7 +121,7 @@ fun AppBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(AppTheme.colors.ambientBrush())
+            .background(AppTheme.colors.background)
     ) {
         content()
     }

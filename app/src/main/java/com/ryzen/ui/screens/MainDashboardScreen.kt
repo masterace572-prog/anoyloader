@@ -27,12 +27,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -122,30 +122,11 @@ fun MainDashboardScreen(
                 title = stringResource(id = R.string.brand_name),
                 subtitle = "Virtualization Engine",
                 trailingContent = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .clip(AppTheme.shapes.extraSmall)
-                            .background(AppTheme.colors.successTint)
-                            .border(1.dp, AppTheme.colors.success.copy(alpha = 0.35f), AppTheme.shapes.extraSmall)
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(AppTheme.colors.success)
-                        )
-                        Text(
-                            text = if (isLifetime) "Lifetime" else if (days != "00") "${days}d ${hours}h" else "${hours}h ${mins}m",
-                            style = AppTheme.typography.labelSmall.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = AppTheme.colors.success
-                        )
-                    }
+                    Text(
+                        text = if (isLifetime) "Lifetime" else if (days != "00") "${days}d ${hours}h" else "${hours}h ${mins}m",
+                        style = AppTheme.typography.labelMedium,
+                        color = AppTheme.colors.success
+                    )
                 }
             )
 
@@ -169,7 +150,7 @@ fun MainDashboardScreen(
                         style = AppTheme.typography.labelSmall.copy(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.2.sp
+                            letterSpacing = 0.sp
                         ),
                         color = AppTheme.colors.textSecondary
                     )
@@ -179,7 +160,7 @@ fun MainDashboardScreen(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.MoreVert,
+                            imageVector = Icons.Outlined.MoreVert,
                             contentDescription = "Options",
                             tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(20.dp)
@@ -204,7 +185,7 @@ fun MainDashboardScreen(
                             val isSelected = selectedGame.id == game.id
                             val tabLabel = game.getDisplayTitle()
                             val tabBg by animateColorAsState(
-                                targetValue = if (isSelected) AppTheme.colors.accentTint else Color.Transparent,
+                                targetValue = if (isSelected) AppTheme.colors.accentSubtle else Color.Transparent,
                                 animationSpec = tween(AppMotion.DurationFast),
                                 label = "gameTabBg"
                             )
@@ -292,13 +273,13 @@ fun MainDashboardScreen(
 
                     val cardButtonState = when {
                         isVerComingSoon -> {
-                            ActionButtonState("Coming soon", false, ButtonVariant.SECONDARY, Icons.Rounded.Schedule)
+                            ActionButtonState("Coming soon", false, ButtonVariant.SECONDARY, Icons.Outlined.Schedule)
                         }
                         !isGameEnabled -> {
                             ActionButtonState("Unavailable", false, ButtonVariant.SECONDARY, null)
                         }
                         !isHostGameInstalled -> {
-                            ActionButtonState("$gameTitle Not Installed", true, ButtonVariant.PRIMARY, Icons.Rounded.Download)
+                            ActionButtonState("$gameTitle Not Installed", true, ButtonVariant.PRIMARY, Icons.Outlined.Download)
                         }
                         !isMatchingHostVersion -> {
                             ActionButtonState("Version Not Installed", false, ButtonVariant.SECONDARY, null)
@@ -313,13 +294,13 @@ fun MainDashboardScreen(
                             ActionButtonState("Starting engine...", false, ButtonVariant.PRIMARY, null)
                         }
                         !isClonedInContainer -> {
-                            ActionButtonState("Install", true, ButtonVariant.PRIMARY, Icons.Rounded.Download)
+                            ActionButtonState("Install", true, ButtonVariant.PRIMARY, Icons.Outlined.Download)
                         }
                         !hasObb -> {
-                            ActionButtonState("Synchronize OBB", true, ButtonVariant.PRIMARY, Icons.Rounded.Sync)
+                            ActionButtonState("Synchronize OBB", true, ButtonVariant.PRIMARY, Icons.Outlined.Sync)
                         }
                         else -> {
-                            ActionButtonState("Launch", true, ButtonVariant.PRIMARY, Icons.Rounded.PlayArrow)
+                            ActionButtonState("Launch", true, ButtonVariant.PRIMARY, Icons.Outlined.PlayArrow)
                         }
                     }
 
@@ -368,7 +349,7 @@ fun MainDashboardScreen(
                                         text = gameTitle,
                                         style = AppTheme.typography.titleMedium.copy(
                                             fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.SemiBold
                                         ),
                                         color = AppTheme.colors.textPrimary
                                     )
@@ -467,7 +448,7 @@ fun MainDashboardScreen(
                             onOptionsDismiss()
                             if (isClonedInContainer) onLaunchClick() else onInstallClick()
                         },
-                        leadingIcon = Icons.Rounded.PlayArrow,
+                        leadingIcon = Icons.Outlined.PlayArrow,
                         variant = ButtonVariant.PRIMARY,
                         fullWidth = true
                     )
@@ -478,7 +459,7 @@ fun MainDashboardScreen(
                             onOptionsDismiss()
                             onSyncObbClick()
                         },
-                        leadingIcon = Icons.Rounded.Sync,
+                        leadingIcon = Icons.Outlined.Sync,
                         variant = ButtonVariant.SECONDARY,
                         fullWidth = true
                     )
@@ -489,7 +470,7 @@ fun MainDashboardScreen(
                             onOptionsDismiss()
                             onClearLoginClick()
                         },
-                        leadingIcon = Icons.Rounded.DeleteOutline,
+                        leadingIcon = Icons.Outlined.DeleteOutline,
                         variant = ButtonVariant.DESTRUCTIVE,
                         fullWidth = true
                     )

@@ -20,10 +20,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BugReport
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,13 +82,13 @@ fun CrashScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(AppRadii.sm))
-                                .background(AppTheme.colors.errorContainer),
+                                .background(AppTheme.colors.surfaceSubtle),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.BugReport,
+                                imageVector = Icons.Outlined.BugReport,
                                 contentDescription = null,
-                                tint = AppTheme.colors.error,
+                                tint = AppTheme.colors.textSecondary,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -99,7 +99,7 @@ fun CrashScreen(
                             Text(
                                 text = "Crash Report",
                                 style = AppTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Normal
                                 ),
                                 color = AppTheme.colors.textPrimary
                             )
@@ -129,8 +129,8 @@ fun CrashScreen(
                         Text(
                             text = "Error summary",
                             style = AppTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.2.sp
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = 0.sp
                             ),
                             color = AppTheme.colors.textSecondary
                         )
@@ -140,7 +140,7 @@ fun CrashScreen(
                         Text(
                             text = errorMessage ?: "Unknown runtime exception",
                             style = AppTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.Normal
                             ),
                             color = AppTheme.colors.error
                         )
@@ -186,7 +186,7 @@ fun CrashScreen(
                     text = "Copy log",
                     onClick = onCopyClick,
                     variant = ButtonVariant.SECONDARY,
-                    leadingIcon = Icons.Rounded.ContentCopy,
+                    leadingIcon = Icons.Outlined.ContentCopy,
                     modifier = Modifier.weight(1f),
                     fullWidth = false
                 )
@@ -195,7 +195,7 @@ fun CrashScreen(
                     text = "Restart app",
                     onClick = onRestartClick,
                     variant = ButtonVariant.PRIMARY,
-                    leadingIcon = Icons.Rounded.Refresh,
+                    leadingIcon = Icons.Outlined.Refresh,
                     modifier = Modifier.weight(1f),
                     fullWidth = false
                 )

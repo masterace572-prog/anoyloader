@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -116,14 +116,14 @@ fun GameNotInstalledDialog(
                             .size(24.dp)
                             .align(Alignment.BottomEnd)
                             .clip(CircleShape)
-                            .background(AppTheme.colors.warning)
+                            .background(AppTheme.colors.surfaceSubtle)
                             .border(2.dp, AppTheme.colors.surface, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.WarningAmber,
+                            imageVector = Icons.Outlined.WarningAmber,
                             contentDescription = null,
-                            tint = if (AppTheme.colors.isDark) AppTheme.colors.background else Color.White,
+                            tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -178,7 +178,7 @@ fun GameNotInstalledDialog(
                     AppButton(
                         text = "Install from Play Store",
                         variant = ButtonVariant.PRIMARY,
-                        leadingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                        leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
                         modifier = Modifier.fillMaxWidth(),
                         onClick = onInstallFromPlayStore
                     )

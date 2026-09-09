@@ -23,15 +23,15 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CleaningServices
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.DeleteSweep
-import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Send
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material.icons.rounded.VpnKey
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -138,16 +138,16 @@ fun SettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.VpnKey,
+                                    imageVector = Icons.Outlined.VpnKey,
                                     contentDescription = "Key",
-                                    tint = AppTheme.colors.accent,
+                                    tint = AppTheme.colors.textSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = "Active License",
                                     style = AppTheme.typography.titleMedium.copy(
                                         fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.SemiBold
                                     ),
                                     color = AppTheme.colors.textPrimary
                                 )
@@ -189,7 +189,7 @@ fun SettingsScreen(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (isKeyRevealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                        imageVector = if (isKeyRevealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                         contentDescription = "Toggle Key",
                                         tint = AppTheme.colors.textSecondary,
                                         modifier = Modifier.size(18.dp)
@@ -207,7 +207,7 @@ fun SettingsScreen(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.ContentCopy,
+                                        imageVector = Icons.Outlined.ContentCopy,
                                         contentDescription = "Copy Key",
                                         tint = AppTheme.colors.textSecondary,
                                         modifier = Modifier.size(18.dp)
@@ -224,7 +224,7 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Schedule,
+                                imageVector = Icons.Outlined.Schedule,
                                 contentDescription = "Expiry",
                                 tint = AppTheme.colors.textTertiary,
                                 modifier = Modifier.size(14.dp)
@@ -252,7 +252,7 @@ fun SettingsScreen(
                     style = AppTheme.typography.labelSmall.copy(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.2.sp
+                        letterSpacing = 0.sp
                     ),
                     color = AppTheme.colors.textSecondary
                 )
@@ -294,7 +294,7 @@ fun SettingsScreen(
                                             .height(40.dp)
                                             .clip(AppTheme.shapes.extraSmall)
                                             .background(
-                                                if (isSelected) AppTheme.colors.accentTint
+                                                if (isSelected) AppTheme.colors.accentSubtle
                                                 else Color.Transparent
                                             )
                                             .then(
@@ -329,7 +329,7 @@ fun SettingsScreen(
                         AppButton(
                             text = "Clear $gameShortName Login data",
                             onClick = { onClearLoginClick(selectedGame) },
-                            leadingIcon = Icons.Rounded.CleaningServices,
+                            leadingIcon = Icons.Outlined.CleaningServices,
                             variant = ButtonVariant.SECONDARY
                         )
 
@@ -339,8 +339,8 @@ fun SettingsScreen(
                             AppButton(
                                 text = "Reset Guest",
                                 onClick = { showConfirmResetGuestDialog = true },
-                                leadingIcon = Icons.Rounded.RestartAlt,
-                                variant = ButtonVariant.PRIMARY
+                                leadingIcon = Icons.Outlined.RestartAlt,
+                                variant = ButtonVariant.SECONDARY
                             )
                         }
 
@@ -350,7 +350,7 @@ fun SettingsScreen(
                         AppButton(
                             text = "Clear $gameShortName Resources data",
                             onClick = { showConfirmClearDataDialog = true },
-                            leadingIcon = Icons.Rounded.DeleteSweep,
+                            leadingIcon = Icons.Outlined.DeleteSweep,
                             variant = ButtonVariant.DESTRUCTIVE
                         )
                     }
@@ -364,7 +364,7 @@ fun SettingsScreen(
                     style = AppTheme.typography.labelSmall.copy(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.2.sp
+                        letterSpacing = 0.sp
                     ),
                     color = AppTheme.colors.textSecondary
                 )
@@ -382,7 +382,7 @@ fun SettingsScreen(
                             text = "Need Assistance or Key Extension?",
                             style = AppTheme.typography.titleMedium.copy(
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             ),
                             color = AppTheme.colors.textPrimary
                         )
@@ -456,7 +456,7 @@ fun SettingsScreen(
                             showConfirmClearDataDialog = false
                             onClearGameDataClick(selectedGame)
                         },
-                        leadingIcon = Icons.Rounded.DeleteSweep,
+                        leadingIcon = Icons.Outlined.DeleteSweep,
                         variant = ButtonVariant.DESTRUCTIVE
                     )
 
@@ -492,7 +492,7 @@ fun SettingsScreen(
                             showConfirmResetGuestDialog = false
                             onResetGuestClick()
                         },
-                        leadingIcon = Icons.Rounded.RestartAlt,
+                        leadingIcon = Icons.Outlined.RestartAlt,
                         variant = ButtonVariant.PRIMARY
                     )
 
