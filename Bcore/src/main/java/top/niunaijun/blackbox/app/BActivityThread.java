@@ -61,6 +61,7 @@ import top.niunaijun.blackbox.BlackBoxCore;
 import top.niunaijun.blackbox.app.configuration.AppLifecycleCallback;
 import top.niunaijun.blackbox.app.dispatcher.AppServiceDispatcher;
 import top.niunaijun.blackbox.core.CrashHandler;
+import top.niunaijun.blackbox.utils.compat.ApacheHttpLegacyCompat;
 import top.niunaijun.blackbox.core.IBActivityThread;
 import top.niunaijun.blackbox.core.RCore;
 import top.niunaijun.blackbox.core.RNative;
@@ -305,8 +306,23 @@ public class BActivityThread extends IBActivityThread.Stub {
         }
         Application application;
         try {
+            // IMSDK Volley HurlStack needs org.apache.http.ProtocolVersion (removed from boot
+            // classpath since Android 10). Inject framework legacy jar into the app ClassLoader.
+            try {
+                ClassLoader appCl = BRLoadedApk.get(loadedApk).getClassLoader();
+                if (appCl == null && packageContext != null) {
+                    appCl = packageContext.getClassLoader();
+                }
+                ApacheHttpLegacyCompat.ensureLoaded(appCl);
+            } catch (Throwable apacheErr) {
+                Slog.w(TAG, "Apache HTTP legacy inject failed: " + apacheErr.getMessage());
+            }
             onBeforeCreateApplication(packageName, processName, packageContext);
             application = BRLoadedApk.get(loadedApk).makeApplication(false, null);
+            try {
+                ApacheHttpLegacyCompat.ensureLoaded(application.getClassLoader());
+            } catch (Throwable ignored) {
+            }
             ContextCompat.fix(application);
             ContextCompat.fix((Context) BRActivityThread.get(BlackBoxCore.mainThread()).getSystemContext());
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && "com.tencent.mm:recovery".equals(processName)) {

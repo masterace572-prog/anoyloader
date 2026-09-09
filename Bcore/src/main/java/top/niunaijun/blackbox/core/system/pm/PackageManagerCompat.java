@@ -370,23 +370,23 @@ public class PackageManagerCompat {
     }
 
     private static void fixJar(ApplicationInfo info) {
-        String APACHE_LEGACY_JAR = "/system/framework/org.apache.http.legacy.boot.jar";
-        String APACHE_LEGACY_JAR_Q = "/system/framework/org.apache.http.legacy.jar";
+        // Always advertise org.apache.http.legacy — IMSDK/Volley still needs ProtocolVersion
+        // on Android 10–16. Prefer every readable candidate path.
         Set<String> sharedLibraryFileList = new HashSet<>();
-        if (BuildCompat.isQ()) {
-            if (!FileUtils.isExist(APACHE_LEGACY_JAR_Q)) {
-                sharedLibraryFileList.add(APACHE_LEGACY_JAR);
-            } else {
-                sharedLibraryFileList.add(APACHE_LEGACY_JAR_Q);
+        try {
+            for (String path : top.niunaijun.blackbox.utils.compat.ApacheHttpLegacyCompat.resolveAllJarPaths()) {
+                sharedLibraryFileList.add(path);
             }
-        } else {
-            sharedLibraryFileList.add(APACHE_LEGACY_JAR);
+        } catch (Throwable ignored) {
+            sharedLibraryFileList.add("/system/framework/org.apache.http.legacy.jar");
+            sharedLibraryFileList.add("/system/framework/org.apache.http.legacy.boot.jar");
         }
-//        if (BXposedManagerService.get().isXPEnable()) {
-//            ApplicationInfo base = BlackBoxCore.getContext().getApplicationInfo();
-//            sharedLibraryFileList.add(base.sourceDir);
-//        }
-//        sharedLibraryFileList.add(BEnvironment.JUNIT_JAR.getAbsolutePath());
+        // Preserve any libraries already declared by the package.
+        if (info.sharedLibraryFiles != null) {
+            for (String existing : info.sharedLibraryFiles) {
+                if (existing != null) sharedLibraryFileList.add(existing);
+            }
+        }
         info.sharedLibraryFiles = sharedLibraryFileList.toArray(new String[]{});
     }
 

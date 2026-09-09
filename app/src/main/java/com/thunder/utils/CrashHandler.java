@@ -98,7 +98,11 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
                     || n.contains("gms-")
                     || n.contains("play-services")
                     || n.startsWith("android.bg")
-                    || n.contains("binder:");
+                    || n.contains("binder:")
+                    || n.contains("imsdk")
+                    || n.contains("volley")
+                    || n.contains("okhttp")
+                    || n.contains("network");
         }
 
         Throwable cur = throwable;
@@ -106,6 +110,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         boolean classCast = false;
         boolean gmsStack = false;
         boolean bgExecutorMsg = false;
+        boolean apacheMissing = false;
         while (cur != null && depth < 8) {
             if (cur instanceof ClassCastException) classCast = true;
             String msg = cur.getMessage();
@@ -113,6 +118,10 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
                 String m = msg.toLowerCase();
                 if (m.contains("cannot cast") || m.contains("classcastexception")) classCast = true;
                 if (m.contains("backgroundexecutor")) bgExecutorMsg = true;
+                if (m.contains("org.apache.http") || m.contains("protocolversion")) apacheMissing = true;
+            }
+            if (cur instanceof NoClassDefFoundError || cur instanceof ClassNotFoundException) {
+                if (msg != null && msg.contains("org.apache.http")) apacheMissing = true;
             }
             StackTraceElement[] st = cur.getStackTrace();
             if (st != null) {
@@ -136,6 +145,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
 
         if (classCast && (bgThread || gmsStack || bgExecutorMsg)) return true;
         if (bgExecutorMsg && (bgThread || gmsStack)) return true;
+        if (apacheMissing && bgThread) return true;
         return false;
     }
 }

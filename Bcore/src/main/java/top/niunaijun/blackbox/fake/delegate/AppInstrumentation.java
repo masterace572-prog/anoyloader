@@ -29,6 +29,7 @@ import top.niunaijun.blackbox.utils.HackAppUtils;
 import top.niunaijun.blackbox.utils.Slog;
 import top.niunaijun.blackbox.utils.compat.ActivityCompat;
 import top.niunaijun.blackbox.utils.compat.ActivityManagerCompat;
+import top.niunaijun.blackbox.utils.compat.ApacheHttpLegacyCompat;
 import top.niunaijun.blackbox.utils.compat.ContextCompat;
 
 public final class AppInstrumentation extends BaseInstrumentationDelegate implements IInjectHook {
@@ -167,6 +168,11 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 		// Share host library ClassLoaders with the app ClassLoader so GMS Dynamite
 		// modules do not load the same type twice (ClassCastException aqhy/adzp).
 		fixSharedLibraryLoaders(cl);
+		// IMSDK Volley needs org.apache.http.ProtocolVersion on Android 10–16.
+		ApacheHttpLegacyCompat.ensureLoaded(cl);
+		if (context != null) {
+			ApacheHttpLegacyCompat.ensureLoaded(context.getClassLoader());
+		}
 		BActivityThread.currentActivityThread().loadXposed(context);
 		delegateAppClassLoader = context.getClassLoader();
 		return super.newApplication(cl, className, context);

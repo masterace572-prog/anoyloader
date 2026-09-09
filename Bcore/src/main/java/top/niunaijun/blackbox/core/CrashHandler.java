@@ -74,12 +74,17 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
                     || n.contains("googleapi")
                     || n.contains("dynamite")
                     || n.contains("gms-")
-                    || n.contains("play-services");
+                    || n.contains("play-services")
+                    || n.contains("imsdk")
+                    || n.contains("volley")
+                    || n.contains("okhttp")
+                    || n.contains("network");
         }
 
         boolean classCast = false;
         boolean gmsOrBgMarker = false;
         boolean bgExecutorMsg = false;
+        boolean apacheMissing = false;
 
         Throwable cur = e;
         int depth = 0;
@@ -92,6 +97,10 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
                 String m = msg.toLowerCase();
                 if (m.contains("cannot cast")) classCast = true;
                 if (m.contains("backgroundexecutor")) bgExecutorMsg = true;
+                if (m.contains("org.apache.http") || m.contains("protocolversion")) apacheMissing = true;
+            }
+            if (cur instanceof NoClassDefFoundError || cur instanceof ClassNotFoundException) {
+                if (msg != null && msg.contains("org.apache.http")) apacheMissing = true;
             }
             StackTraceElement[] st = cur.getStackTrace();
             if (st != null) {
@@ -123,6 +132,10 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             return true;
         }
         if (bgExecutorMsg && (bgNamed || gmsOrBgMarker)) {
+            return true;
+        }
+        // IMSDK Volley missing apache http on a worker thread — drop the request, keep game alive.
+        if (apacheMissing && bgNamed) {
             return true;
         }
         return false;
