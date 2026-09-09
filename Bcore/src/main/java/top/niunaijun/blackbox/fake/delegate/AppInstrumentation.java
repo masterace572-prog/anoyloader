@@ -201,8 +201,16 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 
 	@Override
 	public void callApplicationOnCreate(Application app) {
+		if (app == null) {
+			Slog.w(TAG, "callApplicationOnCreate skipped: app is null");
+			return;
+		}
 		checkHCallback();
-		super.callApplicationOnCreate(app);
+		try {
+			super.callApplicationOnCreate(app);
+		} catch (Throwable t) {
+			Slog.w(TAG, "callApplicationOnCreate failed: " + t.getMessage());
+		}
 	}
     
     @Override

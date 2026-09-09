@@ -424,6 +424,7 @@ jobs:
             - Survive ProxyService bind failures when GMS CheckinService is missing from vending ClassLoader
             - Filter non-dex config splits from ApplicationInfo.splitSourceDirs (Android 16 ClassLoader)
             - Fix NPE in RCore.enableRedirect when createPackageContext returns null (Samsung API 36)
+            - Survive makeApplication null + ConfigurationChange NPE on Samsung API 36
             - Android 16 PUBG Global crash fixes (GMS broadcast, AccountAuthenticator, Dynamite, Apache HTTP)
 
             ### Install

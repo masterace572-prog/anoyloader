@@ -222,7 +222,26 @@ public class BaseInstrumentationDelegate extends Instrumentation {
 
     @Override
     public void callApplicationOnCreate(Application app) {
-        mBaseInstrumentation.callApplicationOnCreate(app);
+        if (app == null) {
+            return;
+        }
+        if (mBaseInstrumentation == null) {
+            // Fall back to direct Application.onCreate if base is missing
+            try {
+                app.onCreate();
+            } catch (Throwable ignored) {
+            }
+            return;
+        }
+        try {
+            mBaseInstrumentation.callApplicationOnCreate(app);
+        } catch (NullPointerException npe) {
+            // Android Instrumentation NPE when app is somehow still null internally
+            try {
+                app.onCreate();
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     @Override

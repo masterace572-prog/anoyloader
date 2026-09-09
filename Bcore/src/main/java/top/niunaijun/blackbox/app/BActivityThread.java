@@ -470,59 +470,268 @@ public class BActivityThread extends IBActivityThread.Stub {
         activityThreadAppBindData._set_providers(bindData.providers);
         mBoundApplication = bindData;
         //ssl适配
-        if (BRNetworkSecurityConfigProvider.getRealClass() != null) {
-            Security.removeProvider("AndroidNSSP");
-            BRNetworkSecurityConfigProvider.get().install(packageContext);
+        try {
+            if (BRNetworkSecurityConfigProvider.getRealClass() != null && packageContext != null) {
+                Security.removeProvider("AndroidNSSP");
+                BRNetworkSecurityConfigProvider.get().install(packageContext);
+            }
+        } catch (Throwable sslErr) {
+            Slog.w(TAG, "NetworkSecurityConfigProvider.install failed: " + sslErr.getMessage());
         }
-        Application application;
+        Application application = null;
         try {
             // IMSDK Volley HurlStack needs org.apache.http.ProtocolVersion (removed from boot
             // classpath since Android 10). Inject framework legacy jar into the app ClassLoader.
             try {
-                ClassLoader appCl = BRLoadedApk.get(loadedApk).getClassLoader();
+                ClassLoader appCl = null;
+                try {
+                    appCl = BRLoadedApk.get(loadedApk).getClassLoader();
+                } catch (Throwable ignored) {
+                }
                 if (appCl == null && packageContext != null) {
-                    appCl = packageContext.getClassLoader();
+                    try {
+                        appCl = packageContext.getClassLoader();
+                    } catch (Throwable ignored) {
+                    }
                 }
                 ApacheHttpLegacyCompat.ensureLoaded(appCl);
             } catch (Throwable apacheErr) {
                 Slog.w(TAG, "Apache HTTP legacy inject failed: " + apacheErr.getMessage());
             }
             onBeforeCreateApplication(packageName, processName, packageContext);
-            application = BRLoadedApk.get(loadedApk).makeApplication(false, null);
+
+            application = createApplicationRobust(loadedApk, packageContext, applicationInfo, packageName);
+
+            if (application == null) {
+                // Last-ditch: empty Application so ActivityThread config changes
+                // (ClientTransactionListenerController) do not NPE on null mInitialApplication.
+                Slog.w(TAG, "createApplicationRobust returned null for " + packageName
+                        + "; using bare Application stub");
+                application = new Application();
+                try {
+                    Method attach = Application.class.getDeclaredMethod("attach", Context.class);
+                    attach.setAccessible(true);
+                    Context base = packageContext != null ? packageContext : BlackBoxCore.getContext();
+                    attach.invoke(application, base);
+                } catch (Throwable attachErr) {
+                    Slog.w(TAG, "Application.attach failed: " + attachErr.getMessage());
+                }
+            }
+
             try {
-                ApacheHttpLegacyCompat.ensureLoaded(application.getClassLoader());
+                if (application.getClassLoader() != null) {
+                    ApacheHttpLegacyCompat.ensureLoaded(application.getClassLoader());
+                }
             } catch (Throwable ignored) {
             }
-            ContextCompat.fix(application);
-            ContextCompat.fix((Context) BRActivityThread.get(BlackBoxCore.mainThread()).getSystemContext());
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && "com.tencent.mm:recovery".equals(processName)) {
-                fixWeChatRecovery(mInitialApplication);
+            try {
+                ContextCompat.fix(application);
+            } catch (Throwable ignored) {
+            }
+            try {
+                Object sysCtx = BRActivityThread.get(BlackBoxCore.mainThread()).getSystemContext();
+                if (sysCtx instanceof Context) {
+                    ContextCompat.fix((Context) sysCtx);
+                }
+            } catch (Throwable ignored) {
             }
             mInitialApplication = application;
-            BRActivityThread.get(BlackBoxCore.mainThread())._set_mInitialApplication(mInitialApplication);
-            List<ProviderInfo> providers;
-            installProviders(mInitialApplication, bindData.processName, bindData.providers);
+            // Set on ActivityThread BEFORE onCreate so concurrent ConfigurationChange
+            // items on Samsung API 36 see a non-null Application context.
             try {
-				// Preload WebView to avoid "No WebView installed" crash
-		    	new WebView(mInitialApplication).destroy();
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
+                BRActivityThread.get(BlackBoxCore.mainThread())._set_mInitialApplication(mInitialApplication);
+            } catch (Throwable setAppErr) {
+                Slog.w(TAG, "set mInitialApplication failed: " + setAppErr.getMessage());
+            }
+            // Also stash on LoadedApk if empty
             try {
-				fixAiLiaoPhoto(mInitialApplication);
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
-            onBeforeApplicationOnCreate(packageName, processName, application);
-            AppInstrumentation.get().callApplicationOnCreate(application);
-            onAfterApplicationOnCreate(packageName, processName, application);
-            HookManager.get().checkEnv(HCallbackStub.class);
-        } catch (Exception e) {
+                if (BRLoadedApk.get(loadedApk).mApplication() == null) {
+                    try {
+                        Field f = loadedApk.getClass().getDeclaredField("mApplication");
+                        f.setAccessible(true);
+                        f.set(loadedApk, application);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && "com.tencent.mm:recovery".equals(processName)) {
+                try {
+                    fixWeChatRecovery(mInitialApplication);
+                } catch (Throwable ignored) {
+                }
+            }
+            try {
+                installProviders(mInitialApplication, bindData.processName, bindData.providers);
+            } catch (Throwable provErr) {
+                Slog.w(TAG, "installProviders failed: " + provErr.getMessage());
+            }
+            try {
+                new WebView(mInitialApplication).destroy();
+            } catch (Throwable e) {
+                // ignore
+            }
+            try {
+                fixAiLiaoPhoto(mInitialApplication);
+            } catch (Throwable e) {
+                // ignore
+            }
+            try {
+                onBeforeApplicationOnCreate(packageName, processName, application);
+            } catch (Throwable ignored) {
+            }
+            try {
+                AppInstrumentation.get().callApplicationOnCreate(application);
+            } catch (Throwable onCreateErr) {
+                Slog.w(TAG, "callApplicationOnCreate failed: " + onCreateErr.getMessage());
+                try {
+                    application.onCreate();
+                } catch (Throwable ignored) {
+                }
+            }
+            try {
+                onAfterApplicationOnCreate(packageName, processName, application);
+            } catch (Throwable ignored) {
+            }
+            try {
+                HookManager.get().checkEnv(HCallbackStub.class);
+            } catch (Throwable ignored) {
+            }
+        } catch (Throwable e) {
             e.printStackTrace();
-            throw new RuntimeException("Unable to makeApplication", e);
+            // Prefer a degraded but alive process over killing the host main thread.
+            if (mInitialApplication == null && application != null) {
+                mInitialApplication = application;
+                try {
+                    BRActivityThread.get(BlackBoxCore.mainThread())._set_mInitialApplication(application);
+                } catch (Throwable ignored) {
+                }
+            }
+            if (mInitialApplication == null) {
+                Application stub = new Application();
+                try {
+                    Method attach = Application.class.getDeclaredMethod("attach", Context.class);
+                    attach.setAccessible(true);
+                    Context base = packageContext != null ? packageContext : BlackBoxCore.getContext();
+                    if (base != null) {
+                        attach.invoke(stub, base);
+                    }
+                } catch (Throwable ignored) {
+                }
+                mInitialApplication = stub;
+                try {
+                    BRActivityThread.get(BlackBoxCore.mainThread())._set_mInitialApplication(stub);
+                } catch (Throwable ignored) {
+                }
+                Slog.w(TAG, "makeApplication recovered with stub Application for " + packageName
+                        + " after: " + e.getMessage());
+            } else {
+                Slog.w(TAG, "makeApplication partial failure for " + packageName + ": " + e.getMessage());
+            }
+            // Do NOT rethrow — GMS/vending secondary processes must not crash the host.
         }
     }
-    
+
+    /**
+     * Try several strategies to instantiate the virtual app Application.
+     * Android 16 / Samsung often returns null from LoadedApk.makeApplication when
+     * the LoadedApk was obtained via fallback paths.
+     */
+    private Application createApplicationRobust(Object loadedApk, Context packageContext,
+                                                ApplicationInfo applicationInfo, String packageName) {
+        // 1) Standard makeApplication
+        try {
+            Application app = BRLoadedApk.get(loadedApk).makeApplication(false, null);
+            if (app != null) return app;
+        } catch (Throwable th) {
+            Slog.w(TAG, "makeApplication(false,null) failed: " + th.getMessage());
+        }
+        // 2) Force with instrumentation
+        try {
+            Instrumentation instr = AppInstrumentation.get();
+            Application app = BRLoadedApk.get(loadedApk).makeApplication(false, instr);
+            if (app != null) return app;
+        } catch (Throwable th) {
+            Slog.w(TAG, "makeApplication(false,instr) failed: " + th.getMessage());
+        }
+        // 3) makeApplication forceDefaultAppClass
+        try {
+            Application app = BRLoadedApk.get(loadedApk).makeApplication(true, null);
+            if (app != null) return app;
+        } catch (Throwable th) {
+            Slog.w(TAG, "makeApplication(true,null) failed: " + th.getMessage());
+        }
+        // 4) Instrumentation.newApplication
+        try {
+            ClassLoader cl = null;
+            try {
+                cl = BRLoadedApk.get(loadedApk).getClassLoader();
+            } catch (Throwable ignored) {
+            }
+            if (cl == null && packageContext != null) {
+                cl = packageContext.getClassLoader();
+            }
+            if (cl == null) {
+                cl = BlackBoxCore.getContext().getClassLoader();
+            }
+            String appClass = applicationInfo != null ? applicationInfo.className : null;
+            if (appClass == null || appClass.isEmpty()) {
+                appClass = Application.class.getName();
+            }
+            Context base = packageContext != null ? packageContext : BlackBoxCore.getContext();
+            Instrumentation instr = AppInstrumentation.get();
+            Application app = instr.newApplication(cl, appClass, base);
+            if (app != null) {
+                try {
+                    Field f = loadedApk.getClass().getDeclaredField("mApplication");
+                    f.setAccessible(true);
+                    f.set(loadedApk, app);
+                } catch (Throwable ignored) {
+                }
+                return app;
+            }
+        } catch (Throwable th) {
+            Slog.w(TAG, "Instrumentation.newApplication failed: " + th.getMessage());
+        }
+        // 5) Manual Class.forName + attach
+        try {
+            ClassLoader cl = null;
+            try {
+                cl = BRLoadedApk.get(loadedApk).getClassLoader();
+            } catch (Throwable ignored) {
+            }
+            if (cl == null && packageContext != null) cl = packageContext.getClassLoader();
+            if (cl == null) cl = BlackBoxCore.getContext().getClassLoader();
+            String appClass = applicationInfo != null ? applicationInfo.className : null;
+            Class<?> clazz;
+            if (appClass == null || appClass.isEmpty()) {
+                clazz = Application.class;
+            } else {
+                try {
+                    clazz = cl.loadClass(appClass);
+                } catch (Throwable cnfe) {
+                    clazz = Application.class;
+                }
+            }
+            Application app = (Application) clazz.newInstance();
+            Method attach = Application.class.getDeclaredMethod("attach", Context.class);
+            attach.setAccessible(true);
+            Context base = packageContext != null ? packageContext : BlackBoxCore.getContext();
+            attach.invoke(app, base);
+            try {
+                Field f = loadedApk.getClass().getDeclaredField("mApplication");
+                f.setAccessible(true);
+                f.set(loadedApk, app);
+            } catch (Throwable ignored) {
+            }
+            return app;
+        } catch (Throwable th) {
+            Slog.w(TAG, "manual Application create failed: " + th.getMessage());
+        }
+        return null;
+    }
+
     private void fixAiLiaoPhoto(Application application) throws Throwable {
 		if (application.getPackageName().equals("com.mosheng")) {
 			ClassLoader loader = AppInstrumentation.get().getDelegateAppClassLoader();
