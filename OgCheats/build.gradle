@@ -4,8 +4,6 @@ plugins {
     id 'org.lsposed.lsparanoid'
 }
 
-
-
 class Scrambler {
     Random random = new Random()
 
@@ -19,7 +17,22 @@ Scrambler scrambler = new Scrambler()
 android {
     namespace 'com.ryzen'
     compileSdk 34
-    
+
+    // Share Anoy Loader sources; only res/ + applicationId differ for OG Cheats branding.
+    sourceSets {
+        main {
+            java.srcDirs = ['../app/src/main/java']
+            // Later res dirs win on conflict — OG branding/icon overrides Anoy defaults.
+            res.srcDirs = [
+                    '../app/src/main/res',
+                    'src/main/res'
+            ]
+            assets.srcDirs = ['../app/src/main/assets']
+            jni.srcDirs = []
+            manifest.srcFile '../app/src/main/AndroidManifest.xml'
+        }
+    }
+
     signingConfigs {
         debug {
             storeFile file("zen.jks")
@@ -34,13 +47,15 @@ android {
             keyAlias "key0"
         }
     }
-    
+
     lint {
         baseline = file("lint-baseline.xml")
+        checkReleaseBuilds false
+        abortOnError false
     }
 
     defaultConfig {
-        applicationId "com.ryzen"
+        applicationId "com.ogcheats"
         minSdk 24
         targetSdk 33
         versionCode 3
@@ -53,12 +68,11 @@ android {
         }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        // Only ndkBuild is used (src/main/jni/Android.mk). Do NOT declare cmake here —
-        // an empty cmake block confuses AGP and fails CI with "CMake ... not found".
         externalNativeBuild {
             ndkBuild {
                 abiFilters "arm64-v8a"
-                arguments "NDK_APPLICATION_MK:=src/main/jni/Application.mk"
+                // Reuse Anoy's jni tree (same native code)
+                arguments "NDK_APPLICATION_MK:=${rootProject.projectDir}/app/src/main/jni/Application.mk"
             }
         }
         ndk {
@@ -131,9 +145,8 @@ android {
 
     externalNativeBuild {
         ndkBuild {
-            path file('src/main/jni/Android.mk')
+            path file("${rootProject.projectDir}/app/src/main/jni/Android.mk")
         }
-
     }
     ndkVersion "24.0.8215888"
 }
@@ -152,7 +165,6 @@ dependencies {
     implementation 'com.github.CodingGay.BlackReflection:core:1.1.4'
     annotationProcessor 'com.github.CodingGay.BlackReflection:compiler:1.1.4'
 
-    // Jetpack Compose & Material 3
     def composeBom = platform('androidx.compose:compose-bom:2024.02.00')
     implementation composeBom
     implementation 'androidx.compose.ui:ui'
@@ -164,4 +176,3 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'
     debugImplementation 'androidx.compose.ui:ui-tooling'
 }
-

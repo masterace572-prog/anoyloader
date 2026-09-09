@@ -199,11 +199,13 @@ jobs:
           BUILD_TYPE="${{ github.event.inputs.build_type || 'release' }}"
           echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
           if [ "$BUILD_TYPE" = "debug" ]; then
-            echo "gradle_task=assembleDebug" >> "$GITHUB_OUTPUT"
-            echo "apk_glob=app/build/outputs/apk/debug/*.apk" >> "$GITHUB_OUTPUT"
+            echo "gradle_task=:app:assembleDebug :OgCheats:assembleDebug" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_anoy=app/build/outputs/apk/debug/*.apk" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_og=OgCheats/build/outputs/apk/debug/*.apk" >> "$GITHUB_OUTPUT"
           else
-            echo "gradle_task=assembleRelease" >> "$GITHUB_OUTPUT"
-            echo "apk_glob=app/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
+            echo "gradle_task=:app:assembleRelease :OgCheats:assembleRelease" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_anoy=app/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_og=OgCheats/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
           fi
           SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           BRANCH_SAFE="$(echo "${GITHUB_REF_NAME}" | tr '/' '-')"
@@ -268,30 +270,51 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Locate and rename APK
+      - name: Locate and rename APKs
         id: apk
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          APKS=( ${{ steps.meta.outputs.apk_glob }} )
-          if [ ${#APKS[@]} -eq 0 ]; then
-            echo "::error::No APK produced. Searching tree..."
-            find app/build -name '*.apk' 2>/dev/null || true
-            find . -name '*.apk' 2>/dev/null | head -20 || true
-            exit 1
-          fi
-          SRC="${APKS[0]}"
           OUT_DIR="dist"
           mkdir -p "${OUT_DIR}"
-          OUT_NAME="AnoyLoader-${{ steps.meta.outputs.branch_safe }}-${{ steps.meta.outputs.short_sha }}-${{ steps.meta.outputs.build_type }}.apk"
-          cp -f "${SRC}" "${OUT_DIR}/${OUT_NAME}"
-          cp -f "${SRC}" "${OUT_DIR}/$(basename "${SRC}")"
-          SIZE="$(du -h "${OUT_DIR}/${OUT_NAME}" | cut -f1)"
-          echo "path=${OUT_DIR}/${OUT_NAME}" >> "$GITHUB_OUTPUT"
-          echo "name=${OUT_NAME}" >> "$GITHUB_OUTPUT"
-          echo "size=${SIZE}" >> "$GITHUB_OUTPUT"
-          echo "Built APK: ${OUT_NAME} (${SIZE})"
+          BRANCH="${{ steps.meta.outputs.branch_safe }}"
+          SHA="${{ steps.meta.outputs.short_sha }}"
+          TYPE="${{ steps.meta.outputs.build_type }}"
+
+          copy_one() {
+            local label="$1"
+            local glob="$2"
+            local prefix="$3"
+            local files=( ${glob} )
+            if [ ${#files[@]} -eq 0 ]; then
+              echo "::error::No ${label} APK produced (glob=${glob}). Searching..."
+              find . -name '*.apk' 2>/dev/null | head -30 || true
+              return 1
+            fi
+            local src="${files[0]}"
+            local out_name="${prefix}-${BRANCH}-${SHA}-${TYPE}.apk"
+            cp -f "${src}" "${OUT_DIR}/${out_name}"
+            cp -f "${src}" "${OUT_DIR}/$(basename "${src}")"
+            local size
+            size="$(du -h "${OUT_DIR}/${out_name}" | cut -f1)"
+            echo "Built ${label}: ${out_name} (${size})"
+            echo "${label}_path=${OUT_DIR}/${out_name}" >> "$GITHUB_OUTPUT"
+            echo "${label}_name=${out_name}" >> "$GITHUB_OUTPUT"
+            echo "${label}_size=${size}" >> "$GITHUB_OUTPUT"
+          }
+
+          copy_one "anoy" "${{ steps.meta.outputs.apk_glob_anoy }}" "AnoyLoader"
+          copy_one "og"   "${{ steps.meta.outputs.apk_glob_og }}"   "OGCheats"
+
+          # Primary outputs = Anoy Loader (release body back-compat)
+          ANOY_NAME="AnoyLoader-${BRANCH}-${SHA}-${TYPE}.apk"
+          OG_NAME="OGCheats-${BRANCH}-${SHA}-${TYPE}.apk"
+          echo "path=${OUT_DIR}/${ANOY_NAME}" >> "$GITHUB_OUTPUT"
+          echo "name=${ANOY_NAME}" >> "$GITHUB_OUTPUT"
+          echo "size=$(du -h "${OUT_DIR}/${ANOY_NAME}" | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "og_path=${OUT_DIR}/${OG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "og_name=${OG_NAME}" >> "$GITHUB_OUTPUT"
           ls -lah "${OUT_DIR}"
 
       - name: Upload APK artifact
@@ -314,8 +337,10 @@ jobs:
           | **Branch** | \`${{ github.ref_name }}\` |
           | **Commit** | \`${{ steps.meta.outputs.short_sha }}\` |
           | **Type** | \`${{ steps.meta.outputs.build_type }}\` |
-          | **APK** | \`${{ steps.apk.outputs.name }}\` |
-          | **Size** | ${{ steps.apk.outputs.size }} |
+          | **Anoy Loader APK** | \`${{ steps.apk.outputs.name }}\` |
+          | **Anoy Size** | ${{ steps.apk.outputs.size }} |
+          | **OG Cheats APK** | \`${{ steps.apk.outputs.og_name }}\` |
+          | **OG Size** | ${{ steps.apk.outputs.og_size }} |
           | **NDK** | ${{ env.NDK_VERSION }} |
           | **JDK** | 17 (Temurin) |
 
@@ -383,18 +408,27 @@ jobs:
             | **Min SDK** | 24 |
             | **Target SDK** | 33 |
 
-            ### Changelog (Android 16 / PUBG Global)
-            - Survive GMS `INTERACT_ACROSS_USERS` broadcast denials
-            - Skip privileged GMS AccountAuthenticator binds (empty/cache accounts)
-            - Survive GMS Dynamite BackgroundExecutor ClassCast on worker threads
-            - Inject `org.apache.http.legacy` for IMSDK Volley (`ProtocolVersion`)
+            ### Apps in this release
+            | App | Package | Telegram |
+            |---|---|---|
+            | **Anoy Loader** | `com.ryzen` | @libAkAudioVisiual |
+            | **OG Cheats** | `com.ogcheats` | @CrimeCell |
+
+            ### Changelog
+            - Dual APK monorepo: Anoy Loader + OG Cheats (shared engine, separate branding)
+            - OG Cheats icon from `Helper/` + Telegram `@CrimeCell`
+            - Android 16 PUBG Global crash fixes (GMS broadcast, AccountAuthenticator, Dynamite, Apache HTTP)
 
             ### Install
             1. Uninstall any previous AnoyLoader build if the signature differs
-            2. Install `${{ steps.apk.outputs.name }}` (or the APK attached to this release)
+            2. Install **Anoy Loader**: `${{ steps.apk.outputs.name }}`
+               or **OG Cheats**: `${{ steps.apk.outputs.og_name }}`
             3. For PUBG GL: open app → INSTALL again → LAUNCH
+
+            Both APKs share the same sandbox engine; only branding, package id, icon, and Telegram contact differ.
           files: |
             ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.og_path }}
           draft: false
           # Treat tags containing "beta"/"alpha"/"rc" as prereleases
           prerelease: ${{ steps.rel.outputs.prerelease == 'true' }}

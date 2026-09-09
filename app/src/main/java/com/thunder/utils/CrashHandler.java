@@ -47,7 +47,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             String stackTrace = sw.toString();
 
             StringBuilder report = new StringBuilder();
-            report.append("Anoy Loader Crash Report\n");
+            report.append(com.ryzen.BrandConfig.crashReportHeader()).append("\n");
             report.append("========================\n");
             report.append("Device: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n");
             report.append("Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");

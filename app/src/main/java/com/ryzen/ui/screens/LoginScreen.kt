@@ -55,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -168,7 +169,7 @@ fun LoginScreen(
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_launcher),
-                            contentDescription = "Anoy Loader App Icon",
+                            contentDescription = stringResource(id = R.string.app_name) + " App Icon",
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(AppRadii.lg)),
@@ -179,7 +180,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(AppTheme.spacing.md))
 
                     Text(
-                        text = "Anoy Loader",
+                        text = stringResource(id = R.string.brand_name),
                         style = AppTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -337,7 +338,7 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Anoy Loader Enterprise",
+                        text = stringResource(id = R.string.brand_enterprise),
                         style = AppTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),

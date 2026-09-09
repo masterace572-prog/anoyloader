@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.ryzen.R
 import com.ryzen.model.ManagedGame
 import com.ryzen.ui.components.AppBadge
@@ -392,7 +393,7 @@ fun SettingsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Anoy Loader v$appVersionName (Build $appVersionCode)",
+                        text = stringResource(id = R.string.brand_name) + " v$appVersionName (Build $appVersionCode)",
                         style = AppTheme.typography.bodySmall.copy(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold

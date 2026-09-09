@@ -236,7 +236,7 @@ public class Downtwo {
             connection.setConnectTimeout(connectTimeout);
             connection.setReadTimeout(readTimeout);
             connection.setInstanceFollowRedirects(false);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) Anoy-Loader");
+            connection.setRequestProperty("User-Agent", com.ryzen.BrandConfig.userAgent());
             connection.setRequestProperty("Accept-Encoding", "identity");
 
             int status = connection.getResponseCode();

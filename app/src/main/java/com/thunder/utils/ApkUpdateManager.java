@@ -170,7 +170,7 @@ public class ApkUpdateManager {
             connection.setConnectTimeout(connectTimeout);
             connection.setReadTimeout(readTimeout);
             connection.setInstanceFollowRedirects(false);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) Anoy-Loader-Updater");
+            connection.setRequestProperty("User-Agent", com.ryzen.BrandConfig.userAgent() + "-Updater");
             connection.setRequestProperty("Accept-Encoding", "identity");
 
             int status = connection.getResponseCode();

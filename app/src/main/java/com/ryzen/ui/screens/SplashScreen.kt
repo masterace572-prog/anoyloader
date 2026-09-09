@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -144,7 +145,7 @@ fun SplashScreen(
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_launcher),
-                        contentDescription = "Anoy Loader App Icon",
+                        contentDescription = stringResource(id = R.string.app_name) + " App Icon",
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(AppRadii.lg)),
@@ -155,7 +156,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
 
                 Text(
-                    text = "Anoy Loader",
+                    text = stringResource(id = R.string.brand_name),
                     style = AppTheme.typography.displaySmall.copy(
                         fontWeight = FontWeight.SemiBold
                     ),

@@ -9,6 +9,10 @@
     <string name="brand_enterprise">Anoy Loader Enterprise</string>
     <string name="security_footer">Protected with Advanced Sandboxing &amp; Anti-Tamper Core</string>
     <string name="userspace_badge">Userspace Sandboxing • Anti-Tamper Protected</string>
+    <string name="telegram_url">https://t.me/libAkAudioVisiual</string>
+    <string name="telegram_handle">@libAkAudioVisiual</string>
+    <string name="http_user_agent">Mozilla/5.0 (Linux; Android) Anoy-Loader</string>
+    <string name="crash_report_header">Anoy Loader Crash Report</string>
 
     <!-- Status & Badges -->
     <string name="status_online">Online</string>

@@ -1041,7 +1041,7 @@ class MAct : AppCompatActivity() {
 
     private fun handleContactAdmin() {
         try {
-            val telegramUrl = "https://t.me/libAkAudioVisiual"
+            val telegramUrl = getString(R.string.telegram_url)
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
             startActivity(intent)
         } catch (t: Throwable) {

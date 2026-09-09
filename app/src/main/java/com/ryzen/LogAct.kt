@@ -253,9 +253,13 @@ class LogAct : AppCompatActivity() {
     private fun handleGetKey() {
         try {
             val keyUrl = try { GetKey() } catch (_: Throwable) { null }
-            if (!keyUrl.isNullOrBlank() && keyUrl.startsWith("http")) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(keyUrl))
-                startActivity(intent)
+            val fallback = getString(R.string.telegram_url)
+            val url = when {
+                !keyUrl.isNullOrBlank() && keyUrl.startsWith("http") -> keyUrl
+                else -> fallback
+            }
+            if (url.isNotBlank() && url.startsWith("http")) {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             } else {
                 Toast.makeText(this, "Key portal URL is not configured", Toast.LENGTH_SHORT).show()
             }
