@@ -42,8 +42,6 @@ public class AppConfigManager {
 
         public boolean bgmiEnabled = true;
         public String bgmiStatus = "OBB Ready";
-        public boolean pubgEnabled = true;
-        public String pubgStatus = "OBB Ready";
         public java.util.List<com.ryzen.model.ManagedGame> games = new java.util.ArrayList<>();
     }
 
@@ -189,17 +187,25 @@ public class AppConfigManager {
 
         config.bgmiEnabled = obj.optBoolean("bgmi_enabled", true);
         config.bgmiStatus = obj.optString("bgmi_status", config.bgmiStatus);
-        config.pubgEnabled = obj.optBoolean("pubg_enabled", true);
-        config.pubgStatus = obj.optString("pubg_status", config.pubgStatus);
-
         JSONArray gamesArray = obj.optJSONArray("games");
         if (gamesArray != null && gamesArray.length() > 0) {
             config.games.clear();
             for (int i = 0; i < gamesArray.length(); i++) {
                 JSONObject gObj = gamesArray.optJSONObject(i);
                 if (gObj != null) {
-                    config.games.add(com.ryzen.model.ManagedGame.Companion.fromJson(gObj));
+                    com.ryzen.model.ManagedGame parsed = com.ryzen.model.ManagedGame.Companion.fromJson(gObj);
+                    if (parsed != null) {
+                        config.games.add(parsed);
+                    }
                 }
+            }
+        }
+        // BGMI-only: drop any non-BGMI entries and fall back to default
+        java.util.Iterator<com.ryzen.model.ManagedGame> it = config.games.iterator();
+        while (it.hasNext()) {
+            com.ryzen.model.ManagedGame g = it.next();
+            if (g == null || !com.ryzen.model.ManagedGame.Companion.isBgmiPackage(g.getPackageName())) {
+                it.remove();
             }
         }
         if (config.games.isEmpty()) {

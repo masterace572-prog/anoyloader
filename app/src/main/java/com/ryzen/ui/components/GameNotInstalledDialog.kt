@@ -103,7 +103,7 @@ fun GameNotInstalledDialog(
                     ) {
                         Image(
                             painter = painterResource(
-                                id = if (state.iconType.contains("bgmi", ignoreCase = true) || state.isBgmi || state.game == TargetGame.BGMI) R.drawable.ic_launcher else R.drawable.ic_game_global
+                                id = R.drawable.india
                             ),
                             contentDescription = state.gameTitle.ifBlank { state.game.title },
                             modifier = Modifier.size(44.dp)

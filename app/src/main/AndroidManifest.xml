@@ -49,10 +49,6 @@
 
     <queries>
         <package android:name="com.pubg.imobile" />
-        <package android:name="com.tencent.ig" />
-        <package android:name="com.pubg.krmobile" />
-        <package android:name="com.rekoo.pubgm" />
-        <package android:name="com.vng.pubgmobile" />
         <!-- Twitter / X Host Apps for SSO Login -->
         <package android:name="com.twitter.android" />
         <package android:name="com.twitter.android.lite" />
@@ -76,7 +72,7 @@
         android:roundIcon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Base.AppTheme">
-        <!-- Required by PUBG IMSDK Volley (org.apache.http.ProtocolVersion) on Android 10+ -->
+        <!-- Required by game IMSDK Volley (org.apache.http.ProtocolVersion) on Android 10+ -->
         <uses-library
             android:name="org.apache.http.legacy"
             android:required="false" />

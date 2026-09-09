@@ -84,7 +84,7 @@ fun SettingsScreen(
     var isKeyRevealed by remember { mutableStateOf(false) }
     var showConfirmClearDataDialog by remember { mutableStateOf(false) }
     var showConfirmResetGuestDialog by remember { mutableStateOf(false) }
-    val isBgmiSelected = selectedGame.packageName == "com.pubg.imobile"
+    val isBgmiSelected = true // BGMI-only product
 
     val displayKey = if (isKeyRevealed) {
         keyText.ifBlank { "NONE" }
@@ -266,64 +266,7 @@ fun SettingsScreen(
                     contentPadding = AppTheme.spacing.md
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Select Target Game",
-                            style = AppTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                            color = AppTheme.colors.textSecondary
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        // Game selection tabs
-                        if (games.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(AppTheme.shapes.small)
-                                    .background(AppTheme.colors.surfaceElevated)
-                                    .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.small)
-                                    .padding(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                games.forEach { game ->
-                                    val isSelected = selectedGame.id == game.id
-                                    val tabLabel = game.getDisplayTitle()
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(40.dp)
-                                            .clip(AppTheme.shapes.extraSmall)
-                                            .background(
-                                                if (isSelected) AppTheme.colors.accentSubtle
-                                                else Color.Transparent
-                                            )
-                                            .then(
-                                                if (isSelected) Modifier.border(
-                                                    1.dp,
-                                                    AppTheme.colors.accent.copy(alpha = 0.35f),
-                                                    AppTheme.shapes.extraSmall
-                                                )
-                                                else Modifier
-                                            )
-                                            .clickable { onSelectGame(game) },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = tabLabel,
-                                            style = AppTheme.typography.labelMedium.copy(
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                            ),
-                                            color = if (isSelected) AppTheme.colors.accent else AppTheme.colors.textSecondary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
-                        val gameShortName = if (selectedGame.getDisplayTitle().contains("PUBG", ignoreCase = true)) "PUBG" else "BGMI"
+                        val gameShortName = "BGMI"
 
                         // Clear Login Button (Operation 1)
                         AppButton(
@@ -434,7 +377,7 @@ fun SettingsScreen(
 
         // Confirmation Dialog for Full Game Data Clear
         if (showConfirmClearDataDialog) {
-            val gameShortName = if (selectedGame.getDisplayTitle().contains("PUBG", ignoreCase = true)) "PUBG" else "BGMI"
+            val gameShortName = "BGMI"
             AppDialog(
                 onDismissRequest = { showConfirmClearDataDialog = false },
                 title = "Clear $gameShortName Resources Data?",

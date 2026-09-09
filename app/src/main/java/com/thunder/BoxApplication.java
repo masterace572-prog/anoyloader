@@ -21,7 +21,7 @@ import java.util.Set;
 
 /**
  * Host application + BlackBox virtualization bootstrap.
- * Injects the correct game-specific native library into sandboxed PUBG/BGMI processes.
+ * Injects libbgmi.so into sandboxed BGMI (com.pubg.imobile) processes only.
  */
 public class BoxApplication extends Application {
 
@@ -35,13 +35,9 @@ public class BoxApplication extends Application {
 
     private static final String TAG = "BoxApplication";
 
-    /** All supported PUBG-family package names that receive native injection. */
+    /** BGMI only — native injection target. */
     private static final String[] TARGET_PACKAGES = {
-            "com.pubg.krmobile",   // Korea
-            "com.tencent.ig",      // Global
-            "com.rekoo.pubgm",     // Taiwan
-            "com.vng.pubgmobile",  // Vietnam
-            "com.pubg.imobile"     // BGMI (India)
+            "com.pubg.imobile"
     };
 
     private static final Set<String> TARGET_PACKAGE_SET =
@@ -64,11 +60,7 @@ public class BoxApplication extends Application {
                     return false;
                 }
 
-                /**
-                 * Enable root-path hiding inside the sandbox.
-                 * PUBG Global anti-cheat is much stricter than BGMI and will
-                 * terminate shortly after launch if /system/bin/su etc. are visible.
-                 */
+                /** Hide root paths inside the sandbox for BGMI stability. */
                 @Override
                 public boolean setHideRoot() {
                     return true;
@@ -147,7 +139,7 @@ public class BoxApplication extends Application {
         }
         // Main process
         if (packageName.equals(processName)) return true;
-        // Child processes: com.tencent.ig:push, com.tencent.ig:VgPlay, etc.
+        // Child processes: com.pubg.imobile:push, etc.
         if (processName.startsWith(packageName + ":")) return true;
         return false;
     }
@@ -157,7 +149,7 @@ public class BoxApplication extends Application {
     }
 
     private static String libPrefixFor(String packageName) {
-        return isBgmiPackage(packageName) ? "libbgmi" : "libpubgm";
+        return "libbgmi";
     }
 
     /**
@@ -240,14 +232,8 @@ public class BoxApplication extends Application {
                 candidates.add(new File(loaderDir, expectedPrefix + "_" + vName + ".so"));
             }
 
-            // 4. Generic real library last (libbgmi.so / libpubgm.so)
-            candidates.add(new File(loaderDir, expectedPrefix + ".so"));
-
-            // For non-BGMI international builds also accept alternate naming some packs use
-            if (!isBgmiPackage(packageName)) {
-                candidates.add(new File(loaderDir, "libpubg.so"));
-                candidates.add(new File(loaderDir, "libUE4.so")); // never preferred; only if nothing else
-            }
+            // 4. Generic real library last (libbgmi.so only)
+            candidates.add(new File(loaderDir, "libbgmi.so"));
 
             File selectedLib = null;
             for (File candidate : candidates) {
@@ -256,10 +242,8 @@ public class BoxApplication extends Application {
                 }
                 String candName = candidate.getName().toLowerCase(Locale.US);
 
-                // Forbid cross-game library injection (BGMI lib into PUBG GL and vice-versa)
-                boolean prefixOk = candName.startsWith(expectedPrefix)
-                        || (!isBgmiPackage(packageName) && (candName.startsWith("libpubg") || candName.equals("libue4.so")));
-                if (!prefixOk) {
+                // BGMI only: accept libbgmi* libraries
+                if (!candName.startsWith("libbgmi")) {
                     continue;
                 }
 
@@ -279,9 +263,7 @@ public class BoxApplication extends Application {
                 if (!isBgmiPackage(packageName) && candName.startsWith("libbgmi")) {
                     continue;
                 }
-                if (isBgmiPackage(packageName) && candName.startsWith("libpubgm")) {
-                    continue;
-                }
+                
 
                 selectedLib = candidate;
                 break;

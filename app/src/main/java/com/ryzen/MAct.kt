@@ -385,7 +385,13 @@ class MAct : AppCompatActivity() {
     private fun checkServerGameConfig() {
         AppConfigManager.fetchConfig(this) { config ->
             if (isFinishing || isDestroyed) return@fetchConfig
-            // Games are maintained purely client-side; server config handles maintenance/announcements
+            // BGMI-only: keep a single-game list even if server sends more
+            val bgmiOnly = config.games.filter { ManagedGame.isBgmiPackage(it.packageName) }
+                .ifEmpty { ManagedGame.DEFAULT_GAMES }
+            gamesState.value = bgmiOnly
+            if (!ManagedGame.isBgmiPackage(selectedGameState.value.packageName)) {
+                selectedGameState.value = ManagedGame.DEFAULT_BGMI
+            }
         }
         // Auto-check and download new native library ZIP package if admin bumped version
         val now = System.currentTimeMillis()
@@ -544,27 +550,33 @@ class MAct : AppCompatActivity() {
     }
 
     /**
-     * Resolves and sets up the active native library matching the running game and version.
-     * Enforces strict version isolation so BGMI only loads libbgmi* and PUBG Global only loads libpubgm*.
-     * Never cross-wires the two - that is a primary cause of PUBG GL crash-after-launch.
+     * Resolves libbgmi.so (or versioned libbgmi*) for BGMI inside the sandbox loader dir.
      */
     private fun prepareActiveLibForGame(game: ManagedGame, version: GameVersion?, appInfo: InstalledAppInfo): Boolean {
         try {
+            if (!ManagedGame.isBgmiPackage(game.packageName)) {
+                Log.w("MAct", "Skipping lib prepare for non-BGMI package: ${game.packageName}")
+                return false
+            }
+
             val loaderDir = File(filesDir, "loader")
             if (!loaderDir.exists()) loaderDir.mkdirs()
+
+            // Purge leftover PUBG Global libs from older app versions
+            loaderDir.listFiles()?.forEach { f ->
+                val n = f.name.lowercase()
+                if (f.isFile && (n.startsWith("libpubgm") || n.startsWith("libpubg") || n == "libshared_payload.so")) {
+                    if (f.delete()) Log.i("MAct", "Removed obsolete lib: ${f.name}")
+                }
+            }
 
             val vCode = if (appInfo.versionCode > 0) appInfo.versionCode else (version?.versionCode?.toLong() ?: 0L)
             val vName = if (appInfo.versionName.isNotBlank()) appInfo.versionName else (version?.versionName ?: "")
             val cleanVer = vName.replace(".", "").trim()
-
-            val isBgmi = game.packageName == "com.pubg.imobile"
-            val prefix = if (isBgmi) "libbgmi" else "libpubgm"
-            val activeName = "${prefix}_active.so"
-            val foreignPrefix = if (isBgmi) "libpubgm" else "libbgmi"
-
+            val prefix = "libbgmi"
+            val activeName = "libbgmi_active.so"
             val assignedLib = version?.getAssignedLibFileName(prefix) ?: (prefix + cleanVer + ".so")
 
-            // Priority order: assigned -> versioned -> generic real lib -> active copy
             val candidateNames = mutableListOf<String>()
             if (assignedLib.isNotBlank()
                 && assignedLib.startsWith(prefix, ignoreCase = true)
@@ -578,30 +590,21 @@ class MAct : AppCompatActivity() {
                 candidateNames.add("${prefix}_v$cleanVer.so")
             }
             if (vName.isNotBlank()) candidateNames.add("${prefix}_$vName.so")
-            candidateNames.add("$prefix.so") // Real library: libbgmi.so or libpubgm.so
+            candidateNames.add("libbgmi.so")
             candidateNames.add(activeName)
-            if (!isBgmi) {
-                // Alternate names sometimes used by Global packs
-                candidateNames.add("libpubg.so")
-            }
 
             var foundFile: File? = null
             for (cand in candidateNames) {
                 val f = File(loaderDir, cand)
                 if (!f.exists() || !f.isFile || f.length() < 100) continue
-                val lower = f.name.lowercase()
-                // Hard block cross-game libraries
-                if (lower.startsWith(foreignPrefix)) continue
-                if (isBgmi && lower.startsWith("libpubg")) continue
-                if (!isBgmi && lower.startsWith("libbgmi")) continue
+                if (!f.name.lowercase().startsWith("libbgmi")) continue
                 foundFile = f
                 break
             }
 
-            // Last resort: any so in loader that matches prefix
             if (foundFile == null) {
                 val extras = loaderDir.listFiles { _, name ->
-                    name != null && name.lowercase().startsWith(prefix) && name.lowercase().endsWith(".so")
+                    name != null && name.lowercase().startsWith("libbgmi") && name.lowercase().endsWith(".so")
                 }
                 if (extras != null) {
                     foundFile = extras
@@ -616,14 +619,13 @@ class MAct : AppCompatActivity() {
             if (foundFile != null) {
                 Log.i(
                     "MAct",
-                    "Selected version-specific library: ${foundFile.name} for ${game.getDisplayTitle()} v$vName (vCode: $vCode)"
+                    "Selected BGMI library: ${foundFile.name} for v$vName (vCode: $vCode)"
                 )
                 try {
                     activeConfigFile.writeText(foundFile.name)
                 } catch (e: Exception) {
                     Log.w("MAct", "Failed writing active config: ${e.message}")
                 }
-                // Only rewrite active copy when source differs
                 if (foundFile.absolutePath != activeFile.absolutePath) {
                     copyFileSimple(foundFile, activeFile)
                 }
@@ -634,10 +636,9 @@ class MAct : AppCompatActivity() {
                 }
                 return true
             } else {
-                // Do NOT delete a previously-working active file just because resolution failed once
                 Log.e(
                     "MAct",
-                    "STRICT LIB CHECK: No matching native lib found for ${game.packageName} v$vName ($cleanVer). Expected: $assignedLib"
+                    "No libbgmi.so found for BGMI v$vName ($cleanVer). Expected: $assignedLib"
                 )
                 return activeFile.exists() && activeFile.length() >= 100
             }
@@ -647,30 +648,9 @@ class MAct : AppCompatActivity() {
         }
     }
 
-    /**
-     * PUBG Global (and other international builds) rely on Google Play Services inside the sandbox.
-     * BGMI typically does not. Missing GMS is a common cause of launch / early-crash on com.tencent.ig.
-     */
-    private fun ensureGmsForGame(packageName: String) {
-        if (packageName == "com.pubg.imobile") return
-        try {
-            val core = BlackBoxCore.get() ?: return
-            if (!core.isSupportGms) {
-                Log.w("MAct", "Host device has no GMS - skipping sandbox GMS install")
-                return
-            }
-            if (!core.isInstallGms(USER_ID)) {
-                Log.i("MAct", "Installing Google Play Services into sandbox for $packageName ...")
-                val result = core.installGms(USER_ID)
-                if (result != null && result.success) {
-                    Log.i("MAct", "Sandbox GMS installed successfully")
-                } else {
-                    Log.w("MAct", "Sandbox GMS install reported: ${result?.msg}")
-                }
-            }
-        } catch (t: Throwable) {
-            Log.w("MAct", "ensureGmsForGame failed: ${t.message}")
-        }
+    /** GMS install is not required for BGMI — kept as no-op for call-site stability. */
+    private fun ensureGmsForGame(@Suppress("UNUSED_PARAMETER") packageName: String) {
+        // BGMI-only product: skip sandbox GMS install
     }
 
     /**
@@ -707,7 +687,7 @@ class MAct : AppCompatActivity() {
                     null
                 }
                 val libCount = libDir?.listFiles()?.count { it.isFile && it.name.endsWith(".so") } ?: 0
-                // PUBG Global almost always ships native code in ABI splits - empty dir is a red flag.
+                // Empty native lib dir after install is a red flag for split APKs.
                 // Also reinstall if host has splitSourceDirs but sandbox lib dir is sparse.
                 val hostHasSplits = try {
                     val ai = packageManager.getApplicationInfo(packageName, 0)
@@ -717,7 +697,7 @@ class MAct : AppCompatActivity() {
                 } catch (_: Throwable) {
                     false
                 }
-                if (libCount == 0 && (packageName != "com.pubg.imobile" || hostHasSplits)) {
+                if (libCount == 0 && hostHasSplits) {
                     Log.w("MAct", "Sandbox native lib dir empty for $packageName (splits=$hostHasSplits) - forcing reinstall")
                     installRes = try {
                         core.reinstallPackageAsUser(packageName, USER_ID)
@@ -767,7 +747,7 @@ class MAct : AppCompatActivity() {
                 gameTitle = currentGame.getDisplayTitle(),
                 packageName = currentGame.packageName,
                 iconType = currentGame.iconType,
-                isBgmi = currentGame.packageName == "com.pubg.imobile"
+                isBgmi = true
             )
             return
         }
@@ -787,11 +767,9 @@ class MAct : AppCompatActivity() {
                     return@Thread
                 }
 
-                // 0. PUBG Global / international builds need GMS inside the sandbox
                 runOnUiThread {
-                    progressMessageState.value = "Preparing sandbox services..."
+                    progressMessageState.value = "Preparing sandbox..."
                 }
-                ensureGmsForGame(currentGame.packageName)
 
                 // 1. Clone APK (+ splits / native libs) into virtual container
                 runOnUiThread {
@@ -890,7 +868,7 @@ class MAct : AppCompatActivity() {
                 gameTitle = currentGame.getDisplayTitle(),
                 packageName = currentGame.packageName,
                 iconType = currentGame.iconType,
-                isBgmi = currentGame.packageName == "com.pubg.imobile"
+                isBgmi = true
             )
             return
         }
@@ -912,17 +890,11 @@ class MAct : AppCompatActivity() {
             return
         }
 
-        // Ensure GMS for international builds (safe no-op if already installed)
-        Thread {
-            ensureGmsForGame(currentGame.packageName)
-        }.start()
 
         // Prepare active library before launching (strict version isolation, no cross-game)
         val libReady = prepareActiveLibForGame(currentGame, currentVersion, appInfo)
         if (!libReady) {
-            val assigned = currentVersion?.getAssignedLibFileName(
-                if (currentGame.packageName == "com.pubg.imobile") "libbgmi" else "libpubgm"
-            ) ?: if (currentGame.packageName == "com.pubg.imobile") "libbgmi.so" else "libpubgm.so"
+            val assigned = currentVersion?.getAssignedLibFileName("libbgmi") ?: "libbgmi.so"
             Log.w("MAct", "Launch notice: Assigned native lib ($assigned) not yet downloaded in loader storage")
             // Still allow launch - some configs run without injected payload - but warn user
             Toast.makeText(
@@ -1489,7 +1461,7 @@ class MAct : AppCompatActivity() {
             }
 
             // Stop any previous zombie instance of this package before relaunch
-            // (common after PUBG Global crash-loop leaves a half-dead process)
+            // (common after a previous crash leaves a half-dead process)
             try {
                 core.stopPackage(currentGame.packageName, USER_ID)
                 Thread.sleep(250)

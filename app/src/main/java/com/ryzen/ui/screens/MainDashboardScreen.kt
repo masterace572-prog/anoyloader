@@ -86,7 +86,7 @@ fun MainDashboardScreen(
     progressMessage: String = "",
     hasObb: Boolean = false,
     isClonedInContainer: Boolean = false,
-    games: List<ManagedGame> = ManagedGame.DEFAULT_GAMES,
+    games: List<ManagedGame> = listOf(ManagedGame.DEFAULT_BGMI),
     selectedGame: ManagedGame = ManagedGame.DEFAULT_BGMI,
     selectedVersion: GameVersion? = selectedGame.versions.firstOrNull(),
     isHostGameInstalled: Boolean = true,
@@ -170,64 +170,9 @@ fun MainDashboardScreen(
 
                 Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
-                // 3b. DYNAMIC GAME SELECTOR TABS (Seamless switching between BGMI & PUBG GL)
-                if (games.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(AppTheme.shapes.small)
-                            .background(AppTheme.colors.surfaceElevated)
-                            .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.small)
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        games.forEach { game ->
-                            val isSelected = selectedGame.id == game.id
-                            val tabLabel = game.getDisplayTitle()
-                            val tabBg by animateColorAsState(
-                                targetValue = if (isSelected) AppTheme.colors.accentSubtle else Color.Transparent,
-                                animationSpec = tween(AppMotion.DurationFast),
-                                label = "gameTabBg"
-                            )
-                            val tabFg by animateColorAsState(
-                                targetValue = if (isSelected) AppTheme.colors.accent else AppTheme.colors.textSecondary,
-                                animationSpec = tween(AppMotion.DurationFast),
-                                label = "gameTabFg"
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(42.dp)
-                                    .clip(AppTheme.shapes.extraSmall)
-                                    .background(tabBg)
-                                    .then(
-                                        if (isSelected) {
-                                            Modifier.border(
-                                                1.dp,
-                                                AppTheme.colors.accent.copy(alpha = 0.35f),
-                                                AppTheme.shapes.extraSmall
-                                            )
-                                        } else Modifier
-                                    )
-                                    .clickable { onSelectGame(game) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = tabLabel,
-                                    style = AppTheme.typography.labelMedium.copy(
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                    ),
-                                    color = tabFg
-                                )
-                            }
-                        }
-                    }
-                }
+                // BGMI-only product — no multi-game selector
 
-                Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
-                // 4. CLEAN & MODERN GAME CARDS (Multi-version support, e.g. 4.5.0 and 4.6.0)
+                                // 4. CLEAN & MODERN GAME CARDS (Multi-version support, e.g. 4.5.0 and 4.6.0)
                 val versionsToDisplay = if (selectedGame.versions.isNotEmpty()) {
                     selectedGame.versions
                 } else {
@@ -324,22 +269,12 @@ fun MainDashboardScreen(
                                         .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.medium),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (selectedGame.iconType.contains("bgmi", ignoreCase = true) ||
-                                        selectedGame.packageName == "com.pubg.imobile") {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.india),
-                                            contentDescription = "$gameTitle Icon",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    } else {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.ic_pubg_gl),
-                                            contentDescription = "$gameTitle Icon",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    }
+                                    Image(
+                                        painter = painterResource(id = R.drawable.india),
+                                        contentDescription = "$gameTitle Icon",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.width(AppTheme.spacing.md))

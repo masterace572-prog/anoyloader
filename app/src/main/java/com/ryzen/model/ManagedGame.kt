@@ -9,7 +9,7 @@ data class GameVersion(
     val versionName: String,
     val versionCode: Int,
     val obbName: String,
-    val tag: String = "LATEST", // "LATEST", "BETA", "TEST", "STABLE"
+    val tag: String = "LATEST",
     val statusText: String = "Ready",
     val libName: String = "",
     val libVersion: String = "1.0",
@@ -24,8 +24,8 @@ data class GameVersion(
                 statusText.contains("soon", ignoreCase = true)
 
     /**
-     * Resolves the strictly assigned library file name for this game version.
-     * e.g. "libbgmi460.so", "libbgmi450.so", "libpubgm450.so"
+     * Resolves the assigned BGMI library file name for this version.
+     * e.g. "libbgmi.so", "libbgmi460.so"
      */
     fun getAssignedLibFileName(defaultPrefix: String = "libbgmi"): String {
         val direct = libName.trim()
@@ -72,7 +72,7 @@ data class ManagedGame(
     val title: String,
     val packageName: String,
     val libName: String,
-    val iconType: String = "bgmi", // "bgmi", "pubg_global"
+    val iconType: String = "bgmi",
     val isEnabled: Boolean = true,
     val statusText: String = "OBB Ready",
     val sortOrder: Int = 0,
@@ -88,21 +88,17 @@ data class ManagedGame(
         return versions.firstOrNull { it.versionCode.toLong() == versionCode }
     }
 
-    fun getDisplayTitle(): String {
-        return when {
-            title.contains("bgmi", ignoreCase = true) -> "BGMI"
-            title.contains("pubg", ignoreCase = true) && title.contains("global", ignoreCase = true) -> "PUBG GL"
-            title.contains("pubg", ignoreCase = true) -> "PUBG GL"
-            else -> title.substringBefore(" (").ifBlank { title }
-        }
-    }
+    fun getDisplayTitle(): String = "BGMI"
 
     companion object {
+        const val BGMI_PACKAGE = "com.pubg.imobile"
+        const val BGMI_LIB = "libbgmi.so"
+
         val DEFAULT_BGMI = ManagedGame(
             id = "bgmi",
             title = "BGMI",
-            packageName = "com.pubg.imobile",
-            libName = "libbgmi.so",
+            packageName = BGMI_PACKAGE,
+            libName = BGMI_LIB,
             iconType = "bgmi",
             isEnabled = true,
             statusText = "OBB Ready",
@@ -116,7 +112,7 @@ data class ManagedGame(
                     obbName = "main.21325.com.pubg.imobile.obb",
                     tag = "LATEST",
                     statusText = "Ready",
-                    libName = "libbgmi.so",
+                    libName = BGMI_LIB,
                     libVersion = "1.0",
                     isDefault = true,
                     isActive = true,
@@ -125,67 +121,45 @@ data class ManagedGame(
             )
         )
 
-        val DEFAULT_PUBG = ManagedGame(
-            id = "pubg_global",
-            title = "PUBG GL",
-            packageName = "com.tencent.ig",
-            libName = "libpubgm.so",
-            iconType = "pubg_global",
-            isEnabled = true,
-            statusText = "OBB Ready",
-            sortOrder = 1,
-            versions = listOf(
-                GameVersion(
-                    id = "pubg_4_6_0",
-                    gameId = "pubg_global",
-                    versionName = "4.6.0",
-                    versionCode = 21525,
-                    obbName = "main.21525.com.tencent.ig.obb",
-                    tag = "LATEST",
-                    statusText = "Ready",
-                    libName = "libpubgm.so",
-                    libVersion = "1.0",
-                    isDefault = true,
-                    isActive = true,
-                    sortOrder = 0
-                )
-            )
-        )
+        /** BGMI-only product — single game list. */
+        val DEFAULT_GAMES = listOf(DEFAULT_BGMI)
 
-        val DEFAULT_GAMES = listOf(DEFAULT_BGMI, DEFAULT_PUBG)
+        fun isBgmiPackage(packageName: String?): Boolean =
+            packageName != null && packageName.equals(BGMI_PACKAGE, ignoreCase = true)
 
-        fun fromJson(obj: JSONObject): ManagedGame {
-            val gameId = obj.optString("id", "")
-            val rawTitle = obj.optString("title", gameId)
-            val cleanTitle = when {
-                rawTitle.contains("bgmi", ignoreCase = true) -> "BGMI"
-                rawTitle.contains("pubg", ignoreCase = true) && rawTitle.contains("global", ignoreCase = true) -> "PUBG GL"
-                rawTitle.contains("pubg", ignoreCase = true) -> "PUBG GL"
-                else -> rawTitle.substringBefore(" (").ifBlank { rawTitle }
+        fun fromJson(obj: JSONObject): ManagedGame? {
+            val packageName = obj.optString("package_name", "").trim()
+            val gameId = obj.optString("id", "").trim()
+            // Drop any non-BGMI game from server config (PUBG GL removed)
+            if (packageName.isNotEmpty() && !isBgmiPackage(packageName)) {
+                return null
             }
+            if (gameId.isNotEmpty() &&
+                !gameId.equals("bgmi", ignoreCase = true) &&
+                packageName.isEmpty()
+            ) {
+                return null
+            }
+
             val versionsArray = obj.optJSONArray("versions") ?: JSONArray()
             val parsedVersions = mutableListOf<GameVersion>()
             for (i in 0 until versionsArray.length()) {
                 val vObj = versionsArray.optJSONObject(i)
                 if (vObj != null) {
-                    parsedVersions.add(GameVersion.fromJson(vObj, gameId))
+                    parsedVersions.add(GameVersion.fromJson(vObj, "bgmi"))
                 }
             }
 
             return ManagedGame(
-                id = gameId,
-                title = cleanTitle,
-                packageName = obj.optString("package_name", ""),
-                libName = obj.optString("lib_name", "libbgmi.so"),
-                iconType = obj.optString("icon_type", gameId),
+                id = "bgmi",
+                title = "BGMI",
+                packageName = if (packageName.isNotEmpty()) packageName else BGMI_PACKAGE,
+                libName = obj.optString("lib_name", BGMI_LIB).ifBlank { BGMI_LIB },
+                iconType = "bgmi",
                 isEnabled = obj.optBoolean("is_enabled", true),
                 statusText = obj.optString("status_text", "OBB Ready"),
                 sortOrder = obj.optInt("sort_order", 0),
-                versions = if (parsedVersions.isNotEmpty()) parsedVersions else when (gameId) {
-                    "bgmi" -> DEFAULT_BGMI.versions
-                    "pubg_global" -> DEFAULT_PUBG.versions
-                    else -> emptyList()
-                }
+                versions = if (parsedVersions.isNotEmpty()) parsedVersions else DEFAULT_BGMI.versions
             )
         }
     }
