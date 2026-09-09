@@ -199,36 +199,134 @@ public class BActivityThread extends IBActivityThread.Stub {
     }
 
     public Service createService(ServiceInfo serviceInfo, IBinder token) {
-        if (!isInit()) bindApplication(serviceInfo.packageName, serviceInfo.processName);
+        if (serviceInfo == null || serviceInfo.name == null) {
+            return null;
+        }
         try {
-            Service service = (Service) BRLoadedApk.get(this.mBoundApplication.info).getClassLoader().loadClass(serviceInfo.name).newInstance();
-            Context context = BlackBoxCore.getContext().createPackageContext(serviceInfo.packageName, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            if (!isInit()) {
+                bindApplication(serviceInfo.packageName, serviceInfo.processName);
+            }
+        } catch (Throwable bindErr) {
+            Log.e(TAG, "bindApplication for service failed: " + serviceInfo.name, bindErr);
+            return null;
+        }
+        try {
+            Class<?> clazz = loadServiceClass(serviceInfo);
+            if (clazz == null) {
+                Slog.w(TAG, "Service class not found (skipped): " + serviceInfo.name
+                        + " pkg=" + serviceInfo.packageName);
+                return null;
+            }
+            Service service = (Service) clazz.newInstance();
+            Context context = BlackBoxCore.getContext().createPackageContext(
+                    serviceInfo.packageName,
+                    Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
             BRContextImpl.get(context).setOuterContext(service);
-            BRService.get(service).attach(context, BlackBoxCore.mainThread(), serviceInfo.name,token, this.mInitialApplication, BRActivityManagerNative.get().getDefault());
+            BRService.get(service).attach(
+                    context,
+                    BlackBoxCore.mainThread(),
+                    serviceInfo.name,
+                    token,
+                    this.mInitialApplication,
+                    BRActivityManagerNative.get().getDefault());
             ContextCompat.fix(context);
             service.onCreate();
             return service;
-        } catch (Exception e) {
-            Log.e(TAG, "error", e);
-            throw new RuntimeException("Unable to create service " + serviceInfo.name, e);
+        } catch (Throwable e) {
+            // Never throw: ProxyService.onBind runs on the host main thread.
+            // GMS/Play often request services (e.g. CheckinService) that are not
+            // present in the current package ClassLoader (vending vs gms).
+            Log.e(TAG, "Unable to create service " + serviceInfo.name + " (returning null)", e);
+            return null;
         }
     }
 
     public JobService createJobService(ServiceInfo serviceInfo) {
-        if (!isInit()) bindApplication(serviceInfo.packageName, serviceInfo.processName);
+        if (serviceInfo == null || serviceInfo.name == null) {
+            return null;
+        }
         try {
-            JobService service = (JobService) BRLoadedApk.get(this.mBoundApplication.info).getClassLoader().loadClass(serviceInfo.name).newInstance();
-            Context context = BlackBoxCore.getContext().createPackageContext(serviceInfo.packageName, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            if (!isInit()) {
+                bindApplication(serviceInfo.packageName, serviceInfo.processName);
+            }
+        } catch (Throwable bindErr) {
+            Log.e(TAG, "bindApplication for job service failed: " + serviceInfo.name, bindErr);
+            return null;
+        }
+        try {
+            Class<?> clazz = loadServiceClass(serviceInfo);
+            if (clazz == null || !JobService.class.isAssignableFrom(clazz)) {
+                Slog.w(TAG, "JobService class not found (skipped): " + serviceInfo.name);
+                return null;
+            }
+            JobService service = (JobService) clazz.newInstance();
+            Context context = BlackBoxCore.getContext().createPackageContext(
+                    serviceInfo.packageName,
+                    Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
             BRContextImpl.get(context).setOuterContext(service);
-            BRService.get(service).attach(context, BlackBoxCore.mainThread(), serviceInfo.name,getActivityThread(), this.mInitialApplication, BRActivityManagerNative.get().getDefault());
+            BRService.get(service).attach(
+                    context,
+                    BlackBoxCore.mainThread(),
+                    serviceInfo.name,
+                    getActivityThread(),
+                    this.mInitialApplication,
+                    BRActivityManagerNative.get().getDefault());
             ContextCompat.fix(context);
             service.onCreate();
             service.onBind(null);
             return service;
-        } catch (Exception e) {
-            Log.e(TAG, "error", e);
-            throw new RuntimeException("Unable to create JobService " + serviceInfo.name, e);
+        } catch (Throwable e) {
+            Log.e(TAG, "Unable to create JobService " + serviceInfo.name + " (returning null)", e);
+            return null;
         }
+    }
+
+    /**
+     * Resolve a Service/JobService class. Prefer the bound app ClassLoader; on
+     * ClassNotFoundException try the declared service package (GMS services are
+     * often requested while the process is bound as Play Store / game).
+     */
+    private Class<?> loadServiceClass(ServiceInfo serviceInfo) {
+        String name = serviceInfo.name;
+        ClassLoader primary = null;
+        try {
+            if (this.mBoundApplication != null && this.mBoundApplication.info != null) {
+                primary = BRLoadedApk.get(this.mBoundApplication.info).getClassLoader();
+            }
+        } catch (Throwable ignored) {
+        }
+        if (primary != null) {
+            try {
+                return primary.loadClass(name);
+            } catch (ClassNotFoundException ignored) {
+            } catch (Throwable t) {
+                Slog.w(TAG, "primary loadClass failed for " + name + ": " + t.getMessage());
+            }
+        }
+        // Cross-package: e.g. com.android.vending process binding GMS CheckinService
+        try {
+            if (serviceInfo.packageName != null
+                    && (getAppPackageName() == null
+                    || !serviceInfo.packageName.equals(getAppPackageName()))) {
+                Context other = BlackBoxCore.getContext().createPackageContext(
+                        serviceInfo.packageName,
+                        Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+                if (other != null && other.getClassLoader() != null) {
+                    return other.getClassLoader().loadClass(name);
+                }
+            }
+        } catch (ClassNotFoundException ignored) {
+        } catch (Throwable t) {
+            Slog.w(TAG, "cross-pkg loadClass failed for " + name + ": " + t.getMessage());
+        }
+        // Last resort: host / current initial application loader
+        try {
+            if (this.mInitialApplication != null && this.mInitialApplication.getClassLoader() != null) {
+                return this.mInitialApplication.getClassLoader().loadClass(name);
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
     }
 
     public void bindApplication(final String packageName, final String processName) {

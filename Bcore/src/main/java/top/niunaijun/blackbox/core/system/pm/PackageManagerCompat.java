@@ -17,6 +17,7 @@ import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.Build;
 
+import java.util.zip.ZipFile;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -310,17 +311,37 @@ public class PackageManagerCompat {
         // Preserve split APK paths from the real host install when available.
         // Without splitSourceDirs, ClassLoader only sees base.apk and PUBG Global
         // (Play Asset Delivery / config.arm64_v8a) crashes after a few seconds.
+        //
+        // Android 16 is stricter: non-dex config splits (config.en, config.zh,
+        // phonesky_* native-only, etc.) throw suppressed IOException
+        // "Failed to find entry 'classes.dex'" when building PathClassLoader.
+        // Keep splits that either have classes.dex OR look like ABI/feature code
+        // splits needed for native libs / feature modules.
         try {
             ApplicationInfo hostAi = BlackBoxCore.getPackageManager()
                     .getApplicationInfo(p.packageName, 0);
             if (hostAi != null) {
-                if (hostAi.splitSourceDirs != null && hostAi.splitSourceDirs.length > 0) {
-                    ai.splitSourceDirs = hostAi.splitSourceDirs.clone();
-                    ai.splitPublicSourceDirs = hostAi.splitSourceDirs.clone();
-                }
-                // splitNames requires API 26+
-                if (Build.VERSION.SDK_INT >= 26 && hostAi.splitNames != null) {
-                    ai.splitNames = hostAi.splitNames.clone();
+                String[] hostSplits = hostAi.splitSourceDirs;
+                String[] hostNames = (Build.VERSION.SDK_INT >= 26) ? hostAi.splitNames : null;
+                if (hostSplits != null && hostSplits.length > 0) {
+                    java.util.ArrayList<String> keptDirs = new java.util.ArrayList<>();
+                    java.util.ArrayList<String> keptNames = new java.util.ArrayList<>();
+                    for (int i = 0; i < hostSplits.length; i++) {
+                        String path = hostSplits[i];
+                        String name = (hostNames != null && i < hostNames.length) ? hostNames[i] : null;
+                        if (shouldKeepSplit(path, name)) {
+                            keptDirs.add(path);
+                            if (name != null) keptNames.add(name);
+                        }
+                    }
+                    if (!keptDirs.isEmpty()) {
+                        ai.splitSourceDirs = keptDirs.toArray(new String[0]);
+                        ai.splitPublicSourceDirs = keptDirs.toArray(new String[0]);
+                        if (Build.VERSION.SDK_INT >= 26 && !keptNames.isEmpty()
+                                && keptNames.size() == keptDirs.size()) {
+                            ai.splitNames = keptNames.toArray(new String[0]);
+                        }
+                    }
                 }
             }
         } catch (Throwable ignored) {
@@ -356,6 +377,61 @@ public class PackageManagerCompat {
         }
         fixJar(ai);
         return ai;
+    }
+
+
+    /**
+     * Decide whether a host split APK should be placed on the virtual ClassLoader path.
+     * Locale/density config splits and pure native feature modules without classes.dex
+     * cause Android 16 DexFile.openDexFileNative to fail loudly.
+     */
+    private static boolean shouldKeepSplit(String path, String splitName) {
+        if (path == null || path.isEmpty()) return false;
+        String lowerPath = path.toLowerCase();
+        String lowerName = splitName != null ? splitName.toLowerCase() : "";
+
+        // Always keep if the APK actually contains dex (feature modules with code).
+        if (apkHasClassesDex(path)) {
+            return true;
+        }
+
+        // ABI config splits carry .so even without classes.dex.
+        // On API 36+ PathClassLoader fails hard if the split has no classes.dex, so drop them;
+        // native libs remain reachable via base.apk!/lib and nativeLibraryDir extraction.
+        if (lowerName.contains("config.arm") || lowerName.contains("config.x86")
+                || lowerName.contains("config.armeabi")
+                || lowerPath.contains("config.arm") || lowerPath.contains("config.x86")
+                || lowerPath.contains("split_config.arm") || lowerPath.contains("split_config.x86")) {
+            return Build.VERSION.SDK_INT < 36;
+        }
+
+        // Drop pure locale / density config splits without dex.
+        if (lowerName.startsWith("config.") || lowerPath.contains("split_config.")) {
+            return false;
+        }
+        // Drop known Play Store native-only feature modules without dex.
+        if (lowerName.contains("phonesky") || lowerPath.contains("phonesky")) {
+            return false;
+        }
+        // Unknown non-dex split: drop to avoid ClassLoader construction failures.
+        return false;
+    }
+
+    private static boolean apkHasClassesDex(String apkPath) {
+        ZipFile zf = null;
+        try {
+            java.io.File f = new java.io.File(apkPath);
+            if (!f.isFile() || f.length() == 0) return false;
+            zf = new ZipFile(f);
+            return zf.getEntry("classes.dex") != null
+                    || zf.getEntry("classes2.dex") != null;
+        } catch (Throwable t) {
+            return false;
+        } finally {
+            if (zf != null) {
+                try { zf.close(); } catch (Throwable ignored) {}
+            }
+        }
     }
 
     private static boolean checkUseInstalledOrHidden(int flags, BPackageUserState state,

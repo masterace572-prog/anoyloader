@@ -37,6 +37,16 @@ public class AppServiceDispatcher {
     }
 
     public IBinder onBind(Intent proxyIntent) {
+        try {
+            return onBindInner(proxyIntent);
+        } catch (Throwable t) {
+            // Host ActivityThread.handleBindService must not see exceptions.
+            t.printStackTrace();
+            return null;
+        }
+    }
+
+    private IBinder onBindInner(Intent proxyIntent) {
         ProxyServiceRecord serviceRecord = ProxyServiceRecord.create(proxyIntent);
         Intent intent = serviceRecord.mServiceIntent;
         ServiceInfo serviceInfo = serviceRecord.mServiceInfo;
@@ -219,7 +229,13 @@ public class AppServiceDispatcher {
             return record.getService();
         }
 
-        Service service = BActivityThread.currentActivityThread().createService(serviceInfo, token);
+        Service service;
+        try {
+            service = BActivityThread.currentActivityThread().createService(serviceInfo, token);
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return null;
+        }
         if (service == null) {
             return null;
         }
