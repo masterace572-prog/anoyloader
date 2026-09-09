@@ -199,13 +199,13 @@ jobs:
           BUILD_TYPE="${{ github.event.inputs.build_type || 'release' }}"
           echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
           if [ "$BUILD_TYPE" = "debug" ]; then
-            echo "gradle_task=:app:assembleDebug :OgCheats:assembleDebug" >> "$GITHUB_OUTPUT"
-            echo "apk_glob_anoy=app/build/outputs/apk/debug/*.apk" >> "$GITHUB_OUTPUT"
-            echo "apk_glob_og=OgCheats/build/outputs/apk/debug/*.apk" >> "$GITHUB_OUTPUT"
+            echo "gradle_task=:app:assembleAnoyDebug :app:assembleOgcheatsDebug" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_anoy=app/build/outputs/apk/anoy/debug/*.apk" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_og=app/build/outputs/apk/ogcheats/debug/*.apk" >> "$GITHUB_OUTPUT"
           else
-            echo "gradle_task=:app:assembleRelease :OgCheats:assembleRelease" >> "$GITHUB_OUTPUT"
-            echo "apk_glob_anoy=app/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
-            echo "apk_glob_og=OgCheats/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
+            echo "gradle_task=:app:assembleAnoyRelease :app:assembleOgcheatsRelease" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_anoy=app/build/outputs/apk/anoy/release/*.apk" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_og=app/build/outputs/apk/ogcheats/release/*.apk" >> "$GITHUB_OUTPUT"
           fi
           SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           BRANCH_SAFE="$(echo "${GITHUB_REF_NAME}" | tr '/' '-')"

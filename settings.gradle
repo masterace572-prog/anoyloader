@@ -1,4 +1,3 @@
 rootProject.name = "A15ZBox"
 include ':app'
-include ':OgCheats'
 include ':Bcore'

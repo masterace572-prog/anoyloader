@@ -68,6 +68,26 @@ android {
         multiDexEnabled false
     }
 
+    flavorDimensions "brand"
+    productFlavors {
+        anoy {
+            dimension "brand"
+            applicationId "com.ryzen"
+            // Display name / telegram come from main/res (Anoy Loader)
+        }
+        ogcheats {
+            dimension "brand"
+            applicationId "com.ogcheats"
+            // Branding + icon overrides live under OgCheats/src/main/res
+        }
+    }
+
+    sourceSets {
+        ogcheats {
+            res.srcDirs = ['../OgCheats/src/main/res']
+        }
+    }
+
     packaging {
         jniLibs {
             useLegacyPackaging = true

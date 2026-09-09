@@ -1,17 +1,21 @@
 # OG Cheats
 
-Branded twin of **Anoy Loader** in this monorepo.
+Branded twin of **Anoy Loader**, built as the `ogcheats` product flavor of `:app`.
 
-| | Anoy Loader (`:app`) | OG Cheats (`:OgCheats`) |
+| | Anoy Loader (`anoy` flavor) | OG Cheats (`ogcheats` flavor) |
 |---|---|---|
 | applicationId | `com.ryzen` | `com.ogcheats` |
 | Display name | Anoy Loader | OG Cheats |
 | Telegram | @libAkAudioVisiual | @CrimeCell |
-| Icon | `app/.../ic_launcher.png` | `OgCheats/.../ic_launcher.png` (from `Helper/`) |
-| Sources | `app/src/main` | shared `app/src/main` + local res overrides |
+| Icon | `app/src/main/res/drawable/ic_launcher.png` | `OgCheats/src/main/res/drawable/ic_launcher.png` |
+| Resources | `app/src/main/res` | + overrides in this folder |
 
-Build:
+## Build
 
 ```bash
-./gradlew :app:assembleRelease :OgCheats:assembleRelease
+./gradlew :app:assembleAnoyRelease :app:assembleOgcheatsRelease
 ```
+
+APKs:
+- `app/build/outputs/apk/anoy/release/`
+- `app/build/outputs/apk/ogcheats/release/`
