@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -55,17 +54,15 @@ fun CrashScreen(
     val verticalScroll = rememberScrollState()
     val horizontalScroll = rememberScrollState()
 
-    Scaffold(
+    com.ryzen.ui.theme.AppBackground(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .navigationBarsPadding(),
-        containerColor = AppTheme.colors.background
-    ) { paddingValues ->
+            .navigationBarsPadding()
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .padding(AppTheme.spacing.lg),
             verticalArrangement = Arrangement.SpaceBetween
         ) {

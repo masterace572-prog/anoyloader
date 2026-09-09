@@ -94,11 +94,8 @@ fun SettingsScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppTheme.colors.background)
-    ) {
+    // Transparent root — ambient canvas comes from MAct AppBackground
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -121,6 +118,7 @@ fun SettingsScreen(
 
                 // 2. LICENSE CARD
                 AppCard(
+                    elevated = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AppTheme.shapes.large,
                     contentPadding = AppTheme.spacing.md
@@ -258,6 +256,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
                 AppCard(
+                    elevated = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AppTheme.shapes.large,
                     contentPadding = AppTheme.spacing.md
@@ -288,14 +287,18 @@ fun SettingsScreen(
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(38.dp)
+                                            .height(40.dp)
                                             .clip(AppTheme.shapes.extraSmall)
                                             .background(
-                                                if (isSelected) AppTheme.colors.surface
+                                                if (isSelected) AppTheme.colors.accentTint
                                                 else Color.Transparent
                                             )
                                             .then(
-                                                if (isSelected) Modifier.border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.extraSmall)
+                                                if (isSelected) Modifier.border(
+                                                    1.dp,
+                                                    AppTheme.colors.accent.copy(alpha = 0.35f),
+                                                    AppTheme.shapes.extraSmall
+                                                )
                                                 else Modifier
                                             )
                                             .clickable { onSelectGame(game) },
@@ -307,7 +310,7 @@ fun SettingsScreen(
                                                 fontSize = 12.sp,
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                             ),
-                                            color = if (isSelected) AppTheme.colors.textPrimary else AppTheme.colors.textSecondary
+                                            color = if (isSelected) AppTheme.colors.accent else AppTheme.colors.textSecondary
                                         )
                                     }
                                 }
@@ -354,6 +357,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
                 AppCard(
+                    elevated = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AppTheme.shapes.large,
                     contentPadding = AppTheme.spacing.md

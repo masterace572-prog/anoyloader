@@ -1,7 +1,10 @@
 package com.ryzen.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -9,19 +12,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // =====================================================
-// THEME INTEGRATION (Material 3 + Extended Tokens)
+// THEME — Material 3 + extended tokens + ambient canvas
 // =====================================================
 
 private val DarkMaterialColorScheme = darkColorScheme(
-    primary = AccentTerracottaDark,
-    onPrimary = DarkBackground,
-    primaryContainer = AccentTerracottaTintDark,
+    primary = AccentEmberDark,
+    onPrimary = Color(0xFF1A0F0C),
+    primaryContainer = AccentTintDark,
     onPrimaryContainer = DarkTextPrimary,
+    secondary = VioletDark,
+    onSecondary = Color(0xFF1A1528),
+    secondaryContainer = VioletTintDark,
+    onSecondaryContainer = DarkTextPrimary,
     background = DarkBackground,
     onBackground = DarkTextPrimary,
     surface = DarkSurface,
@@ -31,14 +40,18 @@ private val DarkMaterialColorScheme = darkColorScheme(
     outline = DarkBorder,
     outlineVariant = DarkBorderSubtle,
     error = ErrorDark,
-    onError = DarkBackground
+    onError = Color(0xFF1A0F0C)
 )
 
 private val LightMaterialColorScheme = lightColorScheme(
-    primary = AccentTerracottaLight,
-    onPrimary = LightSurface,
-    primaryContainer = AccentTerracottaTintLight,
+    primary = AccentEmberLight,
+    onPrimary = Color.White,
+    primaryContainer = AccentTintLight,
     onPrimaryContainer = LightTextPrimary,
+    secondary = VioletLight,
+    onSecondary = Color.White,
+    secondaryContainer = VioletTintLight,
+    onSecondaryContainer = LightTextPrimary,
     background = LightBackground,
     onBackground = LightTextPrimary,
     surface = LightSurface,
@@ -48,11 +61,8 @@ private val LightMaterialColorScheme = lightColorScheme(
     outline = LightBorder,
     outlineVariant = LightBorderSubtle,
     error = ErrorLight,
-    onError = LightSurface
+    onError = Color.White
 )
-
-private val DarkExtendedColors = DarkAppColors
-private val LightExtendedColors = LightAppColors
 
 @Composable
 fun AppTheme(
@@ -60,7 +70,7 @@ fun AppTheme(
     content: @Composable () -> Unit
 ) {
     val materialColorScheme = if (darkTheme) DarkMaterialColorScheme else LightMaterialColorScheme
-    val extendedColors = if (darkTheme) DarkExtendedColors else LightExtendedColors
+    val extendedColors = if (darkTheme) DarkAppColors else LightAppColors
     val spacing = Spacing()
 
     val view = LocalView.current
@@ -87,6 +97,24 @@ fun AppTheme(
             typography = AppTypography,
             content = content
         )
+    }
+}
+
+/**
+ * Full-screen ambient gradient canvas — use as the root of each screen
+ * for smoother depth than a flat background color.
+ */
+@Composable
+fun AppBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.ambientBrush())
+    ) {
+        content()
     }
 }
 

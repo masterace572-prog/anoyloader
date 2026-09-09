@@ -3,6 +3,7 @@ package com.ryzen.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,7 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +58,6 @@ fun AppBottomNav(
     onTabSelected: (MainNavTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Dock wrapper centered horizontally, floating above navigation bar
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -65,16 +65,21 @@ fun AppBottomNav(
             .padding(horizontal = 24.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Rounded Pill Dock Container with Claude tone-based elevation
         BoxWithConstraints(
             modifier = Modifier
                 .widthIn(min = 280.dp, max = 340.dp)
                 .fillMaxWidth(0.85f)
-                .height(52.dp)
+                .height(56.dp)
+                .shadow(
+                    elevation = 12.dp,
+                    shape = CircleShape,
+                    ambientColor = AppTheme.colors.accentGlow,
+                    spotColor = AppTheme.colors.accentGlow
+                )
                 .clip(CircleShape)
                 .background(AppTheme.colors.surfaceElevated)
                 .border(1.dp, AppTheme.colors.border, CircleShape)
-                .padding(3.dp)
+                .padding(4.dp)
                 .pointerInput(selectedTab) {
                     var dragAccumulator = 0f
                     detectHorizontalDragGestures(
@@ -82,10 +87,10 @@ fun AppBottomNav(
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             dragAccumulator += dragAmount
-                            if (dragAccumulator > 25f && selectedTab != MainNavTab.SETTINGS) {
+                            if (dragAccumulator > 28f && selectedTab != MainNavTab.SETTINGS) {
                                 onTabSelected(MainNavTab.SETTINGS)
                                 dragAccumulator = 0f
-                            } else if (dragAccumulator < -25f && selectedTab != MainNavTab.GAMES) {
+                            } else if (dragAccumulator < -28f && selectedTab != MainNavTab.GAMES) {
                                 onTabSelected(MainNavTab.GAMES)
                                 dragAccumulator = 0f
                             }
@@ -95,31 +100,29 @@ fun AppBottomNav(
             contentAlignment = Alignment.CenterStart
         ) {
             val tabCount = MainNavTab.values().size
-            val tabWidth = (maxWidth) / tabCount
+            val tabWidth = maxWidth / tabCount
             val targetOffset = if (selectedTab == MainNavTab.GAMES) 0.dp else tabWidth
 
-            // Smooth animated sliding pill indicator
             val pillOffset by animateDpAsState(
                 targetValue = targetOffset,
                 animationSpec = spring(
-                    dampingRatio = 0.82f,
+                    dampingRatio = 0.75f,
                     stiffness = Spring.StiffnessMediumLow
                 ),
                 label = "sliding_pill_offset"
             )
 
-            // Sliding active pill background (tone surface with subtle border)
+            // Active pill with soft accent wash
             Box(
                 modifier = Modifier
                     .offset(x = pillOffset)
                     .width(tabWidth)
-                    .height(46.dp)
+                    .height(48.dp)
                     .clip(CircleShape)
-                    .background(AppTheme.colors.surface)
-                    .border(1.dp, AppTheme.colors.borderSubtle, CircleShape)
+                    .background(AppTheme.colors.accentTint)
+                    .border(1.dp, AppTheme.colors.accent.copy(alpha = 0.35f), CircleShape)
             )
 
-            // Pill Tabs with tap selection and text/icon color transitions
             Row(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically
@@ -129,9 +132,22 @@ fun AppBottomNav(
                     val interactionSource = remember { MutableInteractionSource() }
 
                     val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) AppTheme.colors.accent else AppTheme.colors.textSecondary,
+                        targetValue = if (isSelected) {
+                            AppTheme.colors.accent
+                        } else {
+                            AppTheme.colors.textSecondary
+                        },
                         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                         label = "pill_content_color"
+                    )
+
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.08f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = 0.7f,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "pill_icon_scale"
                     )
 
                     Box(
@@ -155,7 +171,8 @@ fun AppBottomNav(
                                 imageVector = tab.icon,
                                 contentDescription = tab.title,
                                 tint = contentColor,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier
+                                    .size((20 * iconScale).dp)
                             )
                             Text(
                                 text = tab.title,

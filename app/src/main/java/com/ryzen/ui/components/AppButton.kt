@@ -1,6 +1,7 @@
 package com.ryzen.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -21,17 +23,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
 import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
 import com.ryzen.ui.theme.pressScale
-
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.painter.Painter
 
 enum class ButtonVariant {
     PRIMARY,
@@ -41,8 +42,8 @@ enum class ButtonVariant {
 }
 
 enum class ButtonSize {
-    DEFAULT, // 52dp
-    COMPACT  // 44dp
+    DEFAULT, // 50dp
+    COMPACT  // 42dp
 }
 
 @Composable
@@ -62,16 +63,18 @@ fun AppButton(
     fullWidth: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val isPrimaryGradient = variant == ButtonVariant.PRIMARY && customContainerColor == null && enabled && !loading
+    val isDestructiveGradient = variant == ButtonVariant.DESTRUCTIVE && customContainerColor == null && enabled && !loading
 
     val containerColor = customContainerColor ?: when (variant) {
-        ButtonVariant.PRIMARY -> AppTheme.colors.accent
+        ButtonVariant.PRIMARY -> if (isPrimaryGradient) Color.Transparent else AppTheme.colors.accent
         ButtonVariant.SECONDARY -> AppTheme.colors.surfaceElevated
         ButtonVariant.TERTIARY -> Color.Transparent
-        ButtonVariant.DESTRUCTIVE -> AppTheme.colors.error
+        ButtonVariant.DESTRUCTIVE -> if (isDestructiveGradient) Color.Transparent else AppTheme.colors.error
     }
 
     val contentColor = customContentColor ?: when (variant) {
-        ButtonVariant.PRIMARY -> if (AppTheme.colors.isDark) AppTheme.colors.background else Color.White
+        ButtonVariant.PRIMARY -> Color.White
         ButtonVariant.SECONDARY -> AppTheme.colors.textPrimary
         ButtonVariant.TERTIARY -> AppTheme.colors.textSecondary
         ButtonVariant.DESTRUCTIVE -> Color.White
@@ -90,21 +93,42 @@ fun AppButton(
     val border = when {
         customContainerColor != null -> null
         variant == ButtonVariant.SECONDARY -> BorderStroke(1.dp, AppTheme.colors.border)
-        variant == ButtonVariant.DESTRUCTIVE -> null
         else -> null
     }
 
-    val buttonHeight = if (size == ButtonSize.COMPACT) 40.dp else 48.dp
+    val buttonHeight = if (size == ButtonSize.COMPACT) 42.dp else 50.dp
     val widthModifier = if (fullWidth) modifier.fillMaxWidth() else modifier
+    val shape = RoundedCornerShape(AppRadii.sm)
+
+    val gradientBrush = when {
+        isPrimaryGradient -> Brush.horizontalGradient(
+            colors = listOf(AppTheme.colors.accent, AppTheme.colors.accentPressed)
+        )
+        isDestructiveGradient -> Brush.horizontalGradient(
+            colors = listOf(AppTheme.colors.error, AppTheme.colors.error.copy(alpha = 0.85f))
+        )
+        else -> null
+    }
+
+    val buttonModifier = widthModifier
+        .height(buttonHeight)
+        .clip(shape)
+        .then(
+            if (gradientBrush != null) Modifier.background(gradientBrush)
+            else Modifier
+        )
+        .pressScale(
+            targetScale = 0.97f,
+            interactionSource = interactionSource,
+            enabled = enabled && !loading
+        )
 
     Button(
         onClick = onClick,
-        modifier = widthModifier
-            .height(buttonHeight)
-            .pressScale(targetScale = 0.97f, interactionSource = interactionSource, enabled = enabled && !loading),
+        modifier = buttonModifier,
         enabled = enabled && !loading,
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(AppRadii.sm),
+        shape = shape,
         border = border,
         contentPadding = PaddingValues(horizontal = 20.dp),
         colors = ButtonDefaults.buttonColors(

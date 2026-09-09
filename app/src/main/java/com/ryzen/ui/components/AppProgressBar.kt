@@ -1,6 +1,7 @@
 package com.ryzen.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 
 @Composable
@@ -27,6 +30,10 @@ fun AppProgressBar(
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = tween(
+            durationMillis = AppMotion.DurationStandard,
+            easing = AppMotion.EasingStandard
+        ),
         label = "progressBarAnim"
     )
 
@@ -44,7 +51,7 @@ fun AppProgressBar(
             Text(
                 text = "${(animatedProgress * 100).toInt()}%",
                 style = AppTheme.typography.labelSmall,
-                color = AppTheme.colors.textPrimary
+                color = AppTheme.colors.accent
             )
         }
 
@@ -53,16 +60,23 @@ fun AppProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
+                .height(8.dp)
                 .clip(CircleShape)
-                .background(AppTheme.colors.surfaceElevated)
+                .background(AppTheme.colors.surfaceVariant)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedProgress)
                     .fillMaxHeight()
                     .clip(CircleShape)
-                    .background(AppTheme.colors.accent)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                AppTheme.colors.accent,
+                                AppTheme.colors.accentPressed
+                            )
+                        )
+                    )
             )
         }
     }

@@ -33,18 +33,11 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -53,10 +46,10 @@ import com.ryzen.ui.components.BadgeTone
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -74,6 +67,7 @@ import com.ryzen.ui.components.AppTextField
 import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.PermissionsDialog
 import com.ryzen.ui.components.PermissionsDialogState
+import com.ryzen.ui.theme.AppBackground
 import com.ryzen.ui.theme.AppTheme
 
 data class LoadingDialogState(
@@ -130,20 +124,34 @@ fun LoginScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    Scaffold(
+    AppBackground(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .imePadding(),
-        containerColor = AppTheme.colors.background
-    ) { paddingValues ->
+            .imePadding()
+    ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
+            // Soft top glow
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 40.dp)
+                    .size(260.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                AppTheme.colors.accentGlow,
+                                androidx.compose.ui.graphics.Color.Transparent
+                            )
+                        ),
+                        shape = androidx.compose.foundation.shape.CircleShape
+                    )
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -161,7 +169,7 @@ fun LoginScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(88.dp)
                             .clip(RoundedCornerShape(AppRadii.lg))
                             .background(AppTheme.colors.surfaceElevated)
                             .border(1.dp, AppTheme.colors.border, RoundedCornerShape(AppRadii.lg)),
@@ -201,6 +209,7 @@ fun LoginScreen(
                 // Main Authentication Card
                 AppCard(
                     modifier = Modifier.fillMaxWidth(),
+                    elevated = true,
                     contentPadding = AppTheme.spacing.lg
                 ) {
                     Column(
@@ -292,7 +301,7 @@ fun LoginScreen(
                                 colors = CheckboxDefaults.colors(
                                     checkedColor = AppTheme.colors.accent,
                                     uncheckedColor = AppTheme.colors.border,
-                                    checkmarkColor = AppTheme.colors.textPrimary
+                                    checkmarkColor = androidx.compose.ui.graphics.Color.White
                                 ),
                                 modifier = Modifier.size(24.dp)
                             )

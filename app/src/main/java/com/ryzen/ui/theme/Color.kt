@@ -2,69 +2,79 @@ package com.ryzen.ui.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 // =====================================================
-// COLOR SYSTEM (Token-Based, Light + Dark)
+// COLOR SYSTEM — Obsidian + Ember (gaming-polished)
+// Dark: deep ink with warm ember accent
+// Light: soft parchment with terracotta accent
 // =====================================================
 
-// Dark Theme Foundations (Claude Warm Charcoal - Never pure black)
-val DarkBackground = Color(0xFF1F1E1D)
-val DarkSurface = Color(0xFF262524)
-val DarkSurfaceElevated = Color(0xFF2E2C29)
-val DarkSurfaceVariant = Color(0xFF383632)
-val DarkBorder = Color(0xFF3D3B36)
-val DarkBorderSubtle = Color(0xFF302E2B)
-val DarkDivider = Color(0xFF302E2B)
-val DarkTextPrimary = Color(0xFFF5F4EF)
-val DarkTextSecondary = Color(0xFFB5B0A6)
-val DarkTextTertiary = Color(0xFF858178)
-val DarkDisabled = Color(0xFF54514B)
+// Dark foundations
+val DarkBackground = Color(0xFF12111A)
+val DarkSurface = Color(0xFF1A1824)
+val DarkSurfaceElevated = Color(0xFF232030)
+val DarkSurfaceVariant = Color(0xFF2C293A)
+val DarkBorder = Color(0xFF3A3648)
+val DarkBorderSubtle = Color(0xFF2A2736)
+val DarkDivider = Color(0xFF2A2736)
+val DarkTextPrimary = Color(0xFFF4F2FA)
+val DarkTextSecondary = Color(0xFFB0AABF)
+val DarkTextTertiary = Color(0xFF7E788F)
+val DarkDisabled = Color(0xFF4E4A5C)
 
-// Light Theme Foundations (Claude Warm Parchment - Never pure white)
-val LightBackground = Color(0xFFF5F4EF)
+// Light foundations
+val LightBackground = Color(0xFFF6F4F8)
 val LightSurface = Color(0xFFFFFFFF)
-val LightSurfaceElevated = Color(0xFFECE8DF)
-val LightSurfaceVariant = Color(0xFFE5E1D7)
-val LightBorder = Color(0xFFDFD9CD)
-val LightBorderSubtle = Color(0xFFEBE7DD)
-val LightDivider = Color(0xFFE8E4DA)
-val LightTextPrimary = Color(0xFF1F1E1D)
-val LightTextSecondary = Color(0xFF6E6A62)
-val LightTextTertiary = Color(0xFF969187)
-val LightDisabled = Color(0xFFC8C4BA)
+val LightSurfaceElevated = Color(0xFFF0ECF4)
+val LightSurfaceVariant = Color(0xFFE8E3EE)
+val LightBorder = Color(0xFFD9D3E0)
+val LightBorderSubtle = Color(0xFFE6E1EB)
+val LightDivider = Color(0xFFE4DFE9)
+val LightTextPrimary = Color(0xFF17141F)
+val LightTextSecondary = Color(0xFF5C5668)
+val LightTextTertiary = Color(0xFF8A8496)
+val LightDisabled = Color(0xFFC2BCCB)
 
-// Primary Accent (Claude Signature Warm Terracotta)
-val AccentTerracottaLight = Color(0xFFC96442)
-val AccentTerracottaLightPressed = Color(0xFFB05333)
-val AccentTerracottaDark = Color(0xFFD97757)
-val AccentTerracottaDarkPressed = Color(0xFFC96442)
+// Accent — Ember / Coral (more vivid, still warm)
+val AccentEmberLight = Color(0xFFE85D3B)
+val AccentEmberLightPressed = Color(0xFFCF4A2B)
+val AccentEmberDark = Color(0xFFFF7A55)
+val AccentEmberDarkPressed = Color(0xFFE85D3B)
+val AccentEmberGlow = Color(0x66FF7A55)
 
-val AccentTerracottaTintLight = Color(0x1AC96442) // ~10% Opacity
-val AccentTerracottaTintDark = Color(0x24D97757)  // ~14% Opacity
-val AccentTerracottaDisabledLight = Color(0x4DC96442) // 30% Opacity
-val AccentTerracottaDisabledDark = Color(0x4DD97757)
+val AccentTintLight = Color(0x1FE85D3B)
+val AccentTintDark = Color(0x33FF7A55)
+val AccentDisabledLight = Color(0x55E85D3B)
+val AccentDisabledDark = Color(0x55FF7A55)
 
-// Semantic Status Colors (Muted, WCAG AA compliant)
-val SuccessLight = Color(0xFF3B7E54)
-val SuccessDark = Color(0xFF4FA870)
-val SuccessTintLight = Color(0x1A3B7E54)
-val SuccessTintDark = Color(0x224FA870)
+// Secondary accent (cool violet for depth / chips)
+val VioletLight = Color(0xFF7B5CFF)
+val VioletDark = Color(0xFF9B85FF)
+val VioletTintLight = Color(0x1A7B5CFF)
+val VioletTintDark = Color(0x289B85FF)
 
-val WarningLight = Color(0xFFB57726)
-val WarningDark = Color(0xFFD99338)
-val WarningTintLight = Color(0x1AB57726)
-val WarningTintDark = Color(0x22D99338)
+// Semantic
+val SuccessLight = Color(0xFF2F9E6B)
+val SuccessDark = Color(0xFF3FCB88)
+val SuccessTintLight = Color(0x1A2F9E6B)
+val SuccessTintDark = Color(0x283FCB88)
 
-val ErrorLight = Color(0xFFC04747)
-val ErrorDark = Color(0xFFD95A5A)
-val ErrorTintLight = Color(0x1AC04747)
-val ErrorTintDark = Color(0x22D95A5A)
+val WarningLight = Color(0xFFD4891A)
+val WarningDark = Color(0xFFFFB340)
+val WarningTintLight = Color(0x1AD4891A)
+val WarningTintDark = Color(0x28FFB340)
 
-val InfoLight = Color(0xFF4675A8)
-val InfoDark = Color(0xFF6392C4)
-val InfoTintLight = Color(0x1A4675A8)
-val InfoTintDark = Color(0x226392C4)
+val ErrorLight = Color(0xFFD64545)
+val ErrorDark = Color(0xFFFF6B6B)
+val ErrorTintLight = Color(0x1AD64545)
+val ErrorTintDark = Color(0x28FF6B6B)
+
+val InfoLight = Color(0xFF4A7FD4)
+val InfoDark = Color(0xFF6BA0F0)
+val InfoTintLight = Color(0x1A4A7FD4)
+val InfoTintDark = Color(0x286BA0F0)
 
 @Immutable
 data class AppColors(
@@ -83,6 +93,9 @@ data class AppColors(
     val accentPressed: Color,
     val accentDisabled: Color,
     val accentTint: Color,
+    val accentGlow: Color,
+    val violet: Color,
+    val violetTint: Color,
     val success: Color,
     val successTint: Color,
     val warning: Color,
@@ -98,6 +111,35 @@ data class AppColors(
     val warningContainer: Color get() = warningTint
     val errorContainer: Color get() = errorTint
     val infoContainer: Color get() = infoTint
+
+    /** Soft vertical wash used behind screens. */
+    fun ambientBrush(): Brush = if (isDark) {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF1A1528),
+                background,
+                Color(0xFF0E0D14)
+            )
+        )
+    } else {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFFFBF8FF),
+                background,
+                Color(0xFFEEEAF4)
+            )
+        )
+    }
+
+    /** Primary CTA gradient (top-left ember → deeper ember). */
+    fun accentGradient(): Brush = Brush.horizontalGradient(
+        colors = listOf(accent, accentPressed)
+    )
+
+    /** Subtle radial glow for hero icons / focus. */
+    fun heroGlowBrush(): Brush = Brush.radialGradient(
+        colors = listOf(accentGlow, Color.Transparent)
+    )
 }
 
 val DarkAppColors = AppColors(
@@ -112,10 +154,13 @@ val DarkAppColors = AppColors(
     textSecondary = DarkTextSecondary,
     textTertiary = DarkTextTertiary,
     disabled = DarkDisabled,
-    accent = AccentTerracottaDark,
-    accentPressed = AccentTerracottaDarkPressed,
-    accentDisabled = AccentTerracottaDisabledDark,
-    accentTint = AccentTerracottaTintDark,
+    accent = AccentEmberDark,
+    accentPressed = AccentEmberDarkPressed,
+    accentDisabled = AccentDisabledDark,
+    accentTint = AccentTintDark,
+    accentGlow = AccentEmberGlow,
+    violet = VioletDark,
+    violetTint = VioletTintDark,
     success = SuccessDark,
     successTint = SuccessTintDark,
     warning = WarningDark,
@@ -139,10 +184,13 @@ val LightAppColors = AppColors(
     textSecondary = LightTextSecondary,
     textTertiary = LightTextTertiary,
     disabled = LightDisabled,
-    accent = AccentTerracottaLight,
-    accentPressed = AccentTerracottaLightPressed,
-    accentDisabled = AccentTerracottaDisabledLight,
-    accentTint = AccentTerracottaTintLight,
+    accent = AccentEmberLight,
+    accentPressed = AccentEmberLightPressed,
+    accentDisabled = AccentDisabledLight,
+    accentTint = AccentTintLight,
+    accentGlow = Color(0x44E85D3B),
+    violet = VioletLight,
+    violetTint = VioletTintLight,
     success = SuccessLight,
     successTint = SuccessTintLight,
     warning = WarningLight,
@@ -153,6 +201,16 @@ val LightAppColors = AppColors(
     infoTint = InfoTintLight,
     isDark = false
 )
+
+// Back-compat aliases used by older call sites
+val AccentTerracottaLight = AccentEmberLight
+val AccentTerracottaLightPressed = AccentEmberLightPressed
+val AccentTerracottaDark = AccentEmberDark
+val AccentTerracottaDarkPressed = AccentEmberDarkPressed
+val AccentTerracottaTintLight = AccentTintLight
+val AccentTerracottaTintDark = AccentTintDark
+val AccentTerracottaDisabledLight = AccentDisabledLight
+val AccentTerracottaDisabledDark = AccentDisabledDark
 
 typealias ExtendedColors = AppColors
 val LocalExtendedColors = staticCompositionLocalOf { DarkAppColors }

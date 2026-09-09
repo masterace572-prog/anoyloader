@@ -14,21 +14,14 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.launch
 import com.ryzen.model.GameVersion
 import com.ryzen.model.ManagedGame
 import com.ryzen.ui.components.AppBottomNav
@@ -36,6 +29,8 @@ import com.ryzen.ui.components.GameNotInstalledDialogState
 import com.ryzen.ui.components.MainNavTab
 import com.ryzen.ui.screens.MainDashboardScreen
 import com.ryzen.ui.screens.SettingsScreen
+import com.ryzen.ui.theme.AppBackground
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 import com.ryzen.utils.AppConfigManager
 import com.ryzen.utils.AppManager
@@ -129,14 +124,14 @@ class MAct : AppCompatActivity() {
                 val appInfo = installedAppInfoState.value
                 val isHostInstalled = appInfo.isInstalled
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(AppTheme.colors.background)
-                ) {
+                AppBackground {
+                    Box(modifier = Modifier.fillMaxSize()) {
                     Crossfade(
                         targetState = currentNavTab,
-                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        animationSpec = tween(
+                            durationMillis = AppMotion.DurationStandard,
+                            easing = AppMotion.EasingStandard
+                        ),
                         label = "screen_crossfade",
                         modifier = Modifier.fillMaxSize()
                     ) { tab ->
@@ -244,6 +239,7 @@ class MAct : AppCompatActivity() {
                         },
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
+                    }
                 }
             }
         }

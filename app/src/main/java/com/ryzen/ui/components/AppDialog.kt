@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -17,8 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,6 +34,8 @@ fun AppDialog(
     subtitle: String? = null,
     content: @Composable () -> Unit
 ) {
+    val shape = RoundedCornerShape(AppRadii.lg)
+
     BasicAlertDialog(
         onDismissRequest = onDismissRequest,
         modifier = modifier.fillMaxWidth(),
@@ -39,21 +45,26 @@ fun AppDialog(
             modifier = Modifier
                 .padding(AppTheme.spacing.lg)
                 .fillMaxWidth()
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(com.ryzen.ui.theme.AppRadii.lg))
-                .background(AppTheme.colors.surface)
-                .border(1.dp, AppTheme.colors.border, androidx.compose.foundation.shape.RoundedCornerShape(com.ryzen.ui.theme.AppRadii.lg))
+                .shadow(
+                    elevation = 16.dp,
+                    shape = shape,
+                    ambientColor = AppTheme.colors.accentGlow,
+                    spotColor = AppTheme.colors.accentGlow
+                )
+                .clip(shape)
+                .background(AppTheme.colors.surfaceElevated)
+                .border(1.dp, AppTheme.colors.border, shape)
                 .padding(AppTheme.spacing.xl)
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Drag handle / Accent notch
                 Box(
                     modifier = Modifier
-                        .size(width = 36.dp, height = 4.dp)
+                        .size(width = 40.dp, height = 4.dp)
                         .clip(CircleShape)
-                        .background(AppTheme.colors.border)
+                        .background(AppTheme.colors.accent.copy(alpha = 0.45f))
                 )
 
                 Spacer(modifier = Modifier.height(AppTheme.spacing.md))
@@ -61,7 +72,8 @@ fun AppDialog(
                 Text(
                     text = title,
                     style = AppTheme.typography.titleLarge,
-                    color = AppTheme.colors.textPrimary
+                    color = AppTheme.colors.textPrimary,
+                    textAlign = TextAlign.Center
                 )
 
                 if (subtitle != null) {
@@ -69,7 +81,8 @@ fun AppDialog(
                     Text(
                         text = subtitle,
                         style = AppTheme.typography.bodySmall,
-                        color = AppTheme.colors.textSecondary
+                        color = AppTheme.colors.textSecondary,
+                        textAlign = TextAlign.Center
                     )
                 }
 

@@ -1,11 +1,7 @@
 package com.ryzen.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,18 +18,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.ryzen.ui.theme.AppRadii
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -61,6 +56,8 @@ import com.ryzen.ui.components.AppDialog
 import com.ryzen.ui.components.AppProgressBar
 import com.ryzen.ui.components.BadgeTone
 import com.ryzen.ui.components.ButtonVariant
+import com.ryzen.ui.theme.AppBackground
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 
 data class AppUpdateDialogState(
@@ -87,13 +84,19 @@ fun SplashScreen(
 
     val alphaAnim by animateFloatAsState(
         targetValue = if (startAnim) 1f else 0f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        animationSpec = tween(
+            durationMillis = AppMotion.DurationSlow,
+            easing = AppMotion.EasingEntrance
+        ),
         label = "splashAlpha"
     )
 
     val scaleAnim by animateFloatAsState(
-        targetValue = if (startAnim) 1f else 0.92f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        targetValue = if (startAnim) 1f else 0.88f,
+        animationSpec = tween(
+            durationMillis = AppMotion.DurationSlow,
+            easing = AppMotion.EasingEntrance
+        ),
         label = "splashScale"
     )
 
@@ -101,17 +104,30 @@ fun SplashScreen(
         startAnim = true
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = AppTheme.colors.background
-    ) { paddingValues ->
+    AppBackground(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
+            // Soft ambient glow behind logo
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(220.dp)
+                    .alpha(alphaAnim * 0.55f)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                AppTheme.colors.accentGlow,
+                                androidx.compose.ui.graphics.Color.Transparent
+                            )
+                        ),
+                        shape = CircleShape
+                    )
+            )
+
             // Top Version Tag
             Box(
                 modifier = Modifier
@@ -121,7 +137,7 @@ fun SplashScreen(
             ) {
                 AppBadge(
                     text = "v$versionName",
-                    tone = BadgeTone.NEUTRAL,
+                    tone = BadgeTone.ACCENT,
                     showDot = false
                 )
             }
@@ -137,7 +153,7 @@ fun SplashScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(88.dp)
                         .clip(RoundedCornerShape(AppRadii.lg))
                         .background(AppTheme.colors.surfaceElevated)
                         .border(1.dp, AppTheme.colors.border, RoundedCornerShape(AppRadii.lg)),

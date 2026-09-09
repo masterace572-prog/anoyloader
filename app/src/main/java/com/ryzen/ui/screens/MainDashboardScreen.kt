@@ -1,8 +1,12 @@
 package com.ryzen.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,12 +32,12 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +45,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,11 +52,9 @@ import androidx.compose.ui.unit.sp
 import com.ryzen.R
 import com.ryzen.model.GameVersion
 import com.ryzen.model.ManagedGame
-import com.ryzen.model.TargetGame
 import com.ryzen.ui.components.AppBadge
 import com.ryzen.ui.components.AppButton
 import com.ryzen.ui.components.AppCard
-import com.ryzen.ui.components.AppCountdownTimer
 import com.ryzen.ui.components.AppDialog
 import com.ryzen.ui.components.AppProgressBar
 import com.ryzen.ui.components.AppTopBar
@@ -61,6 +62,7 @@ import com.ryzen.ui.components.BadgeTone
 import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.GameNotInstalledDialog
 import com.ryzen.ui.components.GameNotInstalledDialogState
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 
 private data class ActionButtonState(
@@ -108,11 +110,8 @@ fun MainDashboardScreen(
 ) {
     val gameTitle = selectedGame.getDisplayTitle()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppTheme.colors.background)
-    ) {
+    // Transparent root — ambient canvas comes from MAct AppBackground
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -128,9 +127,9 @@ fun MainDashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier
                             .clip(AppTheme.shapes.extraSmall)
-                            .background(AppTheme.colors.surfaceElevated)
-                            .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.extraSmall)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .background(AppTheme.colors.successTint)
+                            .border(1.dp, AppTheme.colors.success.copy(alpha = 0.35f), AppTheme.shapes.extraSmall)
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -144,7 +143,7 @@ fun MainDashboardScreen(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             ),
-                            color = AppTheme.colors.textPrimary
+                            color = AppTheme.colors.success
                         )
                     }
                 }
@@ -204,18 +203,30 @@ fun MainDashboardScreen(
                         games.forEach { game ->
                             val isSelected = selectedGame.id == game.id
                             val tabLabel = game.getDisplayTitle()
+                            val tabBg by animateColorAsState(
+                                targetValue = if (isSelected) AppTheme.colors.accentTint else Color.Transparent,
+                                animationSpec = tween(AppMotion.DurationFast),
+                                label = "gameTabBg"
+                            )
+                            val tabFg by animateColorAsState(
+                                targetValue = if (isSelected) AppTheme.colors.accent else AppTheme.colors.textSecondary,
+                                animationSpec = tween(AppMotion.DurationFast),
+                                label = "gameTabFg"
+                            )
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(40.dp)
+                                    .height(42.dp)
                                     .clip(AppTheme.shapes.extraSmall)
-                                    .background(
-                                        if (isSelected) AppTheme.colors.surface
-                                        else Color.Transparent
-                                    )
+                                    .background(tabBg)
                                     .then(
-                                        if (isSelected) Modifier.border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.extraSmall)
-                                        else Modifier
+                                        if (isSelected) {
+                                            Modifier.border(
+                                                1.dp,
+                                                AppTheme.colors.accent.copy(alpha = 0.35f),
+                                                AppTheme.shapes.extraSmall
+                                            )
+                                        } else Modifier
                                     )
                                     .clickable { onSelectGame(game) },
                                 contentAlignment = Alignment.Center
@@ -226,7 +237,7 @@ fun MainDashboardScreen(
                                         fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                     ),
-                                    color = if (isSelected) AppTheme.colors.textPrimary else AppTheme.colors.textSecondary
+                                    color = tabFg
                                 )
                             }
                         }
@@ -315,6 +326,7 @@ fun MainDashboardScreen(
                     AppCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = AppTheme.shapes.large,
+                        elevated = true,
                         contentPadding = AppTheme.spacing.md
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
@@ -414,8 +426,10 @@ fun MainDashboardScreen(
                 // 5. PROGRESS CARD (Visible only during active operations)
                 AnimatedVisibility(
                     visible = isCopyingObb || isInstalling,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                    enter = fadeIn(tween(AppMotion.DurationStandard)) +
+                        slideInVertically(tween(AppMotion.DurationStandard)) { it / 8 },
+                    exit = fadeOut(tween(AppMotion.DurationFast)) +
+                        slideOutVertically(tween(AppMotion.DurationFast)) { it / 10 }
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Spacer(modifier = Modifier.height(AppTheme.spacing.md))
