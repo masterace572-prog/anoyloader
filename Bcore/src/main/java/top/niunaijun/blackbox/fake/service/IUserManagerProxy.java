@@ -1,6 +1,7 @@
 package top.niunaijun.blackbox.fake.service;
 
 import android.content.Context;
+import android.os.Bundle;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
@@ -37,8 +38,34 @@ public class IUserManagerProxy extends BinderInvocationStub {
     public static class GetApplicationRestrictions extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            args[0] = BlackBoxCore.getHostPkg();
-            return method.invoke(who, args);
+            // Android 16: system-only for other packages (e.g. com.android.vending).
+            try {
+                if (args != null && args.length > 0 && args[0] instanceof String) {
+                    args[0] = BlackBoxCore.getHostPkg();
+                }
+                Object result = method.invoke(who, args);
+                return result != null ? result : new Bundle();
+            } catch (SecurityException se) {
+                return new Bundle();
+            } catch (Throwable th) {
+                return new Bundle();
+            }
+        }
+    }
+
+    @ProxyMethod("getApplicationRestrictionsForUser")
+    public static class GetApplicationRestrictionsForUser extends MethodHook {
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            try {
+                if (args != null && args.length > 0 && args[0] instanceof String) {
+                    args[0] = BlackBoxCore.getHostPkg();
+                }
+                Object result = method.invoke(who, args);
+                return result != null ? result : new Bundle();
+            } catch (Throwable th) {
+                return new Bundle();
+            }
         }
     }
 

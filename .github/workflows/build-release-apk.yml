@@ -419,6 +419,8 @@ jobs:
             ### Changelog
             - Dual APK monorepo: Anoy Loader + OG Cheats (shared engine, separate branding)
             - OG Cheats icon from `Helper/` + Telegram `@CrimeCell`
+            - Remove VPN detection gate on login / authenticate
+            - Survive GMS RestrictionsManager SecurityException for com.android.vending (Android 16)
             - Android 16 PUBG Global crash fixes (GMS broadcast, AccountAuthenticator, Dynamite, Apache HTTP)
 
             ### Install
