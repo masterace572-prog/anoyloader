@@ -51,6 +51,7 @@ public class HookManager {
             addInjector(new IBackupManagerProxy());
             addInjector(new IBluetoothManagerProxy());
             addInjector(new ContentServiceStub());
+            addInjector(new RestrictionsManagerStub());
             addInjector(new IWindowManagerProxy());
             addInjector(new IUserManagerProxy());
             addInjector(new IMediaSessionManagerProxy());
