@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Visibility
@@ -74,6 +75,7 @@ fun SettingsScreen(
     onSelectGame: (ManagedGame) -> Unit = {},
     onClearLoginClick: (ManagedGame) -> Unit = {},
     onClearGameDataClick: (ManagedGame) -> Unit = {},
+    onResetGuestClick: () -> Unit = {},
     onContactAdminClick: () -> Unit = {},
     appVersionName: String = "1.0",
     appVersionCode: Long = 1L
@@ -81,6 +83,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     var isKeyRevealed by remember { mutableStateOf(false) }
     var showConfirmClearDataDialog by remember { mutableStateOf(false) }
+    var showConfirmResetGuestDialog by remember { mutableStateOf(false) }
+    val isBgmiSelected = selectedGame.packageName == "com.pubg.imobile"
 
     val displayKey = if (isKeyRevealed) {
         keyText.ifBlank { "NONE" }
@@ -329,6 +333,17 @@ fun SettingsScreen(
                             variant = ButtonVariant.SECONDARY
                         )
 
+                        // BGMI-only: full guest identity reset (device_id + cache wipe)
+                        if (isBgmiSelected) {
+                            Spacer(modifier = Modifier.height(AppTheme.spacing.sm))
+                            AppButton(
+                                text = "Reset Guest",
+                                onClick = { showConfirmResetGuestDialog = true },
+                                leadingIcon = Icons.Rounded.RestartAlt,
+                                variant = ButtonVariant.PRIMARY
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(AppTheme.spacing.sm))
 
                         // Clear Resources Data Button (Operation 2)
@@ -448,6 +463,42 @@ fun SettingsScreen(
                     AppButton(
                         text = "Cancel",
                         onClick = { showConfirmClearDataDialog = false },
+                        variant = ButtonVariant.TERTIARY
+                    )
+                }
+            }
+        }
+
+        // BGMI-only Reset Guest confirmation
+        if (showConfirmResetGuestDialog && isBgmiSelected) {
+            AppDialog(
+                onDismissRequest = { showConfirmResetGuestDialog = false },
+                title = "Reset BGMI Guest?",
+                subtitle = "Generate a fresh guest identity"
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md)
+                ) {
+                    Text(
+                        text = "This will wipe BGMI guest login, device ID, caches, and related sandbox files, then write a new random guest UUID.\n\nOBB is kept. Controls/settings under SaveGames may be cleared.",
+                        style = AppTheme.typography.bodySmall,
+                        color = AppTheme.colors.textSecondary
+                    )
+
+                    AppButton(
+                        text = "Reset Guest",
+                        onClick = {
+                            showConfirmResetGuestDialog = false
+                            onResetGuestClick()
+                        },
+                        leadingIcon = Icons.Rounded.RestartAlt,
+                        variant = ButtonVariant.PRIMARY
+                    )
+
+                    AppButton(
+                        text = "Cancel",
+                        onClick = { showConfirmResetGuestDialog = false },
                         variant = ButtonVariant.TERTIARY
                     )
                 }

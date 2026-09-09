@@ -221,6 +221,9 @@ class MAct : AppCompatActivity() {
                                     onClearGameDataClick = { game ->
                                         handleClearGameDataForGame(game)
                                     },
+                                    onResetGuestClick = {
+                                        handleResetGuestBgmi()
+                                    },
                                     onContactAdminClick = {
                                         handleContactAdmin()
                                     },
@@ -995,6 +998,235 @@ class MAct : AppCompatActivity() {
         }
 
         Toast.makeText(this, "${game.getDisplayTitle()} login & guest session cleared.", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * BGMI-only full guest reset inside the virtual sandbox.
+     * Mirrors device_id.xml rewrite + cache wipe paths from the native guest-reset script,
+     * remapped onto Bcore data/external roots (never host /data/data or iptables / Documents).
+     */
+    private fun handleResetGuestBgmi() {
+        val pkg = "com.pubg.imobile"
+        Thread {
+            try {
+                try {
+                    BlackBoxCore.get()?.stopPackage(pkg, USER_ID)
+                    Log.i("MAct", "Stopped $pkg before guest reset")
+                } catch (t: Throwable) {
+                    Log.w("MAct", "stopPackage before guest reset: ${t.message}")
+                }
+
+                val dataRoots = mutableListOf<File>()
+                try {
+                    dataRoots.add(BEnvironment.getDataDir(pkg, USER_ID))
+                } catch (_: Throwable) {
+                }
+                // Fallback mirrors used across older installs
+                dataRoots.add(File(filesDir, "data/user/0/$pkg"))
+                dataRoots.add(File(dataDir, "files/data/user/0/$pkg"))
+                dataRoots.add(File("/data/user/0/$packageName/files/data/user/0/$pkg"))
+                dataRoots.add(File("/data/data/$packageName/files/data/user/0/$pkg"))
+
+                val internalRelative = listOf(
+                    "app_appcache",
+                    "app_crashrecord",
+                    "app_crashSight",
+                    "app_databases",
+                    "app_flutter",
+                    "app_textures",
+                    "app_webview_com.pubg.imobile",
+                    "cache",
+                    "code_cache",
+                    "databases",
+                    "shared_prefs",
+                    "no_backup",
+                    "files"
+                )
+
+                for (root in dataRoots.distinctBy { it.absolutePath }) {
+                    if (!root.exists()) continue
+                    for (rel in internalRelative) {
+                        val target = File(root, rel)
+                        if (target.exists()) {
+                            deleteDirectoryRecursively(target)
+                            Log.i("MAct", "Guest reset removed: ${target.absolutePath}")
+                        }
+                    }
+                }
+
+                val externalRoots = mutableListOf<File>()
+                try {
+                    BEnvironment.getExternalDataDir(pkg)?.let { externalRoots.add(it) }
+                } catch (_: Throwable) {
+                }
+                externalRoots.add(File(Environment.getExternalStorageDirectory(), "SdCard/0/Android/data/$pkg"))
+                externalRoots.add(File(Environment.getExternalStorageDirectory(), "SdCard/Android/data/$pkg"))
+                externalRoots.add(File("/storage/emulated/0/SdCard/0/Android/data/$pkg"))
+                externalRoots.add(File("/storage/emulated/0/SdCard/Android/data/$pkg"))
+                // Host Android/data paths (if game wrote outside sandbox — best-effort, may be blocked)
+                externalRoots.add(File(Environment.getExternalStorageDirectory(), "Android/data/$pkg"))
+                externalRoots.add(File("/storage/emulated/0/Android/data/$pkg"))
+                externalRoots.add(File("/data/media/0/Android/data/$pkg"))
+
+                val externalRelative = listOf(
+                    "cache",
+                    "files/centauri",
+                    "files/cronet",
+                    "files/iMSDK",
+                    "files/log",
+                    "files/obblib",
+                    "files/ProgramIncompatible",
+                    "files/tencent",
+                    "files/cacheFile.txt",
+                    "files/login-identifier.txt",
+                    "files/ProgramBinaryCache",
+                    "files/TGPA",
+                    "files/UE4Game/ShadowTrackerExtra/Engine",
+                    "files/UE4Game/ShadowTrackerExtra/Epic Games",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Intermediate",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Avatar",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/CachePaks",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Collision_Detection",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Config",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Gamelet",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/ImageDownloadMgr",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/LightData",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Logs",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/MMKV",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/MoviesPakDir",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Pandora",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/pixuicache",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/PufferEifs0",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/PufferEifs1",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/PufferTmpDir",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/RoleInfo",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/TableDatas",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/UpdateInfo",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/VoiceBin",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/coverversion.ini",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/GameErrorNoRecords",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/ODPakData.txt",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SrcVersion.ini",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/StatEventReportedFlag",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SyncLoadInfo.txt",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/puffer_temp"
+                )
+
+                // Also clear loginInfoFile if present (guest session)
+                val loginRelatives = listOf(
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/loginInfoFile.json",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/savegames/loginInfoFile.json"
+                )
+
+                for (root in externalRoots.distinctBy { it.absolutePath }) {
+                    if (!root.exists()) continue
+                    for (rel in externalRelative + loginRelatives) {
+                        val target = File(root, rel)
+                        if (target.exists()) {
+                            deleteDirectoryRecursively(target)
+                            Log.i("MAct", "Guest reset removed: ${target.absolutePath}")
+                        }
+                    }
+                }
+
+                // Recreate placeholder dirs the original script touches after wipe
+                val touchDirs = listOf(
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Intermediate",
+                    "files/TGPA",
+                    "files/ProgramBinaryCache"
+                )
+                for (root in externalRoots.distinctBy { it.absolutePath }) {
+                    // Only create under roots that already exist or are sandbox roots we own
+                    val isSandbox = root.absolutePath.contains("SdCard") ||
+                        root.absolutePath.contains(filesDir.absolutePath) ||
+                        try {
+                            BEnvironment.getExternalDataDir(pkg)?.absolutePath == root.absolutePath
+                        } catch (_: Throwable) {
+                            false
+                        }
+                    if (!isSandbox && !root.exists()) continue
+                    for (rel in touchDirs) {
+                        try {
+                            val dir = File(root, rel)
+                            if (!dir.exists()) dir.mkdirs()
+                        } catch (_: Throwable) {
+                        }
+                    }
+                }
+
+                // Rewrite device_id.xml with a fresh random guest UUID under sandbox shared_prefs
+                val uuid = String.format(
+                    Locale.US,
+                    "%d%d-%d",
+                    (100000..999999).random(),
+                    (100000..999999).random(),
+                    (1000..9999).random()
+                )
+                val deviceIdXml = """
+                    |<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+                    |<map>
+                    |    <string name="random"></string>
+                    |    <string name="install"></string>
+                    |    <string name="uuid">$uuid</string>
+                    |</map>
+                """.trimMargin() + "\n"
+
+                var wroteDeviceId = false
+                for (root in dataRoots.distinctBy { it.absolutePath }) {
+                    // Prefer roots that already exist or are the primary Bcore data dir
+                    val isPrimary = try {
+                        BEnvironment.getDataDir(pkg, USER_ID).absolutePath == root.absolutePath
+                    } catch (_: Throwable) {
+                        false
+                    }
+                    if (!root.exists() && !isPrimary) continue
+                    try {
+                        if (!root.exists()) root.mkdirs()
+                        val prefsDir = File(root, "shared_prefs")
+                        if (!prefsDir.exists()) prefsDir.mkdirs()
+                        val guestFile = File(prefsDir, "device_id.xml")
+                        guestFile.writeText(deviceIdXml)
+                        guestFile.setReadable(true, false)
+                        guestFile.setWritable(true, false)
+                        wroteDeviceId = true
+                        Log.i("MAct", "Wrote guest device_id.xml → ${guestFile.absolutePath} uuid=$uuid")
+                    } catch (t: Throwable) {
+                        Log.w("MAct", "Failed writing device_id under ${root.absolutePath}: ${t.message}")
+                    }
+                }
+
+                // Also clear any leftover login json under SaveGames after wipe
+                for (root in externalRoots.distinctBy { it.absolutePath }) {
+                    val saveDirs = listOf(
+                        File(root, "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames"),
+                        File(root, "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/savegames")
+                    )
+                    for (dir in saveDirs) {
+                        if (dir.exists() && dir.isDirectory) {
+                            dir.listFiles { _, name -> name != null && name.contains("login", ignoreCase = true) }
+                                ?.forEach { deleteDirectoryRecursively(it) }
+                        }
+                    }
+                }
+
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        if (wroteDeviceId) {
+                            "BGMI guest reset complete (new UUID)."
+                        } else {
+                            "BGMI guest caches cleared. device_id write may need reinstall into sandbox."
+                        },
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (t: Throwable) {
+                Log.e("MAct", "handleResetGuestBgmi failed", t)
+                runOnUiThread {
+                    Toast.makeText(this, "Guest reset failed: ${t.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
     }
 
     /**
