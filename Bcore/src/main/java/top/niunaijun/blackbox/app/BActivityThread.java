@@ -598,6 +598,11 @@ public class BActivityThread extends IBActivityThread.Stub {
                 HookManager.get().checkEnv(HCallbackStub.class);
             } catch (Throwable ignored) {
             }
+            try {
+                // GMS may replace the default UEH during init; put ours back.
+                CrashHandler.create();
+            } catch (Throwable ignored) {
+            }
         } catch (Throwable e) {
             e.printStackTrace();
             // Prefer a degraded but alive process over killing the host main thread.

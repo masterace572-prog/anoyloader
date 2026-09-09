@@ -80,62 +80,114 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
      */
     static boolean isSurvivableBackgroundFailure(Thread thread, Throwable throwable) {
         if (throwable == null) return false;
+
+        boolean main = false;
         try {
-            if (Looper.getMainLooper() != null && thread == Looper.getMainLooper().getThread()) {
-                return false;
-            }
+            main = Looper.getMainLooper() != null && thread == Looper.getMainLooper().getThread();
         } catch (Throwable ignored) {
-            // If Looper is unavailable, still try signature match below.
         }
 
-        boolean bgThread = false;
-        if (thread != null && thread.getName() != null) {
-            String n = thread.getName().toLowerCase();
-            bgThread = n.contains("bgexecutor")
-                    || n.contains("backgroundexecutor")
-                    || n.contains("googleapi")
-                    || n.contains("dynamite")
-                    || n.contains("gms-")
-                    || n.contains("play-services")
-                    || n.startsWith("android.bg")
-                    || n.contains("binder:")
-                    || n.contains("imsdk")
-                    || n.contains("volley")
-                    || n.contains("okhttp")
-                    || n.contains("network");
-        }
+        String tname = thread != null && thread.getName() != null ? thread.getName().toLowerCase() : "";
+        boolean gameCritical = main
+                || tname.contains("unity")
+                || tname.contains("ue4")
+                || tname.contains("unreal")
+                || tname.contains("renderthread")
+                || tname.contains("glthread")
+                || tname.contains("choreographer")
+                || tname.contains("game thread")
+                || tname.contains("gamethread");
+
+        boolean bgNamed = tname.contains("bgexecutor")
+                || tname.contains("backgroundexecutor")
+                || tname.contains("blockingexecutor")
+                || tname.contains("googleapi")
+                || tname.contains("dynamite")
+                || tname.contains("gms-")
+                || tname.contains("play-services")
+                || tname.contains("firebase")
+                || tname.startsWith("android.bg")
+                || tname.contains("binder:")
+                || tname.contains("imsdk")
+                || tname.contains("volley")
+                || tname.contains("okhttp")
+                || tname.contains("network")
+                || tname.contains("pool-")
+                || tname.contains("executor")
+                || tname.contains("async")
+                || tname.contains("chromium")
+                || tname.contains("measurement")
+                || tname.contains("checkin")
+                || tname.contains("vending")
+                || tname.contains("workmanager")
+                || tname.contains("defaultdispatcher")
+                || tname.contains("queued-work");
+
+        boolean classCast = false, npe = false, security = false, gms = false, blackbox = false;
+        boolean apache = false, restrictions = false, config = false, clientTx = false;
+        boolean resourcesNpe = false, remote = false, runtime = false;
 
         Throwable cur = throwable;
         int depth = 0;
-        boolean classCast = false;
-        boolean gmsStack = false;
-        boolean bgExecutorMsg = false;
-        boolean apacheMissing = false;
-        while (cur != null && depth < 8) {
+        while (cur != null && depth < 10) {
             if (cur instanceof ClassCastException) classCast = true;
+            if (cur instanceof NullPointerException) npe = true;
+            if (cur instanceof SecurityException) security = true;
+            if (cur instanceof RuntimeException) runtime = true;
+            String cnSimple = cur.getClass().getName();
+            if (cnSimple.contains("RemoteException") || cnSimple.contains("DeadSystem")
+                    || cnSimple.contains("DeadObject") || cnSimple.contains("TransactionTooLarge")) {
+                remote = true;
+            }
+            if (cur instanceof NoClassDefFoundError || cur instanceof ClassNotFoundException) {
+                String msg0 = cur.getMessage();
+                if (msg0 != null && msg0.contains("org.apache.http")) apache = true;
+            }
             String msg = cur.getMessage();
             if (msg != null) {
                 String m = msg.toLowerCase();
-                if (m.contains("cannot cast") || m.contains("classcastexception")) classCast = true;
-                if (m.contains("backgroundexecutor")) bgExecutorMsg = true;
-                if (m.contains("org.apache.http") || m.contains("protocolversion")) apacheMissing = true;
-            }
-            if (cur instanceof NoClassDefFoundError || cur instanceof ClassNotFoundException) {
-                if (msg != null && msg.contains("org.apache.http")) apacheMissing = true;
+                if (m.contains("cannot cast")) classCast = true;
+                if (m.contains("org.apache.http") || m.contains("protocolversion")) apache = true;
+                if (m.contains("application restrictions") || m.contains("only system may")) {
+                    restrictions = true;
+                    security = true;
+                }
+                if (m.contains("getresources()") || m.contains("getpackagename()")) resourcesNpe = true;
+                if (m.contains("unable to bind to service") || m.contains("unable to makeapplication")) {
+                    blackbox = true;
+                }
+                if (m.contains("backgroundexecutor") || m.contains("blockingexecutor")) gms = true;
             }
             StackTraceElement[] st = cur.getStackTrace();
             if (st != null) {
-                int limit = Math.min(st.length, 12);
+                int limit = Math.min(st.length, 24);
                 for (int i = 0; i < limit; i++) {
                     String cn = st[i].getClassName();
                     String file = st[i].getFileName();
-                    if (file != null && file.startsWith("PG")) gmsStack = true;
-                    if (cn != null && (cn.startsWith("com.google.android.gms")
-                            || cn.startsWith("com.google.android.gsf")
-                            || cn.startsWith("com.google.android.play")
-                            || cn.contains("BackgroundExecutor")
-                            || cn.contains("Dynamite"))) {
-                        gmsStack = true;
+                    if (file != null && file.startsWith("PG")) gms = true;
+                    if (cn != null) {
+                        if (cn.startsWith("com.google.android.gms")
+                                || cn.startsWith("com.google.android.gsf")
+                                || cn.startsWith("com.google.android.play")
+                                || cn.startsWith("com.android.vending")
+                                || cn.contains("BackgroundExecutor")
+                                || cn.contains("BlockingExecutor")
+                                || cn.contains("Dynamite")
+                                || cn.contains("Firebase")) {
+                            gms = true;
+                        }
+                        if (cn.startsWith("top.niunaijun.blackbox")
+                                || cn.startsWith("com.ogcheats")
+                                || cn.startsWith("com.ryzen")) {
+                            blackbox = true;
+                        }
+                        if (cn.contains("ConfigurationChange") || cn.contains("ConfigurationController")) {
+                            config = true;
+                        }
+                        if (cn.contains("ClientTransaction") || cn.contains("TransactionExecutor")) {
+                            clientTx = true;
+                        }
+                        if (cn.contains("RestrictionsManager")) restrictions = true;
                     }
                 }
             }
@@ -143,9 +195,33 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             depth++;
         }
 
-        if (classCast && (bgThread || gmsStack || bgExecutorMsg)) return true;
-        if (bgExecutorMsg && (bgThread || gmsStack)) return true;
-        if (apacheMissing && bgThread) return true;
+        if (!gameCritical) {
+            if (bgNamed || gms || blackbox || security || restrictions || apache || classCast || remote) {
+                return true;
+            }
+            if (bgNamed && (runtime || npe)) return true;
+            return false;
+        }
+
+        // Main/game critical: only known false fatals
+        if (restrictions || (security && gms)) return true;
+        if (npe && (config || clientTx || resourcesNpe)) return true;
+        if (npe && blackbox && gms) return true;
+        if (runtime && blackbox && (msgHas(throwable, "Unable to bind to service")
+                || msgHas(throwable, "Unable to makeApplication"))) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean msgHas(Throwable e, String needle) {
+        Throwable cur = e;
+        int d = 0;
+        while (cur != null && d < 8) {
+            if (cur.getMessage() != null && cur.getMessage().contains(needle)) return true;
+            cur = cur.getCause();
+            d++;
+        }
         return false;
     }
 }
