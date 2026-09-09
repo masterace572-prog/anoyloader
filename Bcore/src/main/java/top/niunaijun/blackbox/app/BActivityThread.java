@@ -218,9 +218,20 @@ public class BActivityThread extends IBActivityThread.Stub {
                 return null;
             }
             Service service = (Service) clazz.newInstance();
-            Context context = BlackBoxCore.getContext().createPackageContext(
-                    serviceInfo.packageName,
-                    Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            Context context = null;
+            try {
+                context = BlackBoxCore.getContext().createPackageContext(
+                        serviceInfo.packageName,
+                        Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            } catch (Throwable ignored) {
+            }
+            if (context == null) {
+                context = BlackBoxCore.getContext();
+            }
+            if (context == null) {
+                Slog.w(TAG, "No context for service " + serviceInfo.name);
+                return null;
+            }
             BRContextImpl.get(context).setOuterContext(service);
             BRService.get(service).attach(
                     context,
@@ -260,9 +271,20 @@ public class BActivityThread extends IBActivityThread.Stub {
                 return null;
             }
             JobService service = (JobService) clazz.newInstance();
-            Context context = BlackBoxCore.getContext().createPackageContext(
-                    serviceInfo.packageName,
-                    Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            Context context = null;
+            try {
+                context = BlackBoxCore.getContext().createPackageContext(
+                        serviceInfo.packageName,
+                        Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            } catch (Throwable ignored) {
+            }
+            if (context == null) {
+                context = BlackBoxCore.getContext();
+            }
+            if (context == null) {
+                Slog.w(TAG, "No context for job service " + serviceInfo.name);
+                return null;
+            }
             BRContextImpl.get(context).setOuterContext(service);
             BRService.get(service).attach(
                     context,
@@ -351,6 +373,9 @@ public class BActivityThread extends IBActivityThread.Stub {
         }
         Binder.clearCallingIdentity();
         PackageInfo packageInfo = BlackBoxCore.getBPackageManager().getPackageInfo(packageName, PackageManager.GET_PROVIDERS, BActivityThread.getUserId());
+        if (packageInfo == null || packageInfo.applicationInfo == null) {
+            throw new RuntimeException("Unable to get PackageInfo for " + packageName);
+        }
         ApplicationInfo applicationInfo = packageInfo.applicationInfo;
         if (packageInfo.providers == null) {
             packageInfo.providers = new ProviderInfo[]{};
@@ -358,10 +383,40 @@ public class BActivityThread extends IBActivityThread.Stub {
         mProviders.addAll(Arrays.asList(packageInfo.providers));
         Object boundApplication = BRActivityThread.get(BlackBoxCore.mainThread()).mBoundApplication();
         Context packageContext = createPackageContext(applicationInfo);
-        Object loadedApk = BRContextImpl.get(packageContext).mPackageInfo();
-        BRLoadedApk.get(loadedApk)._set_mSecurityViolation(false);
-        // fix applicationInfo
-        BRLoadedApk.get(loadedApk)._set_mApplicationInfo(applicationInfo);
+        if (packageContext == null) {
+            // Android 16 (esp. Samsung): createPackageContext can fail for virtual
+            // packages. Fall back to host context so bind can continue.
+            Slog.w(TAG, "createPackageContext failed for " + packageName
+                    + "; falling back to host context");
+            packageContext = BlackBoxCore.getContext();
+        }
+        if (packageContext == null) {
+            throw new RuntimeException("Unable to create package context for " + packageName);
+        }
+        Object loadedApk = null;
+        try {
+            loadedApk = BRContextImpl.get(packageContext).mPackageInfo();
+        } catch (Throwable t) {
+            Slog.w(TAG, "mPackageInfo missing on context: " + t.getMessage());
+        }
+        // If we fell back to host context, LoadedApk is the host's — try to obtain
+        // a proper LoadedApk for the virtual package via ActivityThread.
+        if (loadedApk == null || isHostLoadedApk(loadedApk, packageName)) {
+            Object alt = peekLoadedApk(packageName, applicationInfo);
+            if (alt != null) {
+                loadedApk = alt;
+            }
+        }
+        if (loadedApk == null) {
+            throw new RuntimeException("Unable to obtain LoadedApk for " + packageName);
+        }
+        try {
+            BRLoadedApk.get(loadedApk)._set_mSecurityViolation(false);
+            // fix applicationInfo
+            BRLoadedApk.get(loadedApk)._set_mApplicationInfo(applicationInfo);
+        } catch (Throwable t) {
+            Slog.w(TAG, "LoadedApk ApplicationInfo fix failed: " + t.getMessage());
+        }
         int targetSdkVersion = applicationInfo.targetSdkVersion;
         if (targetSdkVersion < Build.VERSION_CODES.GINGERBREAD) {
             StrictMode.ThreadPolicy newPolicy = new StrictMode.ThreadPolicy.Builder(StrictMode.getThreadPolicy()).permitNetwork().build();
@@ -374,17 +429,34 @@ public class BActivityThread extends IBActivityThread.Stub {
         }
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            WebView.setDataDirectorySuffix(getUserId() + ":" + packageName + ":" + processName);
+            try {
+                WebView.setDataDirectorySuffix(getUserId() + ":" + packageName + ":" + processName);
+            } catch (Throwable wv) {
+                Slog.w(TAG, "WebView.setDataDirectorySuffix failed: " + wv.getMessage());
+            }
         }
         
         VirtualRuntime.setupRuntime(processName, applicationInfo);
-        BRVMRuntime.get(BRVMRuntime.get().getRuntime()).setTargetSdkVersion(applicationInfo.targetSdkVersion);
-        if (BuildCompat.isS()) {
-            BRCompatibility.get().setTargetSdkVersion(applicationInfo.targetSdkVersion);
+        try {
+            BRVMRuntime.get(BRVMRuntime.get().getRuntime()).setTargetSdkVersion(applicationInfo.targetSdkVersion);
+        } catch (Throwable ignored) {
         }
-        RNative.init(Build.VERSION.SDK_INT);
-        assert packageContext != null;
-        RCore.get().enableRedirect(packageContext);
+        if (BuildCompat.isS()) {
+            try {
+                BRCompatibility.get().setTargetSdkVersion(applicationInfo.targetSdkVersion);
+            } catch (Throwable ignored) {
+            }
+        }
+        try {
+            RNative.init(Build.VERSION.SDK_INT);
+        } catch (Throwable rn) {
+            Slog.w(TAG, "RNative.init failed: " + rn.getMessage());
+        }
+        try {
+            RCore.get().enableRedirect(packageContext, packageName);
+        } catch (Throwable redir) {
+            Slog.w(TAG, "enableRedirect failed: " + redir.getMessage());
+        }
         AppBindData bindData = new AppBindData();
         bindData.appInfo = applicationInfo;
         bindData.processName = processName;
@@ -479,12 +551,130 @@ public class BActivityThread extends IBActivityThread.Stub {
     }
 
     public static Context createPackageContext(ApplicationInfo info) {
-        try {
-            return BlackBoxCore.getContext().createPackageContext(info.packageName, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
-        } catch (Exception e) {
-            Log.e(TAG, "error", e);
+        if (info == null || info.packageName == null) {
             return null;
         }
+        final String pkg = info.packageName;
+        final int flags = Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY;
+        // Attempt 1: standard createPackageContext (goes through our PM hooks)
+        try {
+            Context c = BlackBoxCore.getContext().createPackageContext(pkg, flags);
+            if (c != null) return c;
+        } catch (Throwable e) {
+            Slog.w(TAG, "createPackageContext attempt1 failed for " + pkg + ": " + e.getMessage());
+        }
+        // Attempt 2: without INCLUDE_CODE (Android 16 sometimes rejects code context)
+        try {
+            Context c = BlackBoxCore.getContext().createPackageContext(pkg, Context.CONTEXT_IGNORE_SECURITY);
+            if (c != null) return c;
+        } catch (Throwable e) {
+            Slog.w(TAG, "createPackageContext attempt2 failed for " + pkg + ": " + e.getMessage());
+        }
+        // Attempt 3: ActivityThread.getPackageInfo / createPackageContextAsUser reflection
+        try {
+            Object mainThread = BlackBoxCore.mainThread();
+            Context c = createPackageContextViaActivityThread(mainThread, info);
+            if (c != null) return c;
+        } catch (Throwable e) {
+            Slog.w(TAG, "createPackageContext attempt3 failed for " + pkg + ": " + e.getMessage());
+        }
+        Log.e(TAG, "createPackageContext exhausted for " + pkg);
+        return null;
+    }
+
+    private static boolean isHostLoadedApk(Object loadedApk, String packageName) {
+        try {
+            ApplicationInfo ai = BRLoadedApk.get(loadedApk).mApplicationInfo();
+            if (ai == null || ai.packageName == null) return true;
+            return !ai.packageName.equals(packageName);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Obtain LoadedApk for a virtual package via ActivityThread internals when
+     * createPackageContext fell back to the host Context.
+     */
+    private static Object peekLoadedApk(String packageName, ApplicationInfo applicationInfo) {
+        try {
+            Object mainThread = BlackBoxCore.mainThread();
+            // ActivityThread.getPackageInfoNoCheck(ApplicationInfo, CompatibilityInfo)
+            Method[] methods = mainThread.getClass().getDeclaredMethods();
+            for (Method m : methods) {
+                String n = m.getName();
+                if (!"getPackageInfoNoCheck".equals(n) && !"getPackageInfo".equals(n)) {
+                    continue;
+                }
+                Class<?>[] pts = m.getParameterTypes();
+                if (pts.length < 1 || !ApplicationInfo.class.isAssignableFrom(pts[0])) {
+                    continue;
+                }
+                m.setAccessible(true);
+                Object[] args = new Object[pts.length];
+                args[0] = applicationInfo;
+                for (int i = 1; i < pts.length; i++) {
+                    args[i] = null;
+                    if (pts[i] == boolean.class) args[i] = false;
+                    if (pts[i] == int.class) args[i] = 0;
+                }
+                try {
+                    Object result = m.invoke(mainThread, args);
+                    if (result != null) {
+                        return result;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable t) {
+            Slog.w(TAG, "peekLoadedApk failed: " + t.getMessage());
+        }
+        return null;
+    }
+
+    private static Context createPackageContextViaActivityThread(Object mainThread, ApplicationInfo info) {
+        try {
+            Object loadedApk = peekLoadedApk(info.packageName, info);
+            if (loadedApk == null) return null;
+            // LoadedApk.makeApplication / getContext? Prefer ContextImpl.createAppContext
+            try {
+                Class<?> contextImplClz = Class.forName("android.app.ContextImpl");
+                Method createAppContext = null;
+                for (Method m : contextImplClz.getDeclaredMethods()) {
+                    if ("createAppContext".equals(m.getName())) {
+                        createAppContext = m;
+                        break;
+                    }
+                }
+                if (createAppContext != null) {
+                    createAppContext.setAccessible(true);
+                    Class<?>[] pts = createAppContext.getParameterTypes();
+                    Object[] args = new Object[pts.length];
+                    for (int i = 0; i < pts.length; i++) {
+                        if (pts[i].getName().contains("ActivityThread")) {
+                            args[i] = mainThread;
+                        } else if (pts[i].getName().contains("LoadedApk")) {
+                            args[i] = loadedApk;
+                        } else if (pts[i] == String.class) {
+                            args[i] = null;
+                        } else if (pts[i] == int.class) {
+                            args[i] = 0;
+                        } else {
+                            args[i] = null;
+                        }
+                    }
+                    Object ctx = createAppContext.invoke(null, args);
+                    if (ctx instanceof Context) {
+                        return (Context) ctx;
+                    }
+                }
+            } catch (Throwable t) {
+                Slog.w(TAG, "ContextImpl.createAppContext failed: " + t.getMessage());
+            }
+        } catch (Throwable t) {
+            Slog.w(TAG, "createPackageContextViaActivityThread: " + t.getMessage());
+        }
+        return null;
     }
     
     public Object getPackageInfo() {
