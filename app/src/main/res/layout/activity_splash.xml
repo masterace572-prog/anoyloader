@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/splashRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:padding="24dp">
+
+    <!-- Top Right App Version Pill -->
+    <TextView
+        android:id="@+id/tvAppVersion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/loader_pill"
+        android:fontFamily="monospace"
+        android:paddingStart="12dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="5dp"
+        android:text="v2026.01.01"
+        android:textColor="@color/secondary"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <!-- Center Branding Container (Centered, Stacked, Clean) -->
+    <LinearLayout
+        android:id="@+id/llCenterContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <!-- App Icon Card (Rounded 22dp, subtle stroke) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/splashLogoCard"
+            android:layout_width="84dp"
+            android:layout_height="84dp"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/card_stroke">
+            <ImageView
+                android:id="@+id/splashLogo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/ic_launcher"
+                android:scaleType="fitCenter"
+                android:contentDescription="ANOY Logo" />
+        </androidx.cardview.widget.CardView>
+
+        <!-- Brand Name -->
+        <TextView
+            android:id="@+id/tvAnoy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ANOY LOADER"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.06"
+            android:layout_marginTop="18dp" />
+
+        <!-- Brand Subtitle -->
+        <TextView
+            android:id="@+id/tvSplashSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Virtual Gaming Environment"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+    <!-- Bottom Loading Section -->
+    <LinearLayout
+        android:id="@+id/llBottomLoading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginStart="40dp"
+        android:layout_marginEnd="40dp"
+        android:layout_marginBottom="36dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <!-- Thin Modern Progress Bar -->
+        <ProgressBar
+            android:id="@+id/splashProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/primary"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="@color/primary" />
+
+        <!-- Dynamic Real Check Status Text -->
+        <TextView
+            android:id="@+id/tvSplashStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:letterSpacing="0.03"
+            android:text="Initializing virtual core..."
+            android:textColor="@color/text_muted"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+</RelativeLayout>

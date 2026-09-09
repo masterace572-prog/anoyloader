@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Claude Typography Hierarchy Text Sizes -->
+    <dimen name="text_display_large">32sp</dimen>
+    <dimen name="text_display_medium">28sp</dimen>
+    <dimen name="text_display_small">24sp</dimen>
+    <dimen name="text_title_large">20sp</dimen>
+    <dimen name="text_title_medium">16sp</dimen>
+    <dimen name="text_title_small">14sp</dimen>
+    <dimen name="text_body_large">16sp</dimen>
+    <dimen name="text_body_medium">14sp</dimen>
+    <dimen name="text_body_small">12sp</dimen>
+    <dimen name="text_label_large">14sp</dimen>
+    <dimen name="text_label_medium">12sp</dimen>
+    <dimen name="text_label_small">11sp</dimen>
+</resources>

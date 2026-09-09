@@ -1,0 +1,54 @@
+<resources>
+    <string name="app_name">Anoy Loader</string>
+    <string name="copyright"> copyright</string>
+
+    <!-- Branding & Subtitles -->
+    <string name="brand_name">Anoy Loader</string>
+    <string name="brand_subtitle_engine">Virtualization Engine &amp; Security Core</string>
+    <string name="brand_subtitle_auth">Secure Sandbox Authentication</string>
+    <string name="brand_enterprise">Anoy Loader Enterprise</string>
+    <string name="security_footer">Protected with Advanced Sandboxing &amp; Anti-Tamper Core</string>
+    <string name="userspace_badge">Userspace Sandboxing • Anti-Tamper Protected</string>
+
+    <!-- Status & Badges -->
+    <string name="status_online">Online</string>
+    <string name="status_maintenance">Maintenance</string>
+    <string name="status_lifetime">Lifetime</string>
+    <string name="status_active">Active</string>
+    <string name="status_coming_soon">Coming soon</string>
+    <string name="status_disabled">Disabled</string>
+    <string name="status_latest">Latest</string>
+    <string name="status_stable">Stable</string>
+    <string name="status_beta">Beta</string>
+    <string name="status_test">Test</string>
+    <string name="status_fatal">Fatal</string>
+
+    <!-- Authentication -->
+    <string name="label_license_key">License key</string>
+    <string name="action_authenticate">Authenticate</string>
+    <string name="action_get_key">Get license key</string>
+    <string name="action_save_key">Save license key on this device</string>
+
+    <!-- Dashboard & Actions -->
+    <string name="header_target_app">Target application</string>
+    <string name="action_launch">Launch</string>
+    <string name="action_install">Install</string>
+    <string name="action_sync_obb">Sync OBB assets</string>
+    <string name="action_clear_credentials">Clear login credentials</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">License &amp; Sandbox Maintenance</string>
+    <string name="active_license">Active License</string>
+    <string name="sandbox_maintenance">Sandbox Maintenance &amp; Reset</string>
+    <string name="support_inquiries">Support &amp; Inquiries</string>
+    <string name="contact_admin_telegram">Contact Admin on Telegram</string>
+
+    <!-- Crash Screen -->
+    <string name="crash_title">Crash Report</string>
+    <string name="crash_subtitle">An unhandled exception was captured</string>
+    <string name="error_summary">Error summary</string>
+    <string name="action_copy_log">Copy log</string>
+    <string name="action_restart_app">Restart app</string>
+</resources>

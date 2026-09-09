@@ -1,0 +1,28 @@
+package com.ryzen.ui.theme
+
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+// =====================================================
+// SPACING SYSTEM (Strict 4dp / 8dp Grid Tokens)
+// =====================================================
+
+@Immutable
+data class Spacing(
+    val xxs: Dp = 4.dp,
+    val xs: Dp = 8.dp,
+    val sm: Dp = 12.dp,
+    val md: Dp = 16.dp,
+    val lg: Dp = 20.dp,
+    val xl: Dp = 24.dp,
+    val xxl: Dp = 32.dp,
+    val section: Dp = 40.dp,
+    val huge: Dp = 48.dp,
+    val massive: Dp = 64.dp,
+    val screenHorizontal: Dp = 20.dp,
+    val screenHorizontalCompact: Dp = 16.dp
+)
+
+val LocalSpacing = staticCompositionLocalOf { Spacing() }
