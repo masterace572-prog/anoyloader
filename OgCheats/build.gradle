@@ -71,8 +71,7 @@ android {
         externalNativeBuild {
             ndkBuild {
                 abiFilters "arm64-v8a"
-                // Reuse Anoy's jni tree (same native code)
-                arguments "NDK_APPLICATION_MK:=${rootProject.projectDir}/app/src/main/jni/Application.mk"
+                arguments "NDK_APPLICATION_MK:=src/main/jni/Application.mk"
             }
         }
         ndk {
@@ -145,7 +144,7 @@ android {
 
     externalNativeBuild {
         ndkBuild {
-            path file("${rootProject.projectDir}/app/src/main/jni/Android.mk")
+            path file('src/main/jni/Android.mk')
         }
     }
     ndkVersion "24.0.8215888"

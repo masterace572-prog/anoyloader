@@ -235,7 +235,9 @@ jobs:
 
           set +e
           ./gradlew --stop >/dev/null 2>&1 || true
-          ./gradlew clean "${{ steps.meta.outputs.gradle_task }}" \
+          # gradle_task may contain multiple project tasks (Anoy + OG Cheats)
+          # shellcheck disable=SC2086
+          ./gradlew clean ${{ steps.meta.outputs.gradle_task }} \
             --no-daemon \
             --stacktrace \
             --info \
