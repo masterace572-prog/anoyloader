@@ -370,7 +370,7 @@ jobs:
           tag_name: ${{ steps.rel.outputs.tag }}
           name: Anoy Loader ${{ steps.rel.outputs.tag }}
           body: |
-            ## Anoy Loader ${{ github.event.inputs.release_tag }}
+            ## Anoy Loader ${{ steps.rel.outputs.tag }}
 
             Automated signed release from `${{ github.ref_name }}` @ `${{ steps.meta.outputs.short_sha }}`.
 
