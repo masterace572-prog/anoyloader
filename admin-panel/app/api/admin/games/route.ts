@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/admin-auth';
+import { getServerSupabase, isServerSupabaseConfigured } from '@/lib/supabase-server';
 import { ManagedGame, GameVersion, DEFAULT_GAMES } from '@/lib/types';
 
 export async function GET() {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-token',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
   };
 
@@ -73,16 +75,25 @@ export async function POST(req: NextRequest) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-token',
   };
 
   try {
+    const auth = requireAdmin(req);
+    if (!auth.ok) {
+      return NextResponse.json(
+        { success: false, error: auth.error },
+        { status: auth.status, headers: corsHeaders }
+      );
+    }
+
     const body = await req.json();
     const { action } = body;
 
-    if (!isSupabaseConfigured() || !supabase) {
+    const db = getServerSupabase() || (isSupabaseConfigured() ? supabase : null);
+    if (!db || !isServerSupabaseConfigured()) {
       return NextResponse.json(
-        { success: false, error: 'Database not connected' },
+        { success: false, error: 'Database not connected. Set SUPABASE_SERVICE_ROLE_KEY (or anon) in Vercel env.' },
         { status: 500, headers: corsHeaders }
       );
     }
@@ -108,7 +119,7 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString(),
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('managed_games')
         .upsert(payload)
         .select()
@@ -127,7 +138,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Game ID is required' }, { status: 400, headers: corsHeaders });
       }
 
-      const { error } = await supabase.from('managed_games').delete().eq('id', id);
+      const { error } = await db.from('managed_games').delete().eq('id', id);
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
       }
@@ -147,7 +158,7 @@ export async function POST(req: NextRequest) {
 
       // If set as default, unset existing defaults for this game
       if (version.is_default) {
-        await supabase
+        await db
           .from('game_versions')
           .update({ is_default: false })
           .eq('game_id', version.game_id);
@@ -175,7 +186,7 @@ export async function POST(req: NextRequest) {
         payload.id = version.id;
       }
 
-      let { data, error } = await supabase
+      let { data, error } = await db
         .from('game_versions')
         .upsert(payload)
         .select()
@@ -183,7 +194,7 @@ export async function POST(req: NextRequest) {
 
       if (error && error.message && error.message.includes('lib_name')) {
         delete payload.lib_name;
-        const retry = await supabase
+        const retry = await db
           .from('game_versions')
           .upsert(payload)
           .select()
@@ -205,7 +216,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Version ID is required' }, { status: 400, headers: corsHeaders });
       }
 
-      const { error } = await supabase.from('game_versions').delete().eq('id', id);
+      const { error } = await db.from('game_versions').delete().eq('id', id);
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
       }
@@ -228,7 +239,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-token',
     },
   });
 }

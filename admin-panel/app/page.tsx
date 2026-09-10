@@ -94,6 +94,8 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [pinStatusMsg, setPinStatusMsg] = useState<string | null>(null);
 
   // Core Data
   const [keys, setKeys] = useState<LicenseKey[]>([]);
@@ -161,29 +163,87 @@ export default function AdminDashboard() {
   // Supabase live indicator
   const [isLiveDatabase, setIsLiveDatabase] = useState(false);
 
-  // PIN verification on load
+  // Session token helpers (token issued by /api/admin/auth from Vercel ADMIN_PIN)
+  const getAdminToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('admin_session_token');
+  };
+
+  const adminAuthHeaders = (): HeadersInit => {
+    const token = getAdminToken();
+    return token
+      ? { Authorization: `Bearer ${token}`, 'x-admin-token': token, 'Content-Type': 'application/json' }
+      : { 'Content-Type': 'application/json' };
+  };
+
+  // Restore / validate session on load (never compare PIN client-side)
   useEffect(() => {
-    const savedPin = sessionStorage.getItem('admin_session_auth');
-    if (savedPin === 'valid') {
-      setIsAuthenticated(true);
-    }
+    const token = sessionStorage.getItem('admin_session_token');
+    if (!token) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/auth', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}`, 'x-admin-token': token },
+          cache: 'no-store',
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data?.authenticated) {
+          setIsAuthenticated(true);
+        } else {
+          sessionStorage.removeItem('admin_session_token');
+          sessionStorage.removeItem('admin_session_auth');
+        }
+      } catch {
+        // keep locked on network error
+      }
+    })();
   }, []);
 
-  const handlePinSubmit = (e: React.FormEvent) => {
+  const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (enteredPin === '1234') {
-      sessionStorage.setItem('admin_session_auth', 'valid');
-      setIsAuthenticated(true);
-      setPinError(false);
-    } else {
+    setPinError(false);
+    setPinStatusMsg(null);
+    const pin = enteredPin.trim();
+    if (!pin) {
       setPinError(true);
+      setPinStatusMsg('Enter your administrator PIN.');
+      return;
+    }
+    setPinSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+        cache: 'no-store',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success && data?.token) {
+        sessionStorage.setItem('admin_session_token', data.token);
+        sessionStorage.removeItem('admin_session_auth'); // legacy flag
+        setIsAuthenticated(true);
+        setPinError(false);
+        setEnteredPin('');
+        setPinStatusMsg(null);
+      } else {
+        setPinError(true);
+        setPinStatusMsg(data?.error || 'Invalid PIN');
+      }
+    } catch (err: any) {
+      setPinError(true);
+      setPinStatusMsg(err?.message || 'Could not reach auth server');
+    } finally {
+      setPinSubmitting(false);
     }
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('admin_session_token');
     sessionStorage.removeItem('admin_session_auth');
     setIsAuthenticated(false);
     setEnteredPin('');
+    setPinStatusMsg(null);
   };
 
   // Fetch keys and active info
@@ -722,25 +782,26 @@ export default function AdminDashboard() {
             <div>
               <input
                 type="password"
-                maxLength={8}
+                maxLength={64}
                 value={enteredPin}
                 onChange={(e) => setEnteredPin(e.target.value)}
-                placeholder="Enter PIN (Default: 1234)"
+                placeholder="Enter administrator PIN"
                 className="w-full rounded-lg border border-[#2B2B2B] bg-[#0A0A0A] px-3.5 py-2.5 text-center font-mono text-sm tracking-widest text-white placeholder-neutral-600 focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-all"
                 autoFocus
               />
               {pinError && (
                 <p className="mt-2 text-center text-xs text-red-400 font-medium">
-                  Invalid PIN code. Please try again.
+                  {pinStatusMsg || 'Invalid PIN code. Please try again.'}
                 </p>
               )}
             </div>
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-white py-2.5 text-xs font-semibold uppercase tracking-wider text-black hover:bg-neutral-200 transition-colors"
+              disabled={pinSubmitting}
+              className="w-full rounded-lg bg-white py-2.5 text-xs font-semibold uppercase tracking-wider text-black hover:bg-neutral-200 transition-colors disabled:opacity-50"
             >
-              Authorize Access
+              {pinSubmitting ? 'Verifying…' : 'Authorize Access'}
             </button>
           </form>
 
@@ -1533,7 +1594,7 @@ export default function AdminDashboard() {
                   className="mt-1 w-full rounded-lg border border-[#262626] bg-[#0A0A0A] px-3 py-2 text-xs font-mono text-white focus:border-white focus:outline-none"
                 />
                 <p className="mt-1 text-[10px] text-neutral-400">
-                  The loader app automatically downloads and unzips libraries (libbgmi.so & libpubgm.so) into sandbox memory.
+                  The loader app automatically downloads and unzips libbgmi.so into sandbox memory.
                 </p>
               </div>
 

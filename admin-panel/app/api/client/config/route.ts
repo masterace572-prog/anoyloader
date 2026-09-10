@@ -3,6 +3,8 @@ export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/admin-auth';
+import { getServerSupabase } from '@/lib/supabase-server';
 
 import { ManagedGame, GameVersion, DEFAULT_GAMES } from '@/lib/types';
 
@@ -48,7 +50,7 @@ export async function GET() {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-token',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
   };
 
@@ -102,10 +104,18 @@ export async function POST(req: NextRequest) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-token',
   };
 
   try {
+    const auth = requireAdmin(req);
+    if (!auth.ok) {
+      return NextResponse.json(
+        { success: false, error: auth.error },
+        { status: auth.status, headers: corsHeaders }
+      );
+    }
+
     const body = await req.json();
 
     const payload = {
@@ -125,8 +135,9 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured() && supabase) {
-      const { error } = await supabase.from('system_config').upsert(payload);
+    const db = getServerSupabase() || (isSupabaseConfigured() ? supabase : null);
+    if (db) {
+      const { error } = await db.from('system_config').upsert(payload);
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
       }
@@ -147,7 +158,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-token',
     },
   });
 }
