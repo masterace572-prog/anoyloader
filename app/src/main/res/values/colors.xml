@@ -1,40 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Claude Warm Light Palette (Terracotta Accent, Warm Off-White) -->
-    <color name="primary">#C96442</color>
-    <color name="primaryVariant">#B05333</color>
-    <color name="secondary">#D97757</color>
-    <color name="accent">#C96442</color>
-    
-    <!-- Warm Off-White Base -->
-    <color name="bg_dark">#F5F4EF</color>
     <color name="background">#F5F4EF</color>
-    <color name="black">#1F1E1D</color>
-    
-    <!-- Warm Light Cards & Inputs -->
-    <color name="card_dark">#FFFFFF</color>
-    <color name="card_stroke">#E5E3DC</color>
-    <color name="input_bg">#EBE9E1</color>
-    <color name="background2">#EBE9E1</color>
-    <color name="surfaceElevated">#EBE9E1</color>
-    <color name="secondary2">#EBE9E1</color>
-    
-    <!-- Muted Functional Status Colors -->
-    <color name="error">#B84233</color>
-    <color name="success">#4A7C59</color>
-    
-    <!-- Warm Stone & Taupe Typography -->
+    <color name="bg_dark">#F5F4EF</color>
+    <color name="surface">#FAF9F5</color>
+    <color name="surfaceElevated">#FFFFFF</color>
+    <color name="surfaceSubtle">#ECEAE3</color>
+    <color name="outline">#DDD9CF</color>
     <color name="text_primary">#1F1E1D</color>
-    <color name="text_secondary">#66645E</color>
-    <color name="text_muted">#9E9B90</color>
+    <color name="text_secondary">#6B6860</color>
+    <color name="text_muted">#9C988E</color>
+    <color name="primary">#C96442</color>
+    <color name="primaryVariant">#B5573A</color>
+    <color name="secondary">#C96442</color>
+    <color name="accent">#C96442</color>
+    <color name="onAccent">#FFFFFF</color>
+    <color name="accentSubtle">#F3E4DC</color>
+    <color name="error">#B3261E</color>
+    <color name="success">#4F7A5B</color>
+    <color name="warning">#9A6B1B</color>
+    <color name="black">#1F1E1D</color>
+    <color name="white">#FFFFFF</color>
+    <color name="card_dark">#FFFFFF</color>
+    <color name="card_stroke">#DDD9CF</color>
+    <color name="input_bg">#ECEAE3</color>
+    <color name="background2">#ECEAE3</color>
+    <color name="secondary2">#ECEAE3</color>
     <color name="primaryText">#1F1E1D</color>
-    <color name="hintText">#9E9B90</color>
-    
-    <!-- Buttons & Accents -->
+    <color name="hintText">#9C988E</color>
     <color name="button">#C96442</color>
     <color name="buttonPrimary">#C96442</color>
     <color name="colorAccent">#C96442</color>
-    <color name="darker_gray">#E5E3DC</color>
-    <color name="white">#FFFFFF</color>
+    <color name="darker_gray">#DDD9CF</color>
     <color name="borderBright">#C96442</color>
 </resources>

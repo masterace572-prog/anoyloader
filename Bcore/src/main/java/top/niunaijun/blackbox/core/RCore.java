@@ -103,12 +103,49 @@ public class RCore {
 
     // 由于正常情况Application已完成重定向，以下重定向是怕代码写死。
     public void enableRedirect(Context context) {
+        enableRedirect(context, null);
+    }
+
+    /**
+     * IO redirect setup. {@code context} may be null on Android 16 when
+     * {@code createPackageContext} fails for a virtual package; pass
+     * {@code fallbackPackageName} from ApplicationInfo in that case.
+     */
+    public void enableRedirect(Context context, String fallbackPackageName) {
         Map<String, String> rule = new LinkedHashMap<>();
         Set<String> blackRule = new HashSet<>();
-        String packageName = context.getPackageName();
+        String packageName = null;
+        if (context != null) {
+            try {
+                packageName = context.getPackageName();
+            } catch (Throwable ignored) {
+            }
+        }
+        if (TextUtils.isEmpty(packageName)) {
+            packageName = fallbackPackageName;
+        }
+        if (TextUtils.isEmpty(packageName)) {
+            try {
+                packageName = BActivityThread.getAppPackageName();
+            } catch (Throwable ignored) {
+            }
+        }
+        if (TextUtils.isEmpty(packageName)) {
+            Log.w(TAG, "enableRedirect skipped: no package name (context=" + context + ")");
+            try {
+                RNative.enableIO();
+            } catch (Throwable ignored) {
+            }
+            return;
+        }
 
         try {
             ApplicationInfo packageInfo = BlackBoxCore.getBPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA, BActivityThread.getUserId());
+            if (packageInfo == null) {
+                Log.w(TAG, "enableRedirect: no ApplicationInfo for " + packageName);
+                RNative.enableIO();
+                return;
+            }
             int systemUserId = BlackBoxCore.getHostUserId();
             rule.put(String.format("/data/data/%s/lib", packageName), packageInfo.nativeLibraryDir);
             rule.put(String.format("/data/user/%d/%s/lib", systemUserId, packageName), packageInfo.nativeLibraryDir);
@@ -129,7 +166,18 @@ public class RCore {
             rule.put(String.format("/data/misc/profiles/cur/%d/%s", BActivityThread.getUserId(), packageName), profilesCurDir.getAbsolutePath());
             rule.put(String.format("/data/misc/profiles/ref/%d/%s", BActivityThread.getUserId(), packageName), profilesRefDir.getAbsolutePath());
 
-            if (BlackBoxCore.getContext().getExternalCacheDir() != null && context.getExternalCacheDir() != null) {
+            boolean hasExt = false;
+            try {
+                hasExt = BlackBoxCore.getContext().getExternalCacheDir() != null;
+            } catch (Throwable ignored) {
+            }
+            if (!hasExt && context != null) {
+                try {
+                    hasExt = context.getExternalCacheDir() != null;
+                } catch (Throwable ignored) {
+                }
+            }
+            if (hasExt) {
                 File external = BEnvironment.getExternalStorageDirectory();
                // File external = BEnvironment.getExternalUserDir(BActivityThread.getUserId());
 
@@ -140,7 +188,20 @@ public class RCore {
                 blackRule.add("/sdcard/Pictures");
                 blackRule.add(String.format("/storage/emulated/%d/Pictures", systemUserId));
             }
-            if (BlackBoxCore.get().setHideRoot()) {
+            // Prefer ClientConfiguration.setHideRoot(); also honor MetaCore.RemoteManager.sHideRoot
+            // which defaults to true. PUBG Global anti-cheat kills the process if su paths are visible.
+            boolean shouldHideRoot = false;
+            try {
+                shouldHideRoot = BlackBoxCore.get().setHideRoot();
+            } catch (Throwable ignored) {
+            }
+            if (!shouldHideRoot) {
+                try {
+                    shouldHideRoot = android.MetaCore.RemoteManager.sHideRoot;
+                } catch (Throwable ignored) {
+                }
+            }
+            if (shouldHideRoot) {
                 hideRoot(rule);
             }
             proc(rule);
@@ -157,6 +218,7 @@ public class RCore {
     }
 
     private void hideRoot(Map<String, String> rule) {
+        // Classic Magisk / SuperSU paths
         rule.put("/system/app/Superuser.apk", "/system/app/Superuser.apk-fake");
         rule.put("/sbin/su", "/sbin/su-fake");
         rule.put("/system/bin/su", "/system/bin/su-fake");
@@ -167,6 +229,21 @@ public class RCore {
         rule.put("/system/bin/failsafe/su", "/system/bin/failsafe/su-fake");
         rule.put("/data/local/su", "/data/local/su-fake");
         rule.put("/su/bin/su", "/su/bin/su-fake");
+        // Magisk / KernelSU / APatch common paths (PUBG Global scans these aggressively)
+        rule.put("/sbin/.magisk", "/sbin/.magisk-fake");
+        rule.put("/data/adb/magisk", "/data/adb/magisk-fake");
+        rule.put("/data/adb/ksu", "/data/adb/ksu-fake");
+        rule.put("/data/adb/modules", "/data/adb/modules-fake");
+        rule.put("/data/adb/ap", "/data/adb/ap-fake");
+        rule.put("/debug_ramdisk", "/debug_ramdisk-fake");
+        rule.put("/system/bin/magisk", "/system/bin/magisk-fake");
+        rule.put("/system/xbin/magisk", "/system/xbin/magisk-fake");
+        rule.put("/system/app/SuperSU", "/system/app/SuperSU-fake");
+        rule.put("/system/xbin/daemonsu", "/system/xbin/daemonsu-fake");
+        rule.put("/system/etc/init.d/99SuperSUDaemon", "/system/etc/init.d/99SuperSUDaemon-fake");
+        rule.put("/dev/com.koushikdutta.superuser.daemon", "/dev/com.koushikdutta.superuser.daemon-fake");
+        rule.put("/system/xbin/busybox", "/system/xbin/busybox-fake");
+        rule.put("/system/bin/busybox", "/system/bin/busybox-fake");
     }
 
     private void proc(Map<String, String> rule) {

@@ -23,14 +23,15 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CleaningServices
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.DeleteSweep
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Send
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material.icons.rounded.VpnKey
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.ryzen.R
 import com.ryzen.model.ManagedGame
 import com.ryzen.ui.components.AppBadge
@@ -73,6 +75,7 @@ fun SettingsScreen(
     onSelectGame: (ManagedGame) -> Unit = {},
     onClearLoginClick: (ManagedGame) -> Unit = {},
     onClearGameDataClick: (ManagedGame) -> Unit = {},
+    onResetGuestClick: () -> Unit = {},
     onContactAdminClick: () -> Unit = {},
     appVersionName: String = "1.0",
     appVersionCode: Long = 1L
@@ -80,6 +83,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     var isKeyRevealed by remember { mutableStateOf(false) }
     var showConfirmClearDataDialog by remember { mutableStateOf(false) }
+    var showConfirmResetGuestDialog by remember { mutableStateOf(false) }
+    val isBgmiSelected = true // BGMI-only product
 
     val displayKey = if (isKeyRevealed) {
         keyText.ifBlank { "NONE" }
@@ -93,11 +98,8 @@ fun SettingsScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppTheme.colors.background)
-    ) {
+    // Transparent root — ambient canvas comes from MAct AppBackground
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -120,6 +122,7 @@ fun SettingsScreen(
 
                 // 2. LICENSE CARD
                 AppCard(
+                    elevated = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AppTheme.shapes.large,
                     contentPadding = AppTheme.spacing.md
@@ -135,16 +138,16 @@ fun SettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.VpnKey,
+                                    imageVector = Icons.Outlined.VpnKey,
                                     contentDescription = "Key",
-                                    tint = AppTheme.colors.accent,
+                                    tint = AppTheme.colors.textSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = "Active License",
                                     style = AppTheme.typography.titleMedium.copy(
                                         fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.SemiBold
                                     ),
                                     color = AppTheme.colors.textPrimary
                                 )
@@ -186,7 +189,7 @@ fun SettingsScreen(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (isKeyRevealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                        imageVector = if (isKeyRevealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                         contentDescription = "Toggle Key",
                                         tint = AppTheme.colors.textSecondary,
                                         modifier = Modifier.size(18.dp)
@@ -204,7 +207,7 @@ fun SettingsScreen(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.ContentCopy,
+                                        imageVector = Icons.Outlined.ContentCopy,
                                         contentDescription = "Copy Key",
                                         tint = AppTheme.colors.textSecondary,
                                         modifier = Modifier.size(18.dp)
@@ -221,7 +224,7 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Schedule,
+                                imageVector = Icons.Outlined.Schedule,
                                 contentDescription = "Expiry",
                                 tint = AppTheme.colors.textTertiary,
                                 modifier = Modifier.size(14.dp)
@@ -249,7 +252,7 @@ fun SettingsScreen(
                     style = AppTheme.typography.labelSmall.copy(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.2.sp
+                        letterSpacing = 0.sp
                     ),
                     color = AppTheme.colors.textSecondary
                 )
@@ -257,73 +260,32 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
                 AppCard(
+                    elevated = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AppTheme.shapes.large,
                     contentPadding = AppTheme.spacing.md
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Select Target Game",
-                            style = AppTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                            color = AppTheme.colors.textSecondary
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        // Game selection tabs
-                        if (games.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(AppTheme.shapes.small)
-                                    .background(AppTheme.colors.surfaceElevated)
-                                    .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.small)
-                                    .padding(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                games.forEach { game ->
-                                    val isSelected = selectedGame.id == game.id
-                                    val tabLabel = game.getDisplayTitle()
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(38.dp)
-                                            .clip(AppTheme.shapes.extraSmall)
-                                            .background(
-                                                if (isSelected) AppTheme.colors.surface
-                                                else Color.Transparent
-                                            )
-                                            .then(
-                                                if (isSelected) Modifier.border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.extraSmall)
-                                                else Modifier
-                                            )
-                                            .clickable { onSelectGame(game) },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = tabLabel,
-                                            style = AppTheme.typography.labelMedium.copy(
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                            ),
-                                            color = if (isSelected) AppTheme.colors.textPrimary else AppTheme.colors.textSecondary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
-                        val gameShortName = if (selectedGame.getDisplayTitle().contains("PUBG", ignoreCase = true)) "PUBG" else "BGMI"
+                        val gameShortName = "BGMI"
 
                         // Clear Login Button (Operation 1)
                         AppButton(
                             text = "Clear $gameShortName Login data",
                             onClick = { onClearLoginClick(selectedGame) },
-                            leadingIcon = Icons.Rounded.CleaningServices,
+                            leadingIcon = Icons.Outlined.CleaningServices,
                             variant = ButtonVariant.SECONDARY
                         )
+
+                        // BGMI-only: full guest identity reset (device_id + cache wipe)
+                        if (isBgmiSelected) {
+                            Spacer(modifier = Modifier.height(AppTheme.spacing.sm))
+                            AppButton(
+                                text = "Reset Guest",
+                                onClick = { showConfirmResetGuestDialog = true },
+                                leadingIcon = Icons.Outlined.RestartAlt,
+                                variant = ButtonVariant.SECONDARY
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(AppTheme.spacing.sm))
 
@@ -331,7 +293,7 @@ fun SettingsScreen(
                         AppButton(
                             text = "Clear $gameShortName Resources data",
                             onClick = { showConfirmClearDataDialog = true },
-                            leadingIcon = Icons.Rounded.DeleteSweep,
+                            leadingIcon = Icons.Outlined.DeleteSweep,
                             variant = ButtonVariant.DESTRUCTIVE
                         )
                     }
@@ -345,7 +307,7 @@ fun SettingsScreen(
                     style = AppTheme.typography.labelSmall.copy(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.2.sp
+                        letterSpacing = 0.sp
                     ),
                     color = AppTheme.colors.textSecondary
                 )
@@ -353,6 +315,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
                 AppCard(
+                    elevated = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AppTheme.shapes.large,
                     contentPadding = AppTheme.spacing.md
@@ -362,7 +325,7 @@ fun SettingsScreen(
                             text = "Need Assistance or Key Extension?",
                             style = AppTheme.typography.titleMedium.copy(
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             ),
                             color = AppTheme.colors.textPrimary
                         )
@@ -392,7 +355,7 @@ fun SettingsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Anoy Loader v$appVersionName (Build $appVersionCode)",
+                        text = stringResource(id = R.string.brand_name) + " v$appVersionName (Build $appVersionCode)",
                         style = AppTheme.typography.bodySmall.copy(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -414,7 +377,7 @@ fun SettingsScreen(
 
         // Confirmation Dialog for Full Game Data Clear
         if (showConfirmClearDataDialog) {
-            val gameShortName = if (selectedGame.getDisplayTitle().contains("PUBG", ignoreCase = true)) "PUBG" else "BGMI"
+            val gameShortName = "BGMI"
             AppDialog(
                 onDismissRequest = { showConfirmClearDataDialog = false },
                 title = "Clear $gameShortName Resources Data?",
@@ -436,13 +399,49 @@ fun SettingsScreen(
                             showConfirmClearDataDialog = false
                             onClearGameDataClick(selectedGame)
                         },
-                        leadingIcon = Icons.Rounded.DeleteSweep,
+                        leadingIcon = Icons.Outlined.DeleteSweep,
                         variant = ButtonVariant.DESTRUCTIVE
                     )
 
                     AppButton(
                         text = "Cancel",
                         onClick = { showConfirmClearDataDialog = false },
+                        variant = ButtonVariant.TERTIARY
+                    )
+                }
+            }
+        }
+
+        // BGMI-only Reset Guest confirmation
+        if (showConfirmResetGuestDialog && isBgmiSelected) {
+            AppDialog(
+                onDismissRequest = { showConfirmResetGuestDialog = false },
+                title = "Reset BGMI Guest?",
+                subtitle = "Generate a fresh guest identity"
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md)
+                ) {
+                    Text(
+                        text = "This will wipe BGMI guest login, device ID, caches, and related sandbox files, then write a new random guest UUID.\n\nOBB is kept. Controls/settings under SaveGames may be cleared.",
+                        style = AppTheme.typography.bodySmall,
+                        color = AppTheme.colors.textSecondary
+                    )
+
+                    AppButton(
+                        text = "Reset Guest",
+                        onClick = {
+                            showConfirmResetGuestDialog = false
+                            onResetGuestClick()
+                        },
+                        leadingIcon = Icons.Outlined.RestartAlt,
+                        variant = ButtonVariant.PRIMARY
+                    )
+
+                    AppButton(
+                        text = "Cancel",
+                        onClick = { showConfirmResetGuestDialog = false },
                         variant = ButtonVariant.TERTIARY
                     )
                 }

@@ -300,40 +300,115 @@ public class BAccountManagerService extends IBAccountManagerService.Stub impleme
                         // Will not be called in this case.
                     }
                 };
-        new GetAccountsByTypeAndFeatureSession(
-                userAccounts,
-                retrieveAccountsResponse,
-                accountType,
-                features,
-                userId,
-                opPackageName,
-                true /* include managed not visible */).bind();
+        AuthenticatorInfo authInfo = mAuthenticatorCache.authenticators.get(accountType);
+        if (authInfo == null || shouldSkipAuthenticatorBind(accountType, authInfo)) {
+            Account[] accountsWithManagedNotVisible = getAccountsFromCache(
+                    userAccounts, accountType, opPackageName,
+                    true /* include managed not visible */);
+            handleGetAccountsResult(
+                    response, accountsWithManagedNotVisible, opPackageName, userId);
+            return;
+        }
+        try {
+            new GetAccountsByTypeAndFeatureSession(
+                    userAccounts,
+                    retrieveAccountsResponse,
+                    accountType,
+                    features,
+                    userId,
+                    opPackageName,
+                    true /* include managed not visible */).bind();
+        } catch (Throwable t) {
+            Slog.w(TAG, "getAccountByTypeAndFeatures bind failed: " + t.getMessage());
+            handleGetAccountsResult(response, EMPTY_ACCOUNT_ARRAY, opPackageName, userId);
+        }
     }
 
     @Override
     public void getAccountsByFeatures(IAccountManagerResponse response, String type, String[] features, int userId) throws RemoteException {
-        if (response == null) throw new IllegalArgumentException("response is null");
-        if (type == null) throw new IllegalArgumentException("accountType is null");
-
-        String opPackageName = getCallingPackageName();
-        // check visibleAccountTypes
-        BUserAccounts userAccounts = getUserAccounts(userId);
-        if (features == null || features.length == 0) {
-            Account[] accounts = getAccountsFromCache(userAccounts, type,
-                    opPackageName, false);
-            Bundle result = new Bundle();
-            result.putParcelableArray(AccountManager.KEY_ACCOUNTS, accounts);
-            onResult(response, result);
+        if (response == null) {
             return;
         }
-        new GetAccountsByTypeAndFeatureSession(
-                userAccounts,
-                response,
-                type,
-                features,
-                userId,
-                opPackageName,
-                false /* include managed not visible */).bind();
+        if (type == null) {
+            deliverEmptyAccounts(response);
+            return;
+        }
+
+        try {
+            String opPackageName = getCallingPackageName();
+            BUserAccounts userAccounts = getUserAccounts(userId);
+            // Fast path: no features requested, or no authenticator available for type.
+            // Avoid binding to privileged GMS AccountAuthenticator on Android 14–16.
+            AuthenticatorInfo authInfo = mAuthenticatorCache.authenticators.get(type);
+            if (features == null || features.length == 0 || authInfo == null) {
+                Account[] accounts = getAccountsFromCache(userAccounts, type,
+                        opPackageName, false);
+                Bundle result = new Bundle();
+                result.putParcelableArray(AccountManager.KEY_ACCOUNTS, accounts);
+                onResult(response, result);
+                return;
+            }
+            // For feature queries against GMS / Google account types, return cache only.
+            // Host Context cannot bind GoogleAccountAuthenticatorService on modern Android.
+            if (shouldSkipAuthenticatorBind(type, authInfo)) {
+                Account[] accounts = getAccountsFromCache(userAccounts, type,
+                        opPackageName, false);
+                Bundle result = new Bundle();
+                result.putParcelableArray(AccountManager.KEY_ACCOUNTS, accounts);
+                onResult(response, result);
+                return;
+            }
+            new GetAccountsByTypeAndFeatureSession(
+                    userAccounts,
+                    response,
+                    type,
+                    features,
+                    userId,
+                    opPackageName,
+                    false /* include managed not visible */).bind();
+        } catch (Throwable t) {
+            Slog.w(TAG, "getAccountsByFeatures failed safely: " + t.getMessage());
+            deliverEmptyAccounts(response);
+        }
+    }
+
+    private static boolean isPrivilegedAuthenticatorPackage(String packageName) {
+        if (packageName == null) return false;
+        return packageName.startsWith("com.google.android.gms")
+                || packageName.startsWith("com.google.android.gsf")
+                || packageName.equals("com.android.vending")
+                || packageName.equals("com.google.android.gsf.login")
+                || packageName.startsWith("com.google.android.gms.")
+                || packageName.startsWith("com.google.android.partnersetup");
+    }
+
+    /** Account types whose authenticators live in privileged GMS and cannot be bound by host apps. */
+    private static boolean isPrivilegedAccountType(String type) {
+        if (type == null) return false;
+        String t = type.toLowerCase();
+        return t.equals("com.google")
+                || t.startsWith("com.google.")
+                || t.contains("google")
+                || t.startsWith("com.android.vending");
+    }
+
+    private boolean shouldSkipAuthenticatorBind(String accountType, AuthenticatorInfo authInfo) {
+        if (isPrivilegedAccountType(accountType)) return true;
+        if (authInfo != null && authInfo.serviceInfo != null
+                && isPrivilegedAuthenticatorPackage(authInfo.serviceInfo.packageName)) {
+            return true;
+        }
+        return false;
+    }
+
+    private void deliverEmptyAccounts(IAccountManagerResponse response) {
+        if (response == null) return;
+        try {
+            Bundle result = new Bundle();
+            result.putParcelableArray(AccountManager.KEY_ACCOUNTS, EMPTY_ACCOUNT_ARRAY);
+            response.onResult(result);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
@@ -1579,8 +1654,20 @@ public class BAccountManagerService extends IBAccountManagerService.Stub impleme
             if (Log.isLoggable(TAG, Log.VERBOSE)) {
                 Log.v(TAG, "initiating bind to authenticator type " + mAccountType);
             }
-            if (!bindToAuthenticator(mAccountType)) {
-                Log.d(TAG, "bind attempt failed for " + toDebugString());
+            // Never attempt host bind to GMS AccountAuthenticator on Android 14–16.
+            if (shouldSkipAuthenticatorBind(mAccountType,
+                    mAuthenticatorCache.authenticators.get(mAccountType))) {
+                Slog.w(TAG, "skip privileged authenticator bind for type " + mAccountType);
+                onError(AccountManager.ERROR_CODE_REMOTE_EXCEPTION, "bind failure");
+                return;
+            }
+            try {
+                if (!bindToAuthenticator(mAccountType)) {
+                    Log.d(TAG, "bind attempt failed for " + toDebugString());
+                    onError(AccountManager.ERROR_CODE_REMOTE_EXCEPTION, "bind failure");
+                }
+            } catch (Throwable t) {
+                Slog.w(TAG, "Session.bind failed for " + mAccountType + ": " + t.getMessage());
                 onError(AccountManager.ERROR_CODE_REMOTE_EXCEPTION, "bind failure");
             }
         }
@@ -1776,36 +1863,45 @@ public class BAccountManagerService extends IBAccountManagerService.Stub impleme
                 }
                 return false;
             }
-
-//            if (!isLocalUnlockedUser(mAccounts.userId)
-//                    && !authenticatorInfo.componentInfo.directBootAware) {
-//                Slog.w(TAG, "Blocking binding to authenticator " + authenticatorInfo.componentName
-//                        + " which isn't encryption aware");
-//                return false;
-//            }
+            // Android 14–16: host process is not allowed to bind privileged GMS authenticators.
+            if (shouldSkipAuthenticatorBind(authenticatorType, authenticatorInfo)) {
+                Slog.w(TAG, "refusing bindToAuthenticator for privileged type "
+                        + authenticatorType + " pkg="
+                        + (authenticatorInfo.serviceInfo != null
+                        ? authenticatorInfo.serviceInfo.packageName : "?"));
+                return false;
+            }
 
             Intent intent = new Intent();
             intent.setAction(AccountManager.ACTION_AUTHENTICATOR_INTENT);
-            ComponentName componentName = new ComponentName(authenticatorInfo.serviceInfo.packageName, authenticatorInfo.serviceInfo.name);
+            ComponentName componentName = new ComponentName(
+                    authenticatorInfo.serviceInfo.packageName,
+                    authenticatorInfo.serviceInfo.name);
             intent.setComponent(componentName);
-            // call userId
             intent.putExtra("_G_|_UserId", mAccounts.userId);
 
             if (Log.isLoggable(TAG, Log.VERBOSE)) {
                 Log.v(TAG, "performing bindService to " + componentName);
             }
             int flags = Context.BIND_AUTO_CREATE;
-//            if (mAuthenticatorCache.getBindInstantServiceAllowed(mAccounts.userId)) {
-//                flags |= Context.BIND_ALLOW_INSTANT;
-//            }
-            if (!mContext.bindService(intent, this, flags)) {
-                if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                    Log.v(TAG, "bindService to " + componentName + " failed");
+            // Android 14–16: host apps are not allowed to bind to privileged GMS
+            // AccountAuthenticator services. Catch SecurityException and treat as
+            // soft failure so GMS callers get empty accounts instead of process death.
+            try {
+                if (!mContext.bindService(intent, this, flags)) {
+                    if (Log.isLoggable(TAG, Log.VERBOSE)) {
+                        Log.v(TAG, "bindService to " + componentName + " failed");
+                    }
+                    return false;
                 }
+                return true;
+            } catch (SecurityException se) {
+                Slog.w(TAG, "bindToAuthenticator denied for " + componentName + ": " + se.getMessage());
+                return false;
+            } catch (Throwable t) {
+                Slog.w(TAG, "bindToAuthenticator error for " + componentName + ": " + t.getMessage());
                 return false;
             }
-
-            return true;
         }
     }
 
@@ -1835,10 +1931,20 @@ public class BAccountManagerService extends IBAccountManagerService.Stub impleme
     }
 
     private String getCallingPackageName() {
-        int callingPid = Binder.getCallingPid();
-        ProcessRecord processByPid = BProcessManagerService.get().findProcessByPid(callingPid);
-        if (processByPid == null)
-            throw new IllegalArgumentException("ProcessRecord is null, PID: " + callingPid);
-        return processByPid.getPackageName();
+        try {
+            int callingPid = Binder.getCallingPid();
+            ProcessRecord processByPid = BProcessManagerService.get().findProcessByPid(callingPid);
+            if (processByPid != null && processByPid.getPackageName() != null) {
+                return processByPid.getPackageName();
+            }
+        } catch (Throwable ignored) {
+        }
+        // Fallback: never throw into GMS/account callers (Android 16 crash path)
+        try {
+            String host = BlackBoxCore.getHostPkg();
+            if (host != null) return host;
+        } catch (Throwable ignored) {
+        }
+        return "android";
     }
 }

@@ -1,5 +1,7 @@
 package com.ryzen.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -30,6 +32,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
 
@@ -52,43 +55,57 @@ fun AppTextField(
     singleLine: Boolean = true
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(AppRadii.xs)
 
-    val borderWidth = if (isFocused) 1.5.dp else 1.dp
-    val borderColor = when {
-        !enabled -> AppTheme.colors.border.copy(alpha = 0.5f)
-        isError -> AppTheme.colors.error
-        isFocused -> AppTheme.colors.accent
-        else -> AppTheme.colors.border
-    }
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> AppTheme.colors.outline.copy(alpha = 0.5f)
+            isError -> AppTheme.colors.error
+            isFocused -> AppTheme.colors.accent
+            else -> AppTheme.colors.outline
+        },
+        animationSpec = tween(AppMotion.DurationState),
+        label = "fieldBorder"
+    )
 
-    val backgroundColor = when {
-        !enabled -> AppTheme.colors.surfaceVariant
-        isFocused -> AppTheme.colors.surfaceElevated
-        else -> AppTheme.colors.surface
-    }
+    val labelColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> AppTheme.colors.textTertiary
+            isError -> AppTheme.colors.error
+            isFocused -> AppTheme.colors.accent
+            else -> AppTheme.colors.textSecondary
+        },
+        animationSpec = tween(AppMotion.DurationState),
+        label = "fieldLabel"
+    )
+
+    val iconTint by animateColorAsState(
+        targetValue = when {
+            !enabled -> AppTheme.colors.textTertiary
+            isFocused -> AppTheme.colors.textPrimary
+            else -> AppTheme.colors.textSecondary
+        },
+        animationSpec = tween(AppMotion.DurationState),
+        label = "fieldIcon"
+    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (label != null) {
             Text(
                 text = label,
                 style = AppTheme.typography.labelMedium,
-                color = when {
-                    !enabled -> AppTheme.colors.disabled
-                    isError -> AppTheme.colors.error
-                    isFocused -> AppTheme.colors.accent
-                    else -> AppTheme.colors.textSecondary
-                }
+                color = labelColor
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
-                .clip(RoundedCornerShape(AppRadii.sm))
-                .background(backgroundColor)
-                .border(borderWidth, borderColor, RoundedCornerShape(AppRadii.sm))
+                .height(52.dp)
+                .clip(shape)
+                .background(AppTheme.colors.surfaceSubtle)
+                .border(1.dp, borderColor, shape)
                 .onFocusChanged { isFocused = it.isFocused }
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.CenterStart
@@ -102,11 +119,7 @@ fun AppTextField(
                         imageVector = leadingIcon,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = when {
-                            !enabled -> AppTheme.colors.disabled
-                            isFocused -> AppTheme.colors.accent
-                            else -> AppTheme.colors.textSecondary
-                        }
+                        tint = iconTint
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                 }
@@ -129,7 +142,7 @@ fun AppTextField(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = enabled,
                         textStyle = AppTheme.typography.bodyLarge.copy(
-                            color = if (enabled) AppTheme.colors.textPrimary else AppTheme.colors.disabled
+                            color = if (enabled) AppTheme.colors.textPrimary else AppTheme.colors.textTertiary
                         ),
                         cursorBrush = SolidColor(AppTheme.colors.accent),
                         visualTransformation = visualTransformation,
@@ -151,7 +164,7 @@ fun AppTextField(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = displayFeedback,
-                style = AppTheme.typography.bodySmall,
+                style = AppTheme.typography.labelMedium,
                 color = if (isError) AppTheme.colors.error else AppTheme.colors.textTertiary
             )
         }

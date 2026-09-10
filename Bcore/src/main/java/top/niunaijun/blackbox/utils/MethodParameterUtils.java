@@ -89,10 +89,53 @@ public class MethodParameterUtils {
         return null;
     }
     
+    /**
+     * Rewrite the trailing userId argument used by AMS APIs.
+     * USER_ALL (-1) / USER_CURRENT (-2) / USER_CURRENT_OR_SELF (-3) must become the host
+     * user id, otherwise Android 10+ throws:
+     * SecurityException: broadcast ... asks to run as user -1 ... requires INTERACT_ACROSS_USERS.
+     * GMS NetworkMonitor on Android 16 triggers this via sendBroadcastAsUser(UserHandle.ALL).
+     */
     public static void replaceLastUserId(Object[] args) {
-        int index = args.length - 1;
-        if (index >= 0 && args[index] instanceof Integer) {
+        if (args == null || args.length == 0) {
+            return;
+        }
+        int index = -1;
+        for (int i = args.length - 1; i >= 0; i--) {
+            if (args[i] instanceof Integer) {
+                index = i;
+                break;
+            }
+        }
+        if (index == -1) {
+            return;
+        }
+        int userId = (int) args[index];
+        // USER_ALL=-1, USER_CURRENT=-2, USER_CURRENT_OR_SELF=-3, USER_NULL=-10000
+        // Also rewrite virtual BUser ids that are not the real host user.
+        if (userId < 0 || userId == BActivityThread.getUserId()) {
             args[index] = BlackBoxCore.getHostUserId();
+        }
+    }
+
+    /**
+     * Rewrite every Integer user-handle sentinel (-1/-2/-3) in the arg list.
+     * Safer for APIs where userId is not strictly the last parameter.
+     */
+    public static void replaceAllUserIdSentinels(Object[] args) {
+        if (args == null) {
+            return;
+        }
+        int host = BlackBoxCore.getHostUserId();
+        int bUser = BActivityThread.getUserId();
+        for (int i = 0; i < args.length; i++) {
+            if (!(args[i] instanceof Integer)) {
+                continue;
+            }
+            int v = (int) args[i];
+            if (v == -1 || v == -2 || v == -3 || v == bUser) {
+                args[i] = host;
+            }
         }
     }
     

@@ -1,8 +1,12 @@
 package com.ryzen.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,24 +27,24 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,11 +52,9 @@ import androidx.compose.ui.unit.sp
 import com.ryzen.R
 import com.ryzen.model.GameVersion
 import com.ryzen.model.ManagedGame
-import com.ryzen.model.TargetGame
 import com.ryzen.ui.components.AppBadge
 import com.ryzen.ui.components.AppButton
 import com.ryzen.ui.components.AppCard
-import com.ryzen.ui.components.AppCountdownTimer
 import com.ryzen.ui.components.AppDialog
 import com.ryzen.ui.components.AppProgressBar
 import com.ryzen.ui.components.AppTopBar
@@ -60,6 +62,7 @@ import com.ryzen.ui.components.BadgeTone
 import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.GameNotInstalledDialog
 import com.ryzen.ui.components.GameNotInstalledDialogState
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 
 private data class ActionButtonState(
@@ -83,7 +86,7 @@ fun MainDashboardScreen(
     progressMessage: String = "",
     hasObb: Boolean = false,
     isClonedInContainer: Boolean = false,
-    games: List<ManagedGame> = ManagedGame.DEFAULT_GAMES,
+    games: List<ManagedGame> = listOf(ManagedGame.DEFAULT_BGMI),
     selectedGame: ManagedGame = ManagedGame.DEFAULT_BGMI,
     selectedVersion: GameVersion? = selectedGame.versions.firstOrNull(),
     isHostGameInstalled: Boolean = true,
@@ -107,11 +110,8 @@ fun MainDashboardScreen(
 ) {
     val gameTitle = selectedGame.getDisplayTitle()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppTheme.colors.background)
-    ) {
+    // Transparent root — ambient canvas comes from MAct AppBackground
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,33 +119,14 @@ fun MainDashboardScreen(
         ) {
             // 1. TOP BAR (Clean compact title + small expiry indicator)
             AppTopBar(
-                title = "Anoy Loader",
+                title = stringResource(id = R.string.brand_name),
                 subtitle = "Virtualization Engine",
                 trailingContent = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .clip(AppTheme.shapes.extraSmall)
-                            .background(AppTheme.colors.surfaceElevated)
-                            .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.extraSmall)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(AppTheme.colors.success)
-                        )
-                        Text(
-                            text = if (isLifetime) "Lifetime" else if (days != "00") "${days}d ${hours}h" else "${hours}h ${mins}m",
-                            style = AppTheme.typography.labelSmall.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = AppTheme.colors.textPrimary
-                        )
-                    }
+                    Text(
+                        text = if (isLifetime) "Lifetime" else if (days != "00") "${days}d ${hours}h" else "${hours}h ${mins}m",
+                        style = AppTheme.typography.labelMedium,
+                        color = AppTheme.colors.success
+                    )
                 }
             )
 
@@ -169,7 +150,7 @@ fun MainDashboardScreen(
                         style = AppTheme.typography.labelSmall.copy(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.2.sp
+                            letterSpacing = 0.sp
                         ),
                         color = AppTheme.colors.textSecondary
                     )
@@ -179,7 +160,7 @@ fun MainDashboardScreen(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.MoreVert,
+                            imageVector = Icons.Outlined.MoreVert,
                             contentDescription = "Options",
                             tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(20.dp)
@@ -189,52 +170,9 @@ fun MainDashboardScreen(
 
                 Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
-                // 3b. DYNAMIC GAME SELECTOR TABS (Seamless switching between BGMI & PUBG GL)
-                if (games.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(AppTheme.shapes.small)
-                            .background(AppTheme.colors.surfaceElevated)
-                            .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.small)
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        games.forEach { game ->
-                            val isSelected = selectedGame.id == game.id
-                            val tabLabel = game.getDisplayTitle()
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(40.dp)
-                                    .clip(AppTheme.shapes.extraSmall)
-                                    .background(
-                                        if (isSelected) AppTheme.colors.surface
-                                        else Color.Transparent
-                                    )
-                                    .then(
-                                        if (isSelected) Modifier.border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.extraSmall)
-                                        else Modifier
-                                    )
-                                    .clickable { onSelectGame(game) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = tabLabel,
-                                    style = AppTheme.typography.labelMedium.copy(
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                    ),
-                                    color = if (isSelected) AppTheme.colors.textPrimary else AppTheme.colors.textSecondary
-                                )
-                            }
-                        }
-                    }
-                }
+                // BGMI-only product — no multi-game selector
 
-                Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
-                // 4. CLEAN & MODERN GAME CARDS (Multi-version support, e.g. 4.5.0 and 4.6.0)
+                                // 4. CLEAN & MODERN GAME CARDS (Multi-version support, e.g. 4.5.0 and 4.6.0)
                 val versionsToDisplay = if (selectedGame.versions.isNotEmpty()) {
                     selectedGame.versions
                 } else {
@@ -280,13 +218,13 @@ fun MainDashboardScreen(
 
                     val cardButtonState = when {
                         isVerComingSoon -> {
-                            ActionButtonState("Coming soon", false, ButtonVariant.SECONDARY, Icons.Rounded.Schedule)
+                            ActionButtonState("Coming soon", false, ButtonVariant.SECONDARY, Icons.Outlined.Schedule)
                         }
                         !isGameEnabled -> {
                             ActionButtonState("Unavailable", false, ButtonVariant.SECONDARY, null)
                         }
                         !isHostGameInstalled -> {
-                            ActionButtonState("$gameTitle Not Installed", true, ButtonVariant.PRIMARY, Icons.Rounded.Download)
+                            ActionButtonState("$gameTitle Not Installed", true, ButtonVariant.PRIMARY, Icons.Outlined.Download)
                         }
                         !isMatchingHostVersion -> {
                             ActionButtonState("Version Not Installed", false, ButtonVariant.SECONDARY, null)
@@ -301,19 +239,20 @@ fun MainDashboardScreen(
                             ActionButtonState("Starting engine...", false, ButtonVariant.PRIMARY, null)
                         }
                         !isClonedInContainer -> {
-                            ActionButtonState("Install", true, ButtonVariant.PRIMARY, Icons.Rounded.Download)
+                            ActionButtonState("Install", true, ButtonVariant.PRIMARY, Icons.Outlined.Download)
                         }
                         !hasObb -> {
-                            ActionButtonState("Synchronize OBB", true, ButtonVariant.PRIMARY, Icons.Rounded.Sync)
+                            ActionButtonState("Synchronize OBB", true, ButtonVariant.PRIMARY, Icons.Outlined.Sync)
                         }
                         else -> {
-                            ActionButtonState("Launch", true, ButtonVariant.PRIMARY, Icons.Rounded.PlayArrow)
+                            ActionButtonState("Launch", true, ButtonVariant.PRIMARY, Icons.Outlined.PlayArrow)
                         }
                     }
 
                     AppCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = AppTheme.shapes.large,
+                        elevated = true,
                         contentPadding = AppTheme.spacing.md
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
@@ -330,22 +269,12 @@ fun MainDashboardScreen(
                                         .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.medium),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (selectedGame.iconType.contains("bgmi", ignoreCase = true) ||
-                                        selectedGame.packageName == "com.pubg.imobile") {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.india),
-                                            contentDescription = "$gameTitle Icon",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    } else {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.ic_pubg_gl),
-                                            contentDescription = "$gameTitle Icon",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    }
+                                    Image(
+                                        painter = painterResource(id = R.drawable.india),
+                                        contentDescription = "$gameTitle Icon",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.width(AppTheme.spacing.md))
@@ -355,7 +284,7 @@ fun MainDashboardScreen(
                                         text = gameTitle,
                                         style = AppTheme.typography.titleMedium.copy(
                                             fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.SemiBold
                                         ),
                                         color = AppTheme.colors.textPrimary
                                     )
@@ -413,8 +342,10 @@ fun MainDashboardScreen(
                 // 5. PROGRESS CARD (Visible only during active operations)
                 AnimatedVisibility(
                     visible = isCopyingObb || isInstalling,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                    enter = fadeIn(tween(AppMotion.DurationStandard)) +
+                        slideInVertically(tween(AppMotion.DurationStandard)) { it / 8 },
+                    exit = fadeOut(tween(AppMotion.DurationFast)) +
+                        slideOutVertically(tween(AppMotion.DurationFast)) { it / 10 }
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Spacer(modifier = Modifier.height(AppTheme.spacing.md))
@@ -452,7 +383,7 @@ fun MainDashboardScreen(
                             onOptionsDismiss()
                             if (isClonedInContainer) onLaunchClick() else onInstallClick()
                         },
-                        leadingIcon = Icons.Rounded.PlayArrow,
+                        leadingIcon = Icons.Outlined.PlayArrow,
                         variant = ButtonVariant.PRIMARY,
                         fullWidth = true
                     )
@@ -463,7 +394,7 @@ fun MainDashboardScreen(
                             onOptionsDismiss()
                             onSyncObbClick()
                         },
-                        leadingIcon = Icons.Rounded.Sync,
+                        leadingIcon = Icons.Outlined.Sync,
                         variant = ButtonVariant.SECONDARY,
                         fullWidth = true
                     )
@@ -474,7 +405,7 @@ fun MainDashboardScreen(
                             onOptionsDismiss()
                             onClearLoginClick()
                         },
-                        leadingIcon = Icons.Rounded.DeleteOutline,
+                        leadingIcon = Icons.Outlined.DeleteOutline,
                         variant = ButtonVariant.DESTRUCTIVE,
                         fullWidth = true
                     )

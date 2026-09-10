@@ -236,7 +236,7 @@ public class Downtwo {
             connection.setConnectTimeout(connectTimeout);
             connection.setReadTimeout(readTimeout);
             connection.setInstanceFollowRedirects(false);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) Anoy-Loader");
+            connection.setRequestProperty("User-Agent", com.ryzen.BrandConfig.userAgent());
             connection.setRequestProperty("Accept-Encoding", "identity");
 
             int status = connection.getResponseCode();
@@ -286,7 +286,6 @@ public class Downtwo {
             }
 
             File targetBgmi = new File(loaderDirectory, "libbgmi.so");
-            File targetPubg = new File(loaderDirectory, "libpubgm.so");
 
             pathOutput = new File(pathBase, "download_lib_temp.bin");
             if (pathOutput.exists()) pathOutput.delete();
@@ -328,9 +327,9 @@ public class Downtwo {
             }
 
             if (isElf) {
-                Log.d(TAG, "Downloaded file is a raw ELF library. Deploying to both: " + targetBgmi.getName() + " & " + targetPubg.getName());
+                // BGMI-only product: always deploy raw ELF as libbgmi.so
+                Log.d(TAG, "Raw ELF library. Deploying as " + targetBgmi.getName());
                 copyFile(pathOutput, targetBgmi);
-                copyFile(pathOutput, targetPubg);
                 pathOutput.delete();
             } else if (isZip) {
                 Log.d(TAG, "Downloaded file is a ZIP archive. Extracting to: " + loaderDirectory.getAbsolutePath());
@@ -344,7 +343,7 @@ public class Downtwo {
                 // Flatten all .so files from nested subdirectories into loaderDirectory
                 flattenSoFiles(loaderDirectory, loaderDirectory);
 
-                // If libbgmi.so was in a subfolder inside the zip, move it to loaderDirectory
+                // Prefer explicit libbgmi.so entry
                 if (!targetBgmi.exists() || targetBgmi.length() == 0) {
                     File nestedLib = findFileRecursive(loaderDirectory, "libbgmi.so");
                     if (nestedLib != null && !nestedLib.equals(targetBgmi)) {
@@ -352,17 +351,15 @@ public class Downtwo {
                     }
                 }
 
-                // If libpubgm.so was in a subfolder inside the zip, move it to loaderDirectory
-                if (!targetPubg.exists() || targetPubg.length() == 0) {
-                    File nestedPubg = findFileRecursive(loaderDirectory, "libpubgm.so");
-                    if (nestedPubg != null && !nestedPubg.equals(targetPubg)) {
-                        copyFile(nestedPubg, targetPubg);
-                    }
-                }
+                // Promote versioned libbgmi* if generic is still missing
+                promoteVersionedLib(loaderDirectory, "libbgmi", targetBgmi);
+
+                // Remove any leftover PUBG Global libs from older installs
+                deleteMatchingLibs(loaderDirectory, "libpubgm");
+                deleteMatchingLibs(loaderDirectory, "libpubg");
             } else {
-                Log.w(TAG, "Unrecognized magic bytes. Assuming direct library file.");
+                Log.w(TAG, "Unrecognized magic bytes. Treating as raw libbgmi.so");
                 copyFile(pathOutput, targetBgmi);
-                copyFile(pathOutput, targetPubg);
                 pathOutput.delete();
             }
 
@@ -397,10 +394,9 @@ public class Downtwo {
             SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
             prefs.edit().putString(PREF_VERSION_KEY, targetVersion).apply();
             boolean hasBgmi = targetBgmi.isFile() && targetBgmi.length() >= 100;
-            boolean hasPubg = targetPubg.isFile() && targetPubg.length() >= 100;
             Log.d(TAG, "Successfully updated libraries to version: " + targetVersion +
-                    " (Valid libs: " + validSoCount + ", BGMI: " + (hasBgmi ? targetBgmi.length() + "B" : "none") +
-                    ", PUBG: " + (hasPubg ? targetPubg.length() + "B" : "none") + ")");
+                    " (Valid libs: " + validSoCount + ", libbgmi.so: " +
+                    (hasBgmi ? targetBgmi.length() + "B" : "none") + ")");
             return null; // success
         } catch (Exception e) {
             Log.e(TAG, "Download error", e);
@@ -420,6 +416,59 @@ public class Downtwo {
                 out.write(buffer, 0, length);
             }
             out.flush();
+        }
+    }
+
+    /** Delete files whose names start with {@code prefix} (case-insensitive). */
+    private static void deleteMatchingLibs(File loaderDirectory, String prefix) {
+        if (loaderDirectory == null || !loaderDirectory.isDirectory() || prefix == null) return;
+        File[] files = loaderDirectory.listFiles();
+        if (files == null) return;
+        String p = prefix.toLowerCase();
+        for (File f : files) {
+            if (!f.isFile()) continue;
+            String n = f.getName().toLowerCase();
+            if (n.startsWith(p) && n.endsWith(".so")) {
+                // Keep libbgmi* when purging libpubg* leftovers
+                if (p.startsWith("libpubg") && n.startsWith("libbgmi")) continue;
+                if (f.delete()) {
+                    Log.i(TAG, "Purged leftover lib: " + f.getName());
+                }
+            }
+        }
+    }
+
+    /**
+     * If the generic target (libbgmi.so) is missing, promote the newest
+     * versioned sibling (libbgmi460.so, …) so injection always has a fallback.
+     */
+    private static void promoteVersionedLib(File loaderDirectory, String prefix, File genericTarget) {
+        try {
+            if (genericTarget.exists() && genericTarget.isFile() && genericTarget.length() >= 100) {
+                return;
+            }
+            File[] files = loaderDirectory.listFiles((dir, name) -> {
+                if (name == null) return false;
+                String lower = name.toLowerCase();
+                return lower.startsWith(prefix.toLowerCase()) && lower.endsWith(".so")
+                        && !lower.equals(prefix.toLowerCase() + ".so")
+                        && !lower.contains("_active");
+            });
+            if (files == null || files.length == 0) return;
+            File best = null;
+            for (File f : files) {
+                if (f.isFile() && f.length() >= 100) {
+                    if (best == null || f.lastModified() > best.lastModified() || f.length() > best.length()) {
+                        best = f;
+                    }
+                }
+            }
+            if (best != null) {
+                copyFile(best, genericTarget);
+                Log.i(TAG, "Promoted versioned lib " + best.getName() + " -> " + genericTarget.getName());
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "promoteVersionedLib failed for " + prefix + ": " + e.getMessage());
         }
     }
 

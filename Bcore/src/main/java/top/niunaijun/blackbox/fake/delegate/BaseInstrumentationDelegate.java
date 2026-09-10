@@ -21,6 +21,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 
 import top.niunaijun.blackbox.BlackBoxCore;
+import top.niunaijun.blackbox.core.CrashHandler;
 import top.niunaijun.blackbox.app.BActivityThread;
 import top.niunaijun.blackbox.app.configuration.AppLifecycleCallback;
 import top.niunaijun.blackbox.utils.Reflector;
@@ -47,7 +48,21 @@ public class BaseInstrumentationDelegate extends Instrumentation {
 
     @Override
     public boolean onException(Object obj, Throwable e) {
-        return mBaseInstrumentation.onException(obj, e);
+        // Returning true tells the system the exception was handled — critical for
+        // mid-session GMS/sandbox noise so the game process is not killed.
+        try {
+            if (CrashHandler.isSurvivableBackgroundFailure(Thread.currentThread(), e)) {
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            if (mBaseInstrumentation != null && mBaseInstrumentation.onException(obj, e)) {
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
     }
 
     @Override
@@ -222,7 +237,26 @@ public class BaseInstrumentationDelegate extends Instrumentation {
 
     @Override
     public void callApplicationOnCreate(Application app) {
-        mBaseInstrumentation.callApplicationOnCreate(app);
+        if (app == null) {
+            return;
+        }
+        if (mBaseInstrumentation == null) {
+            // Fall back to direct Application.onCreate if base is missing
+            try {
+                app.onCreate();
+            } catch (Throwable ignored) {
+            }
+            return;
+        }
+        try {
+            mBaseInstrumentation.callApplicationOnCreate(app);
+        } catch (NullPointerException npe) {
+            // Android Instrumentation NPE when app is somehow still null internally
+            try {
+                app.onCreate();
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     @Override

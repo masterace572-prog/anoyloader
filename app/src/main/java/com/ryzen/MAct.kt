@@ -14,21 +14,14 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.launch
 import com.ryzen.model.GameVersion
 import com.ryzen.model.ManagedGame
 import com.ryzen.ui.components.AppBottomNav
@@ -36,6 +29,8 @@ import com.ryzen.ui.components.GameNotInstalledDialogState
 import com.ryzen.ui.components.MainNavTab
 import com.ryzen.ui.screens.MainDashboardScreen
 import com.ryzen.ui.screens.SettingsScreen
+import com.ryzen.ui.theme.AppBackground
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 import com.ryzen.utils.AppConfigManager
 import com.ryzen.utils.AppManager
@@ -129,14 +124,14 @@ class MAct : AppCompatActivity() {
                 val appInfo = installedAppInfoState.value
                 val isHostInstalled = appInfo.isInstalled
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(AppTheme.colors.background)
-                ) {
+                AppBackground {
+                    Box(modifier = Modifier.fillMaxSize()) {
                     Crossfade(
                         targetState = currentNavTab,
-                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        animationSpec = tween(
+                            durationMillis = AppMotion.DurationStandard,
+                            easing = AppMotion.EasingStandard
+                        ),
                         label = "screen_crossfade",
                         modifier = Modifier.fillMaxSize()
                     ) { tab ->
@@ -226,6 +221,9 @@ class MAct : AppCompatActivity() {
                                     onClearGameDataClick = { game ->
                                         handleClearGameDataForGame(game)
                                     },
+                                    onResetGuestClick = {
+                                        handleResetGuestBgmi()
+                                    },
                                     onContactAdminClick = {
                                         handleContactAdmin()
                                     },
@@ -244,6 +242,7 @@ class MAct : AppCompatActivity() {
                         },
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
+                    }
                 }
             }
         }
@@ -386,7 +385,13 @@ class MAct : AppCompatActivity() {
     private fun checkServerGameConfig() {
         AppConfigManager.fetchConfig(this) { config ->
             if (isFinishing || isDestroyed) return@fetchConfig
-            // Games are maintained purely client-side; server config handles maintenance/announcements
+            // BGMI-only: keep a single-game list even if server sends more
+            val bgmiOnly = config.games.filter { ManagedGame.isBgmiPackage(it.packageName) }
+                .ifEmpty { ManagedGame.DEFAULT_GAMES }
+            gamesState.value = bgmiOnly
+            if (!ManagedGame.isBgmiPackage(selectedGameState.value.packageName)) {
+                selectedGameState.value = ManagedGame.DEFAULT_BGMI
+            }
         }
         // Auto-check and download new native library ZIP package if admin bumped version
         val now = System.currentTimeMillis()
@@ -545,41 +550,66 @@ class MAct : AppCompatActivity() {
     }
 
     /**
-     * Resolves and sets up the active native library matching the running game and version.
-     * Enforces strict version isolation so BGMI 4.6.0 only loads its assigned 4.6.0 lib.
+     * Resolves libbgmi.so (or versioned libbgmi*) for BGMI inside the sandbox loader dir.
      */
     private fun prepareActiveLibForGame(game: ManagedGame, version: GameVersion?, appInfo: InstalledAppInfo): Boolean {
         try {
+            if (!ManagedGame.isBgmiPackage(game.packageName)) {
+                Log.w("MAct", "Skipping lib prepare for non-BGMI package: ${game.packageName}")
+                return false
+            }
+
             val loaderDir = File(filesDir, "loader")
             if (!loaderDir.exists()) loaderDir.mkdirs()
+
+            // Purge leftover PUBG Global libs from older app versions
+            loaderDir.listFiles()?.forEach { f ->
+                val n = f.name.lowercase()
+                if (f.isFile && (n.startsWith("libpubgm") || n.startsWith("libpubg") || n == "libshared_payload.so")) {
+                    if (f.delete()) Log.i("MAct", "Removed obsolete lib: ${f.name}")
+                }
+            }
 
             val vCode = if (appInfo.versionCode > 0) appInfo.versionCode else (version?.versionCode?.toLong() ?: 0L)
             val vName = if (appInfo.versionName.isNotBlank()) appInfo.versionName else (version?.versionName ?: "")
             val cleanVer = vName.replace(".", "").trim()
-
-            val isBgmi = game.packageName == "com.pubg.imobile"
-            val prefix = if (isBgmi) "libbgmi" else "libpubgm"
-            val activeName = "${prefix}_active.so"
-
+            val prefix = "libbgmi"
+            val activeName = "libbgmi_active.so"
             val assignedLib = version?.getAssignedLibFileName(prefix) ?: (prefix + cleanVer + ".so")
 
             val candidateNames = mutableListOf<String>()
-            val realLib = "$prefix.so" // Real library: libbgmi.so or libpubgm.so
-            candidateNames.add(realLib)
-            if (assignedLib.isNotBlank() && !candidateNames.contains(assignedLib)) candidateNames.add(assignedLib)
+            if (assignedLib.isNotBlank()
+                && assignedLib.startsWith(prefix, ignoreCase = true)
+                && !candidateNames.contains(assignedLib)
+            ) {
+                candidateNames.add(assignedLib)
+            }
             if (vCode > 0) candidateNames.add("${prefix}_$vCode.so")
             if (cleanVer.isNotBlank()) {
                 candidateNames.add("$prefix$cleanVer.so")
                 candidateNames.add("${prefix}_v$cleanVer.so")
             }
             if (vName.isNotBlank()) candidateNames.add("${prefix}_$vName.so")
+            candidateNames.add("libbgmi.so")
+            candidateNames.add(activeName)
 
             var foundFile: File? = null
             for (cand in candidateNames) {
                 val f = File(loaderDir, cand)
-                if (f.exists() && f.isFile && f.length() >= 100) {
-                    foundFile = f
-                    break
+                if (!f.exists() || !f.isFile || f.length() < 100) continue
+                if (!f.name.lowercase().startsWith("libbgmi")) continue
+                foundFile = f
+                break
+            }
+
+            if (foundFile == null) {
+                val extras = loaderDir.listFiles { _, name ->
+                    name != null && name.lowercase().startsWith("libbgmi") && name.lowercase().endsWith(".so")
+                }
+                if (extras != null) {
+                    foundFile = extras
+                        .filter { it.isFile && it.length() >= 100 }
+                        .maxByOrNull { it.lastModified() }
                 }
             }
 
@@ -587,28 +617,101 @@ class MAct : AppCompatActivity() {
             val activeFile = File(loaderDir, activeName)
 
             if (foundFile != null) {
-                Log.i("MAct", "Selected version-specific library: ${foundFile.name} for ${game.getDisplayTitle()} v$vName (vCode: $vCode)")
+                Log.i(
+                    "MAct",
+                    "Selected BGMI library: ${foundFile.name} for v$vName (vCode: $vCode)"
+                )
                 try {
                     activeConfigFile.writeText(foundFile.name)
                 } catch (e: Exception) {
                     Log.w("MAct", "Failed writing active config: ${e.message}")
                 }
-                copyFileSimple(foundFile, activeFile)
+                if (foundFile.absolutePath != activeFile.absolutePath) {
+                    copyFileSimple(foundFile, activeFile)
+                }
                 try {
                     Runtime.getRuntime().exec(arrayOf("chmod", "777", activeFile.absolutePath)).waitFor()
                     Runtime.getRuntime().exec(arrayOf("chmod", "777", foundFile.absolutePath)).waitFor()
-                } catch (ignored: Exception) {}
+                } catch (_: Exception) {
+                }
                 return true
             } else {
-                if (activeConfigFile.exists()) activeConfigFile.delete()
-                if (activeFile.exists()) activeFile.delete()
-                Log.e("MAct", "STRICT LIB CHECK: No matching native lib found for ${game.packageName} v$vName ($cleanVer). Expected: $assignedLib")
-                return false
+                Log.e(
+                    "MAct",
+                    "No libbgmi.so found for BGMI v$vName ($cleanVer). Expected: $assignedLib"
+                )
+                return activeFile.exists() && activeFile.length() >= 100
             }
         } catch (t: Throwable) {
             Log.w("MAct", "prepareActiveLibForGame error", t)
             return false
         }
+    }
+
+    /** GMS install is not required for BGMI — kept as no-op for call-site stability. */
+    private fun ensureGmsForGame(@Suppress("UNUSED_PARAMETER") packageName: String) {
+        // BGMI-only product: skip sandbox GMS install
+    }
+
+    /**
+     * Ensure ApplicationInfo.splitSourceDirs are usable and native libs were extracted.
+     * Reinstalls the sandbox package if the previous install looks incomplete.
+     */
+    private fun installGameIntoSandbox(core: BlackBoxCore, packageName: String): InstallResult? {
+        // Prefer package-name install (FLAG_SYSTEM) so host split APKs stay linked.
+        var installRes = try {
+            core.installPackageAsUser(packageName, USER_ID)
+        } catch (t: Throwable) {
+            Log.w("MAct", "installPackageAsUser(pkg) failed: ${t.message}")
+            null
+        }
+
+        if (installRes == null || !installRes.success) {
+            val apkPath = getHostGameApkPath(packageName)
+            if (apkPath != null) {
+                installRes = try {
+                    core.installPackageAsUser(File(apkPath), USER_ID)
+                } catch (t: Throwable) {
+                    Log.w("MAct", "installPackageAsUser(file) failed: ${t.message}")
+                    null
+                }
+            }
+        }
+
+        // If already marked installed but native lib dir is empty, force reinstall (split recovery)
+        try {
+            if (core.isInstalled(packageName, USER_ID)) {
+                val libDir = try {
+                    BEnvironment.getAppLibDir(packageName)
+                } catch (_: Throwable) {
+                    null
+                }
+                val libCount = libDir?.listFiles()?.count { it.isFile && it.name.endsWith(".so") } ?: 0
+                // Empty native lib dir after install is a red flag for split APKs.
+                // Also reinstall if host has splitSourceDirs but sandbox lib dir is sparse.
+                val hostHasSplits = try {
+                    val ai = packageManager.getApplicationInfo(packageName, 0)
+                    // Local val required: splitSourceDirs is a mutable Java field (no smart cast)
+                    val splits = ai.splitSourceDirs
+                    splits != null && splits.isNotEmpty()
+                } catch (_: Throwable) {
+                    false
+                }
+                if (libCount == 0 && hostHasSplits) {
+                    Log.w("MAct", "Sandbox native lib dir empty for $packageName (splits=$hostHasSplits) - forcing reinstall")
+                    installRes = try {
+                        core.reinstallPackageAsUser(packageName, USER_ID)
+                    } catch (t: Throwable) {
+                        Log.w("MAct", "reinstallPackageAsUser failed: ${t.message}")
+                        installRes
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w("MAct", "post-install lib check failed: ${t.message}")
+        }
+
+        return installRes
     }
 
     /**
@@ -644,7 +747,7 @@ class MAct : AppCompatActivity() {
                 gameTitle = currentGame.getDisplayTitle(),
                 packageName = currentGame.packageName,
                 iconType = currentGame.iconType,
-                isBgmi = currentGame.packageName == "com.pubg.imobile"
+                isBgmi = true
             )
             return
         }
@@ -664,22 +767,28 @@ class MAct : AppCompatActivity() {
                     return@Thread
                 }
 
-                // 1. Clone APK into virtual container
-                var installRes = core.installPackageAsUser(currentGame.packageName, USER_ID)
-                if (installRes == null || !installRes.success) {
-                    val apkPath = getHostGameApkPath(currentGame.packageName)
-                    if (apkPath != null) {
-                        installRes = core.installPackageAsUser(File(apkPath), USER_ID)
-                    }
+                runOnUiThread {
+                    progressMessageState.value = "Preparing sandbox..."
                 }
 
+                // 1. Clone APK (+ splits / native libs) into virtual container
+                runOnUiThread {
+                    progressMessageState.value = "Cloning ${currentGame.getDisplayTitle()} into sandbox..."
+                }
+                val installRes = installGameIntoSandbox(core, currentGame.packageName)
+
                 if (installRes == null || !installRes.success) {
-                    val err = installRes?.msg ?: "Virtual installation failed"
-                    runOnUiThread {
-                        isInstallingState.value = false
-                        Toast.makeText(this, err, Toast.LENGTH_LONG).show()
+                    // If already installed from a previous session, treat as success
+                    val already = try { core.isInstalled(currentGame.packageName, USER_ID) } catch (_: Throwable) { false }
+                    if (!already) {
+                        val err = installRes?.msg ?: "Virtual installation failed"
+                        runOnUiThread {
+                            isInstallingState.value = false
+                            Toast.makeText(this, err, Toast.LENGTH_LONG).show()
+                        }
+                        return@Thread
                     }
-                    return@Thread
+                    Log.i("MAct", "Install reported failure but package is present in sandbox - continuing")
                 }
 
                 // 2. Prepare OBB
@@ -691,10 +800,18 @@ class MAct : AppCompatActivity() {
                         progressMessageState.value = "Transferring game OBB..."
                     }
                     copyObbInternal(sourceFiles, destinationDir, expectedObb)
+                } else if (sourceFiles.isEmpty()) {
+                    Log.w("MAct", "No host OBB found for ${currentGame.packageName} (expected $expectedObb)")
                 }
 
-                // 3. Prepare version-specific library
-                prepareActiveLibForGame(currentGame, currentVersion, appInfo)
+                // 3. Prepare version-specific library (strict per-game, no cross-wiring)
+                runOnUiThread {
+                    progressMessageState.value = "Binding native library..."
+                }
+                val libOk = prepareActiveLibForGame(currentGame, currentVersion, appInfo)
+                if (!libOk) {
+                    Log.w("MAct", "Native lib not ready for ${currentGame.packageName} - launch may be unstable until lib update finishes")
+                }
 
                 // 4. Record cloned version code in Prefs
                 val prefs = Prefs(this)
@@ -703,7 +820,7 @@ class MAct : AppCompatActivity() {
                 runOnUiThread {
                     isInstallingState.value = false
                     isClonedInContainerState.value = true
-                    hasObbState.value = true
+                    hasObbState.value = hasDestinationObb(currentGame, currentVersion) || sourceFiles.isEmpty()
                     obbProgressState.floatValue = 1.0f
                     progressMessageState.value = "Installation Complete"
                     Toast.makeText(this, "${currentGame.getDisplayTitle()} is ready to launch!", Toast.LENGTH_SHORT).show()
@@ -751,7 +868,7 @@ class MAct : AppCompatActivity() {
                 gameTitle = currentGame.getDisplayTitle(),
                 packageName = currentGame.packageName,
                 iconType = currentGame.iconType,
-                isBgmi = currentGame.packageName == "com.pubg.imobile"
+                isBgmi = true
             )
             return
         }
@@ -773,12 +890,18 @@ class MAct : AppCompatActivity() {
             return
         }
 
-        // Prepare active library before launching (strict version isolation)
+
+        // Prepare active library before launching (strict version isolation, no cross-game)
         val libReady = prepareActiveLibForGame(currentGame, currentVersion, appInfo)
         if (!libReady) {
-            val assigned = currentVersion?.getAssignedLibFileName(if (currentGame.packageName == "com.pubg.imobile") "libbgmi" else "libpubgm")
-                ?: if (currentGame.packageName == "com.pubg.imobile") "libbgmi.so" else "libpubgm.so"
+            val assigned = currentVersion?.getAssignedLibFileName("libbgmi") ?: "libbgmi.so"
             Log.w("MAct", "Launch notice: Assigned native lib ($assigned) not yet downloaded in loader storage")
+            // Still allow launch - some configs run without injected payload - but warn user
+            Toast.makeText(
+                this,
+                "Native library for ${currentGame.getDisplayTitle()} is missing. Game may be unstable.",
+                Toast.LENGTH_LONG
+            ).show()
         }
 
         isLaunchingState.value = true
@@ -850,6 +973,235 @@ class MAct : AppCompatActivity() {
     }
 
     /**
+     * BGMI-only full guest reset inside the virtual sandbox.
+     * Mirrors device_id.xml rewrite + cache wipe paths from the native guest-reset script,
+     * remapped onto Bcore data/external roots (never host /data/data or iptables / Documents).
+     */
+    private fun handleResetGuestBgmi() {
+        val pkg = "com.pubg.imobile"
+        Thread {
+            try {
+                try {
+                    BlackBoxCore.get()?.stopPackage(pkg, USER_ID)
+                    Log.i("MAct", "Stopped $pkg before guest reset")
+                } catch (t: Throwable) {
+                    Log.w("MAct", "stopPackage before guest reset: ${t.message}")
+                }
+
+                val dataRoots = mutableListOf<File>()
+                try {
+                    dataRoots.add(BEnvironment.getDataDir(pkg, USER_ID))
+                } catch (_: Throwable) {
+                }
+                // Fallback mirrors used across older installs
+                dataRoots.add(File(filesDir, "data/user/0/$pkg"))
+                dataRoots.add(File(dataDir, "files/data/user/0/$pkg"))
+                dataRoots.add(File("/data/user/0/$packageName/files/data/user/0/$pkg"))
+                dataRoots.add(File("/data/data/$packageName/files/data/user/0/$pkg"))
+
+                val internalRelative = listOf(
+                    "app_appcache",
+                    "app_crashrecord",
+                    "app_crashSight",
+                    "app_databases",
+                    "app_flutter",
+                    "app_textures",
+                    "app_webview_com.pubg.imobile",
+                    "cache",
+                    "code_cache",
+                    "databases",
+                    "shared_prefs",
+                    "no_backup",
+                    "files"
+                )
+
+                for (root in dataRoots.distinctBy { it.absolutePath }) {
+                    if (!root.exists()) continue
+                    for (rel in internalRelative) {
+                        val target = File(root, rel)
+                        if (target.exists()) {
+                            deleteDirectoryRecursively(target)
+                            Log.i("MAct", "Guest reset removed: ${target.absolutePath}")
+                        }
+                    }
+                }
+
+                val externalRoots = mutableListOf<File>()
+                try {
+                    BEnvironment.getExternalDataDir(pkg)?.let { externalRoots.add(it) }
+                } catch (_: Throwable) {
+                }
+                externalRoots.add(File(Environment.getExternalStorageDirectory(), "SdCard/0/Android/data/$pkg"))
+                externalRoots.add(File(Environment.getExternalStorageDirectory(), "SdCard/Android/data/$pkg"))
+                externalRoots.add(File("/storage/emulated/0/SdCard/0/Android/data/$pkg"))
+                externalRoots.add(File("/storage/emulated/0/SdCard/Android/data/$pkg"))
+                // Host Android/data paths (if game wrote outside sandbox — best-effort, may be blocked)
+                externalRoots.add(File(Environment.getExternalStorageDirectory(), "Android/data/$pkg"))
+                externalRoots.add(File("/storage/emulated/0/Android/data/$pkg"))
+                externalRoots.add(File("/data/media/0/Android/data/$pkg"))
+
+                val externalRelative = listOf(
+                    "cache",
+                    "files/centauri",
+                    "files/cronet",
+                    "files/iMSDK",
+                    "files/log",
+                    "files/obblib",
+                    "files/ProgramIncompatible",
+                    "files/tencent",
+                    "files/cacheFile.txt",
+                    "files/login-identifier.txt",
+                    "files/ProgramBinaryCache",
+                    "files/TGPA",
+                    "files/UE4Game/ShadowTrackerExtra/Engine",
+                    "files/UE4Game/ShadowTrackerExtra/Epic Games",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Intermediate",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Avatar",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/CachePaks",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Collision_Detection",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Config",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Gamelet",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/ImageDownloadMgr",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/LightData",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Logs",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/MMKV",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/MoviesPakDir",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Pandora",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/pixuicache",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/PufferEifs0",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/PufferEifs1",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/PufferTmpDir",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/RoleInfo",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/TableDatas",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/UpdateInfo",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/VoiceBin",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/coverversion.ini",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/GameErrorNoRecords",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/ODPakData.txt",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SrcVersion.ini",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/StatEventReportedFlag",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SyncLoadInfo.txt",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/puffer_temp"
+                )
+
+                // Also clear loginInfoFile if present (guest session)
+                val loginRelatives = listOf(
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/loginInfoFile.json",
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/savegames/loginInfoFile.json"
+                )
+
+                for (root in externalRoots.distinctBy { it.absolutePath }) {
+                    if (!root.exists()) continue
+                    for (rel in externalRelative + loginRelatives) {
+                        val target = File(root, rel)
+                        if (target.exists()) {
+                            deleteDirectoryRecursively(target)
+                            Log.i("MAct", "Guest reset removed: ${target.absolutePath}")
+                        }
+                    }
+                }
+
+                // Recreate placeholder dirs the original script touches after wipe
+                val touchDirs = listOf(
+                    "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Intermediate",
+                    "files/TGPA",
+                    "files/ProgramBinaryCache"
+                )
+                for (root in externalRoots.distinctBy { it.absolutePath }) {
+                    // Only create under roots that already exist or are sandbox roots we own
+                    val isSandbox = root.absolutePath.contains("SdCard") ||
+                        root.absolutePath.contains(filesDir.absolutePath) ||
+                        try {
+                            BEnvironment.getExternalDataDir(pkg)?.absolutePath == root.absolutePath
+                        } catch (_: Throwable) {
+                            false
+                        }
+                    if (!isSandbox && !root.exists()) continue
+                    for (rel in touchDirs) {
+                        try {
+                            val dir = File(root, rel)
+                            if (!dir.exists()) dir.mkdirs()
+                        } catch (_: Throwable) {
+                        }
+                    }
+                }
+
+                // Rewrite device_id.xml with a fresh random guest UUID under sandbox shared_prefs
+                val uuid = String.format(
+                    Locale.US,
+                    "%d%d-%d",
+                    (100000..999999).random(),
+                    (100000..999999).random(),
+                    (1000..9999).random()
+                )
+                val deviceIdXml = """
+                    |<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+                    |<map>
+                    |    <string name="random"></string>
+                    |    <string name="install"></string>
+                    |    <string name="uuid">$uuid</string>
+                    |</map>
+                """.trimMargin() + "\n"
+
+                var wroteDeviceId = false
+                for (root in dataRoots.distinctBy { it.absolutePath }) {
+                    // Prefer roots that already exist or are the primary Bcore data dir
+                    val isPrimary = try {
+                        BEnvironment.getDataDir(pkg, USER_ID).absolutePath == root.absolutePath
+                    } catch (_: Throwable) {
+                        false
+                    }
+                    if (!root.exists() && !isPrimary) continue
+                    try {
+                        if (!root.exists()) root.mkdirs()
+                        val prefsDir = File(root, "shared_prefs")
+                        if (!prefsDir.exists()) prefsDir.mkdirs()
+                        val guestFile = File(prefsDir, "device_id.xml")
+                        guestFile.writeText(deviceIdXml)
+                        guestFile.setReadable(true, false)
+                        guestFile.setWritable(true, false)
+                        wroteDeviceId = true
+                        Log.i("MAct", "Wrote guest device_id.xml → ${guestFile.absolutePath} uuid=$uuid")
+                    } catch (t: Throwable) {
+                        Log.w("MAct", "Failed writing device_id under ${root.absolutePath}: ${t.message}")
+                    }
+                }
+
+                // Also clear any leftover login json under SaveGames after wipe
+                for (root in externalRoots.distinctBy { it.absolutePath }) {
+                    val saveDirs = listOf(
+                        File(root, "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames"),
+                        File(root, "files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/savegames")
+                    )
+                    for (dir in saveDirs) {
+                        if (dir.exists() && dir.isDirectory) {
+                            dir.listFiles { _, name -> name != null && name.contains("login", ignoreCase = true) }
+                                ?.forEach { deleteDirectoryRecursively(it) }
+                        }
+                    }
+                }
+
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        if (wroteDeviceId) {
+                            "BGMI guest reset complete (new UUID)."
+                        } else {
+                            "BGMI guest caches cleared. device_id write may need reinstall into sandbox."
+                        },
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (t: Throwable) {
+                Log.e("MAct", "handleResetGuestBgmi failed", t)
+                runOnUiThread {
+                    Toast.makeText(this, "Guest reset failed: ${t.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
+    }
+
+    /**
      * Clears full game sandbox data:
      * 1. Closes virtual game package if running.
      * 2. Clears login and root directories.
@@ -889,7 +1241,7 @@ class MAct : AppCompatActivity() {
 
     private fun handleContactAdmin() {
         try {
-            val telegramUrl = "https://t.me/libAkAudioVisiual"
+            val telegramUrl = getString(R.string.telegram_url)
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
             startActivity(intent)
         } catch (t: Throwable) {
@@ -1096,21 +1448,37 @@ class MAct : AppCompatActivity() {
     private fun launchGame() {
         val currentGame = selectedGameState.value
         try {
-            if (!BlackBoxCore.get().isInstalled(currentGame.packageName, USER_ID)) {
+            val core = BlackBoxCore.get()
+            if (core == null) {
+                isLaunchingState.value = false
+                Toast.makeText(this, "Virtual engine is not ready. Please retry.", Toast.LENGTH_LONG).show()
+                return
+            }
+            if (!core.isInstalled(currentGame.packageName, USER_ID)) {
                 isLaunchingState.value = false
                 Toast.makeText(this, "${currentGame.title} is not installed in the virtual container.", Toast.LENGTH_LONG).show()
                 return
             }
-            val launched = BlackBoxCore.get().launchApk(currentGame.packageName, USER_ID)
+
+            // Stop any previous zombie instance of this package before relaunch
+            // (common after a previous crash leaves a half-dead process)
+            try {
+                core.stopPackage(currentGame.packageName, USER_ID)
+                Thread.sleep(250)
+            } catch (_: Throwable) {
+            }
+
+            val launched = core.launchApk(currentGame.packageName, USER_ID)
             if (!launched) {
                 isLaunchingState.value = false
-                Toast.makeText(this, "Game launch was rejected. Please retry.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Game launch was rejected. Please retry INSTALL then LAUNCH.", Toast.LENGTH_LONG).show()
                 return
             }
             Toast.makeText(this, "Launching ${currentGame.title}...", Toast.LENGTH_SHORT).show()
+            // Keep launching flag a bit longer so double-taps don't re-enter while game boots
             mainHandler.postDelayed({
                 isLaunchingState.value = false
-            }, 1500)
+            }, 2500)
         } catch (t: Throwable) {
             isLaunchingState.value = false
             Log.e("MAct", "Game launch failed", t)

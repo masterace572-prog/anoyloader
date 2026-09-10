@@ -263,12 +263,37 @@ public class BlackBoxCore extends ClientConfiguration {
     public InstallResult installPackageAsUser(String packageName, int userId) {
 		try {
 			PackageInfo packageInfo = getPackageManager().getPackageInfo(packageName, 0);
-			return getBPackageManager().installPackageAsUser(packageInfo.applicationInfo.sourceDir, InstallOption.installBySystem(), userId);
+            ApplicationInfo ai = packageInfo.applicationInfo;
+            // FLAG_SYSTEM keeps pointing at the host APK tree so splitSourceDirs remain valid
+            // (required for Play Store installs of PUBG Global / modern BGMI).
+			return getBPackageManager().installPackageAsUser(ai.sourceDir, InstallOption.installBySystem(), userId);
 		} catch (PackageManager.NameNotFoundException e) {
 			e.printStackTrace();
 			return new InstallResult().installError(e.getMessage());
 		}
 	}
+
+    /**
+     * Force-reinstall a host package into the sandbox, killing any running instance first.
+     * Useful when splits / native libs were incomplete on a previous install attempt.
+     */
+    public InstallResult reinstallPackageAsUser(String packageName, int userId) {
+        try {
+            try {
+                stopPackage(packageName, userId);
+            } catch (Throwable ignored) {
+            }
+            try {
+                if (isInstalled(packageName, userId)) {
+                    uninstallPackageAsUser(packageName, userId);
+                }
+            } catch (Throwable ignored) {
+            }
+            return installPackageAsUser(packageName, userId);
+        } catch (Throwable t) {
+            return new InstallResult().installError(t.getMessage());
+        }
+    }
 
     public InstallResult installPackageAsUser(File apk, int userId) {
         return getBPackageManager().installPackageAsUser(apk.getAbsolutePath(), InstallOption.installByStorage(), userId);

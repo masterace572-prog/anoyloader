@@ -4,17 +4,12 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.ryzen.ui.screens.AnnouncementDialogState
 import com.ryzen.ui.screens.LoadingDialogState
@@ -28,7 +23,6 @@ import com.ryzen.utils.PermissionsManager
 import com.ryzen.utils.Prefs
 import com.ryzen.utils.SupabaseAuthManager
 import org.lsposed.lsparanoid.Obfuscate
-import java.net.NetworkInterface
 
 @Obfuscate
 class LogAct : AppCompatActivity() {
@@ -72,13 +66,6 @@ class LogAct : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         prefs = Prefs(this)
-
-        // VPN Guard
-        if (isVpnActive()) {
-            Toast.makeText(this, "VPN Detected. Please disable VPN to continue.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
 
         // Initialize Key State (empty by default, do not pre-fill TEST-VIPER-2026)
         val savedKey = prefs.getSt(USER, "")
@@ -253,9 +240,13 @@ class LogAct : AppCompatActivity() {
     private fun handleGetKey() {
         try {
             val keyUrl = try { GetKey() } catch (_: Throwable) { null }
-            if (!keyUrl.isNullOrBlank() && keyUrl.startsWith("http")) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(keyUrl))
-                startActivity(intent)
+            val fallback = getString(R.string.telegram_url)
+            val url = when {
+                !keyUrl.isNullOrBlank() && keyUrl.startsWith("http") -> keyUrl
+                else -> fallback
+            }
+            if (url.isNotBlank() && url.startsWith("http")) {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             } else {
                 Toast.makeText(this, "Key portal URL is not configured", Toast.LENGTH_SHORT).show()
             }
@@ -278,11 +269,6 @@ class LogAct : AppCompatActivity() {
         val userKey = keyTextState.value.trim()
         if (userKey.isEmpty()) {
             keyErrorState.value = "Please enter your license key"
-            return
-        }
-
-        if (isVpnActive()) {
-            Toast.makeText(this, "Please disable VPN to continue", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -384,26 +370,6 @@ class LogAct : AppCompatActivity() {
         task.startDownload()
     }
 
-    private fun isVpnActive(): Boolean {
-        try {
-            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val activeNetwork = cm.activeNetwork ?: return false
-                val caps = cm.getNetworkCapabilities(activeNetwork) ?: return false
-                return caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-            } else {
-                val interfaces = NetworkInterface.getNetworkInterfaces()
-                while (interfaces != null && interfaces.hasMoreElements()) {
-                    val intf = interfaces.nextElement()
-                    val name = intf.name ?: continue
-                    if (name.startsWith("tun") || name.startsWith("ppp") || name.startsWith("tap")) {
-                        return true
-                    }
-                }
-            }
-        } catch (ignored: Throwable) {}
-        return false
-    }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

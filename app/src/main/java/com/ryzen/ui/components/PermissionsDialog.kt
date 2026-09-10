@@ -15,12 +15,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material.icons.rounded.SdStorage
-import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.SdStorage
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -125,7 +125,7 @@ fun PermissionsDialog(
                     PermissionRow(
                         title = "All Files Access",
                         description = "Mount game OBBs and sandbox files",
-                        icon = Icons.Rounded.FolderOpen,
+                        icon = Icons.Outlined.FolderOpen,
                         isGranted = state.hasAllFiles,
                         onAllowClick = onGrantAllFiles
                     )
@@ -133,7 +133,7 @@ fun PermissionsDialog(
                     PermissionRow(
                         title = "Storage Read and Write",
                         description = "Access game data without permission popups",
-                        icon = Icons.Rounded.SdStorage,
+                        icon = Icons.Outlined.SdStorage,
                         isGranted = state.hasRuntimeStorage,
                         onAllowClick = onGrantRuntimeStorage
                     )
@@ -141,7 +141,7 @@ fun PermissionsDialog(
                     PermissionRow(
                         title = "Notifications",
                         description = "Keep virtual game services active",
-                        icon = Icons.Rounded.Notifications,
+                        icon = Icons.Outlined.Notifications,
                         isGranted = state.hasNotification,
                         onAllowClick = onGrantNotification
                     )
@@ -149,7 +149,7 @@ fun PermissionsDialog(
                     PermissionRow(
                         title = "Install Packages",
                         description = "Register game packages in sandbox",
-                        icon = Icons.Rounded.SystemUpdate,
+                        icon = Icons.Outlined.SystemUpdate,
                         isGranted = state.hasInstall,
                         onAllowClick = onGrantInstall
                     )
@@ -162,7 +162,7 @@ fun PermissionsDialog(
                     AppButton(
                         text = "Restart App",
                         variant = ButtonVariant.PRIMARY,
-                        leadingIcon = Icons.Rounded.RestartAlt,
+                        leadingIcon = Icons.Outlined.RestartAlt,
                         modifier = Modifier.fillMaxWidth(),
                         onClick = onRestartApp
                     )
@@ -266,9 +266,9 @@ private fun PermissionRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.CheckCircle,
+                        imageVector = Icons.Outlined.CheckCircle,
                         contentDescription = "Granted",
-                        tint = AppTheme.colors.success,
+                        tint = AppTheme.colors.textSecondary,
                         modifier = Modifier.size(22.dp)
                     )
                 }

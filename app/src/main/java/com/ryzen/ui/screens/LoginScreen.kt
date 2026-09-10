@@ -26,25 +26,18 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -55,7 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -73,6 +66,7 @@ import com.ryzen.ui.components.AppTextField
 import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.PermissionsDialog
 import com.ryzen.ui.components.PermissionsDialogState
+import com.ryzen.ui.theme.AppBackground
 import com.ryzen.ui.theme.AppTheme
 
 data class LoadingDialogState(
@@ -129,20 +123,18 @@ fun LoginScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    Scaffold(
+    AppBackground(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .imePadding(),
-        containerColor = AppTheme.colors.background
-    ) { paddingValues ->
+            .imePadding()
+    ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -160,7 +152,7 @@ fun LoginScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(88.dp)
                             .clip(RoundedCornerShape(AppRadii.lg))
                             .background(AppTheme.colors.surfaceElevated)
                             .border(1.dp, AppTheme.colors.border, RoundedCornerShape(AppRadii.lg)),
@@ -168,7 +160,7 @@ fun LoginScreen(
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_launcher),
-                            contentDescription = "Anoy Loader App Icon",
+                            contentDescription = stringResource(id = R.string.app_name) + " App Icon",
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(AppRadii.lg)),
@@ -179,7 +171,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(AppTheme.spacing.md))
 
                     Text(
-                        text = "Anoy Loader",
+                        text = stringResource(id = R.string.brand_name),
                         style = AppTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -200,6 +192,7 @@ fun LoginScreen(
                 // Main Authentication Card
                 AppCard(
                     modifier = Modifier.fillMaxWidth(),
+                    elevated = true,
                     contentPadding = AppTheme.spacing.lg
                 ) {
                     Column(
@@ -231,7 +224,7 @@ fun LoginScreen(
                         AppTextField(
                             value = keyText,
                             onValueChange = onKeyChange,
-                            leadingIcon = Icons.Rounded.Key,
+                            leadingIcon = Icons.Outlined.Key,
                             visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Ascii,
@@ -249,7 +242,7 @@ fun LoginScreen(
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (isKeyVisible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                                            imageVector = if (isKeyVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                                             contentDescription = if (isKeyVisible) "Hide license key" else "Show license key",
                                             tint = AppTheme.colors.textSecondary,
                                             modifier = Modifier.size(18.dp)
@@ -263,7 +256,7 @@ fun LoginScreen(
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.ContentPaste,
+                                            imageVector = Icons.Outlined.ContentPaste,
                                             contentDescription = "Paste license key from clipboard",
                                             tint = AppTheme.colors.accent,
                                             modifier = Modifier.size(18.dp)
@@ -291,7 +284,7 @@ fun LoginScreen(
                                 colors = CheckboxDefaults.colors(
                                     checkedColor = AppTheme.colors.accent,
                                     uncheckedColor = AppTheme.colors.border,
-                                    checkmarkColor = AppTheme.colors.textPrimary
+                                    checkmarkColor = AppTheme.colors.onAccent
                                 ),
                                 modifier = Modifier.size(24.dp)
                             )
@@ -337,7 +330,7 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Anoy Loader Enterprise",
+                        text = stringResource(id = R.string.brand_enterprise),
                         style = AppTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
@@ -377,13 +370,13 @@ fun LoginScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(AppTheme.colors.errorContainer),
+                                .background(AppTheme.colors.surfaceSubtle),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Warning,
+                                imageVector = Icons.Outlined.Warning,
                                 contentDescription = null,
-                                tint = AppTheme.colors.error,
+                                tint = AppTheme.colors.textSecondary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -457,13 +450,13 @@ fun LoginScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(AppTheme.colors.warningContainer),
+                            .background(AppTheme.colors.surfaceSubtle),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Warning,
+                            imageVector = Icons.Outlined.Warning,
                             contentDescription = null,
-                            tint = AppTheme.colors.warning,
+                            tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -491,7 +484,7 @@ fun LoginScreen(
                         text = "Refresh Status",
                         onClick = maintenanceDialogState.onRefresh,
                         variant = ButtonVariant.PRIMARY,
-                        leadingIcon = Icons.Rounded.Refresh,
+                        leadingIcon = Icons.Outlined.Refresh,
                         fullWidth = true
                     )
 
@@ -530,7 +523,7 @@ fun LoginScreen(
                             text = "Open Link",
                             onClick = announcementDialogState.onOpenLink,
                             variant = ButtonVariant.PRIMARY,
-                            leadingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                            leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
                             fullWidth = true
                         )
                         Spacer(modifier = Modifier.height(AppTheme.spacing.xs))

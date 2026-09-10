@@ -1,11 +1,7 @@
 package com.ryzen.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,15 +21,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.ryzen.ui.theme.AppRadii
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.CloudDownload
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.SystemUpdate
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -60,6 +54,8 @@ import com.ryzen.ui.components.AppDialog
 import com.ryzen.ui.components.AppProgressBar
 import com.ryzen.ui.components.BadgeTone
 import com.ryzen.ui.components.ButtonVariant
+import com.ryzen.ui.theme.AppBackground
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 
 data class AppUpdateDialogState(
@@ -86,13 +82,19 @@ fun SplashScreen(
 
     val alphaAnim by animateFloatAsState(
         targetValue = if (startAnim) 1f else 0f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        animationSpec = tween(
+            durationMillis = AppMotion.DurationSlow,
+            easing = AppMotion.EasingEntrance
+        ),
         label = "splashAlpha"
     )
 
     val scaleAnim by animateFloatAsState(
-        targetValue = if (startAnim) 1f else 0.92f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        targetValue = if (startAnim) 1f else 0.98f,
+        animationSpec = tween(
+            durationMillis = AppMotion.DurationSlow,
+            easing = AppMotion.EasingEntrance
+        ),
         label = "splashScale"
     )
 
@@ -100,17 +102,14 @@ fun SplashScreen(
         startAnim = true
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = AppTheme.colors.background
-    ) { paddingValues ->
+    AppBackground(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
+
             // Top Version Tag
             Box(
                 modifier = Modifier
@@ -136,7 +135,7 @@ fun SplashScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(88.dp)
                         .clip(RoundedCornerShape(AppRadii.lg))
                         .background(AppTheme.colors.surfaceElevated)
                         .border(1.dp, AppTheme.colors.border, RoundedCornerShape(AppRadii.lg)),
@@ -144,7 +143,7 @@ fun SplashScreen(
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_launcher),
-                        contentDescription = "Anoy Loader App Icon",
+                        contentDescription = stringResource(id = R.string.app_name) + " App Icon",
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(AppRadii.lg)),
@@ -155,10 +154,8 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
 
                 Text(
-                    text = "Anoy Loader",
-                    style = AppTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
+                    text = stringResource(id = R.string.brand_name),
+                    style = AppTheme.typography.headlineMedium,
                     color = AppTheme.colors.textPrimary
                 )
 
@@ -234,13 +231,13 @@ fun SplashScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(AppTheme.colors.accentTint),
+                                .background(AppTheme.colors.surfaceSubtle),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.SystemUpdate,
+                                imageVector = Icons.Outlined.SystemUpdate,
                                 contentDescription = null,
-                                tint = AppTheme.colors.accent,
+                                tint = AppTheme.colors.textSecondary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -258,7 +255,7 @@ fun SplashScreen(
                                         text = "What's new",
                                         style = AppTheme.typography.labelSmall.copy(
                                             fontWeight = FontWeight.SemiBold,
-                                            letterSpacing = 0.2.sp
+                                            letterSpacing = 0.sp
                                         ),
                                         color = AppTheme.colors.textSecondary
                                     )
@@ -278,7 +275,7 @@ fun SplashScreen(
                             text = "Update now",
                             onClick = updateDialogState.onUpdateClick,
                             variant = ButtonVariant.PRIMARY,
-                            leadingIcon = Icons.Rounded.CloudDownload,
+                            leadingIcon = Icons.Outlined.CloudDownload,
                             fullWidth = true
                         )
 
@@ -311,13 +308,13 @@ fun SplashScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(AppTheme.colors.warningContainer),
+                            .background(AppTheme.colors.surfaceSubtle),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Warning,
+                            imageVector = Icons.Outlined.Warning,
                             contentDescription = null,
-                            tint = AppTheme.colors.warning,
+                            tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -345,7 +342,7 @@ fun SplashScreen(
                         text = "Check Status",
                         onClick = maintenanceDialogState.onRefresh,
                         variant = ButtonVariant.PRIMARY,
-                        leadingIcon = Icons.Rounded.Refresh,
+                        leadingIcon = Icons.Outlined.Refresh,
                         fullWidth = true
                     )
 

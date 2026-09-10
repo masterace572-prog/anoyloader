@@ -29,6 +29,7 @@ import top.niunaijun.blackbox.utils.HackAppUtils;
 import top.niunaijun.blackbox.utils.Slog;
 import top.niunaijun.blackbox.utils.compat.ActivityCompat;
 import top.niunaijun.blackbox.utils.compat.ActivityManagerCompat;
+import top.niunaijun.blackbox.utils.compat.ApacheHttpLegacyCompat;
 import top.niunaijun.blackbox.utils.compat.ContextCompat;
 
 public final class AppInstrumentation extends BaseInstrumentationDelegate implements IInjectHook {
@@ -164,7 +165,14 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 	public Application newApplication(ClassLoader cl, String className, Context context)
 	throws InstantiationException, IllegalAccessException, ClassNotFoundException {
 		ContextCompat.fix(context);
-		//fixSharedLibraryLoaders(cl);
+		// Share host library ClassLoaders with the app ClassLoader so GMS Dynamite
+		// modules do not load the same type twice (ClassCastException aqhy/adzp).
+		fixSharedLibraryLoaders(cl);
+		// IMSDK Volley needs org.apache.http.ProtocolVersion on Android 10–16.
+		ApacheHttpLegacyCompat.ensureLoaded(cl);
+		if (context != null) {
+			ApacheHttpLegacyCompat.ensureLoaded(context.getClassLoader());
+		}
 		BActivityThread.currentActivityThread().loadXposed(context);
 		delegateAppClassLoader = context.getClassLoader();
 		return super.newApplication(cl, className, context);
@@ -193,8 +201,16 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 
 	@Override
 	public void callApplicationOnCreate(Application app) {
+		if (app == null) {
+			Slog.w(TAG, "callApplicationOnCreate skipped: app is null");
+			return;
+		}
 		checkHCallback();
-		super.callApplicationOnCreate(app);
+		try {
+			super.callApplicationOnCreate(app);
+		} catch (Throwable t) {
+			Slog.w(TAG, "callApplicationOnCreate failed: " + t.getMessage());
+		}
 	}
     
     @Override

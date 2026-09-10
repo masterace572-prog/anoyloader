@@ -1,6 +1,7 @@
 package com.ryzen.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,16 +18,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
 
 @Composable
 fun AppProgressBar(
-    progress: Float, // 0.0f to 1.0f
+    progress: Float,
     statusText: String,
     modifier: Modifier = Modifier
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = tween(
+            durationMillis = AppMotion.DurationState,
+            easing = AppMotion.EasingStandard
+        ),
         label = "progressBarAnim"
     )
 
@@ -43,7 +49,7 @@ fun AppProgressBar(
             )
             Text(
                 text = "${(animatedProgress * 100).toInt()}%",
-                style = AppTheme.typography.labelSmall,
+                style = AppTheme.typography.labelMedium,
                 color = AppTheme.colors.textPrimary
             )
         }
@@ -53,15 +59,15 @@ fun AppProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
-                .clip(CircleShape)
-                .background(AppTheme.colors.surfaceElevated)
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(AppTheme.colors.surfaceSubtle)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedProgress)
                     .fillMaxHeight()
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(2.dp))
                     .background(AppTheme.colors.accent)
             )
         }

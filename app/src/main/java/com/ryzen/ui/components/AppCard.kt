@@ -16,53 +16,48 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
-import com.ryzen.ui.theme.pressScale
 
 /**
- * Premium minimal card with a refined 1px border and flat surface.
- * Conforms to md (14dp) corner radius token and 0.98 press scale feedback.
+ * Card: surfaceElevated, 12dp radius, 1dp outline, 16dp padding, no shadow.
  */
 @Composable
 fun AppCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(AppRadii.md),
-    containerColor: Color = AppTheme.colors.surface,
-    borderColor: Color = AppTheme.colors.border,
+    containerColor: Color = AppTheme.colors.surfaceElevated,
+    borderColor: Color = AppTheme.colors.outline,
     borderWidth: Dp = 1.dp,
     contentPadding: Dp = 16.dp,
+    elevated: Boolean = false,
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val surfaceColor = if (elevated) AppTheme.colors.surfaceElevated else containerColor
+
     if (onClick != null) {
         val interactionSource = remember { MutableInteractionSource() }
         Surface(
             onClick = onClick,
-            modifier = modifier.pressScale(targetScale = 0.98f, interactionSource = interactionSource),
+            modifier = modifier,
             shape = shape,
-            color = containerColor,
+            color = surfaceColor,
             border = BorderStroke(borderWidth, borderColor),
             interactionSource = interactionSource,
             shadowElevation = 0.dp,
             tonalElevation = 0.dp
         ) {
-            Box(
-                modifier = Modifier.padding(contentPadding),
-                content = content
-            )
+            Box(modifier = Modifier.padding(contentPadding), content = content)
         }
     } else {
         Surface(
             modifier = modifier,
             shape = shape,
-            color = containerColor,
+            color = surfaceColor,
             border = BorderStroke(borderWidth, borderColor),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp
         ) {
-            Box(
-                modifier = Modifier.padding(contentPadding),
-                content = content
-            )
+            Box(modifier = Modifier.padding(contentPadding), content = content)
         }
     }
 }

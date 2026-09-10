@@ -11,27 +11,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
 import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
-import com.ryzen.ui.theme.pressScale
-
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.painter.Painter
 
 enum class ButtonVariant {
     PRIMARY,
@@ -41,8 +41,8 @@ enum class ButtonVariant {
 }
 
 enum class ButtonSize {
-    DEFAULT, // 52dp
-    COMPACT  // 44dp
+    DEFAULT,
+    COMPACT
 }
 
 @Composable
@@ -62,110 +62,147 @@ fun AppButton(
     fullWidth: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val buttonHeight = if (size == ButtonSize.COMPACT) 40.dp else 48.dp
+    val widthModifier = if (fullWidth) modifier.fillMaxWidth() else modifier
+    val shape = RoundedCornerShape(AppRadii.sm)
+    val isEnabled = enabled && !loading
+
+    // Destructive = text button with error color (never a filled capsule)
+    if (variant == ButtonVariant.TERTIARY || variant == ButtonVariant.DESTRUCTIVE) {
+        val contentColor = customContentColor ?: when (variant) {
+            ButtonVariant.DESTRUCTIVE -> AppTheme.colors.error
+            else -> AppTheme.colors.textPrimary
+        }
+        TextButton(
+            onClick = onClick,
+            modifier = widthModifier.height(buttonHeight),
+            enabled = isEnabled,
+            interactionSource = interactionSource,
+            shape = shape,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = contentColor,
+                disabledContentColor = contentColor.copy(alpha = 0.38f)
+            )
+        ) {
+            ButtonContent(
+                text = text,
+                loading = loading,
+                enabled = isEnabled,
+                contentColor = if (isEnabled) contentColor else contentColor.copy(alpha = 0.38f),
+                leadingIcon = leadingIcon,
+                leadingPainter = leadingPainter,
+                trailingIcon = trailingIcon
+            )
+        }
+        return
+    }
 
     val containerColor = customContainerColor ?: when (variant) {
         ButtonVariant.PRIMARY -> AppTheme.colors.accent
-        ButtonVariant.SECONDARY -> AppTheme.colors.surfaceElevated
-        ButtonVariant.TERTIARY -> Color.Transparent
-        ButtonVariant.DESTRUCTIVE -> AppTheme.colors.error
-    }
-
-    val contentColor = customContentColor ?: when (variant) {
-        ButtonVariant.PRIMARY -> if (AppTheme.colors.isDark) AppTheme.colors.background else Color.White
-        ButtonVariant.SECONDARY -> AppTheme.colors.textPrimary
-        ButtonVariant.TERTIARY -> AppTheme.colors.textSecondary
-        ButtonVariant.DESTRUCTIVE -> Color.White
-    }
-
-    val disabledContainerColor = when {
-        customContainerColor != null -> customContainerColor.copy(alpha = 0.4f)
-        variant == ButtonVariant.PRIMARY -> AppTheme.colors.accentDisabled
-        variant == ButtonVariant.SECONDARY -> AppTheme.colors.surfaceVariant.copy(alpha = 0.5f)
-        variant == ButtonVariant.DESTRUCTIVE -> AppTheme.colors.error.copy(alpha = 0.4f)
+        ButtonVariant.SECONDARY -> Color.Transparent
         else -> Color.Transparent
     }
-
-    val disabledContentColor = AppTheme.colors.disabled
-
-    val border = when {
-        customContainerColor != null -> null
-        variant == ButtonVariant.SECONDARY -> BorderStroke(1.dp, AppTheme.colors.border)
-        variant == ButtonVariant.DESTRUCTIVE -> null
+    val contentColor = customContentColor ?: when (variant) {
+        ButtonVariant.PRIMARY -> AppTheme.colors.onAccent
+        ButtonVariant.SECONDARY -> AppTheme.colors.textPrimary
+        else -> AppTheme.colors.textPrimary
+    }
+    val border = when (variant) {
+        ButtonVariant.SECONDARY -> BorderStroke(1.dp, AppTheme.colors.outline)
         else -> null
     }
 
-    val buttonHeight = if (size == ButtonSize.COMPACT) 40.dp else 48.dp
-    val widthModifier = if (fullWidth) modifier.fillMaxWidth() else modifier
-
     Button(
         onClick = onClick,
-        modifier = widthModifier
-            .height(buttonHeight)
-            .pressScale(targetScale = 0.97f, interactionSource = interactionSource, enabled = enabled && !loading),
-        enabled = enabled && !loading,
+        modifier = widthModifier.height(buttonHeight),
+        enabled = isEnabled,
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(AppRadii.sm),
+        shape = shape,
         border = border,
         contentPadding = PaddingValues(horizontal = 20.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColor,
-            disabledContainerColor = disabledContainerColor,
-            disabledContentColor = disabledContentColor
+            disabledContainerColor = when (variant) {
+                ButtonVariant.PRIMARY -> AppTheme.colors.accent.copy(alpha = 0.38f)
+                else -> Color.Transparent
+            },
+            disabledContentColor = contentColor.copy(alpha = 0.38f)
         ),
-        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp)
+        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp)
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+        ButtonContent(
+            text = text,
+            loading = loading,
+            enabled = isEnabled,
+            contentColor = if (isEnabled) contentColor else contentColor.copy(alpha = 0.38f),
+            leadingIcon = leadingIcon,
+            leadingPainter = leadingPainter,
+            trailingIcon = trailingIcon
+        )
+    }
+}
+
+@Composable
+private fun ButtonContent(
+    text: String,
+    loading: Boolean,
+    enabled: Boolean,
+    contentColor: Color,
+    leadingIcon: ImageVector?,
+    leadingPainter: Painter?,
+    trailingIcon: ImageVector?
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        // Keep width stable while loading: hide label row, show spinner centered
+        Row(
+            modifier = Modifier.alpha(if (loading) 0f else 1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            if (loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    color = contentColor,
-                    strokeWidth = 2.dp
+            if (leadingPainter != null) {
+                Image(
+                    painter = leadingPainter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
                 )
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    if (leadingPainter != null) {
-                        Image(
-                            painter = leadingPainter,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    } else if (leadingIcon != null) {
-                        Icon(
-                            imageVector = leadingIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = if (enabled) contentColor else disabledContentColor
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    Text(
-                        text = text,
-                        style = AppTheme.typography.labelLarge,
-                        color = if (enabled) contentColor else disabledContentColor
-                    )
-
-                    if (trailingIcon != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = trailingIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = if (enabled) contentColor else disabledContentColor
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.width(8.dp))
+            } else if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = contentColor
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
+            Text(
+                text = text,
+                style = AppTheme.typography.labelLarge,
+                color = contentColor
+            )
+            if (trailingIcon != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = trailingIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = contentColor
+                )
+            }
+        }
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = contentColor,
+                strokeWidth = 2.dp
+            )
         }
     }
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/admin-auth';
+import { getServerSupabase } from '@/lib/supabase-server';
 
 export interface ApkUpdateResponse {
   success: boolean;
@@ -77,10 +79,18 @@ export async function POST(req: NextRequest) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-token',
   };
 
   try {
+    const auth = requireAdmin(req);
+    if (!auth.ok) {
+      return NextResponse.json(
+        { success: false, error: auth.error },
+        { status: auth.status, headers: corsHeaders }
+      );
+    }
+
     const body = await req.json();
 
     const payload = {
@@ -100,12 +110,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (isSupabaseConfigured() && supabase) {
+    const db = getServerSupabase() || (isSupabaseConfigured() ? supabase : null);
+    if (db) {
       // Deactivate older updates
-      await supabase.from('app_apk_updates').update({ is_active: false }).eq('is_active', true);
+      await db.from('app_apk_updates').update({ is_active: false }).eq('is_active', true);
 
       // Insert active record
-      const { error } = await supabase.from('app_apk_updates').insert(payload);
+      const { error } = await db.from('app_apk_updates').insert(payload);
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
       }

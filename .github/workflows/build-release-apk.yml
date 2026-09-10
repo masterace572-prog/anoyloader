@@ -1,0 +1,447 @@
+# =============================================================================
+# AnoyLoader — Release APK build (arm64-v8a)
+# =============================================================================
+# Triggers on push to arena/** or main, PRs to main, and manual dispatch.
+# Artifacts: signed APK (14 days) + gradle log on failure for debugging.
+# Signing: app/zen.jks in repo, or KEYSTORE_BASE64 / KEYSTORE_PASSWORD secrets.
+# =============================================================================
+
+name: Build Release APK
+
+permissions:
+  contents: write
+  actions: read
+  checks: write
+  pull-requests: write
+
+on:
+  push:
+    branches:
+      - "arena/**"
+      - main
+    tags:
+      - "v*"
+    paths-ignore:
+      - "admin-panel/**"
+      - "supabase/**"
+      - "**/*.md"
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "admin-panel/**"
+      - "supabase/**"
+      - "**/*.md"
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Gradle build type"
+        required: true
+        default: release
+        type: choice
+        options:
+          - release
+          - debug
+      create_release:
+        description: "Create a GitHub Release and attach the APK (tag required)"
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: "Release tag (e.g. v1.0.1). Only used when create_release=true"
+        required: false
+        default: ""
+        type: string
+
+concurrency:
+  group: apk-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Must match app/build.gradle + Bcore/build.gradle ndkVersion
+  NDK_VERSION: "24.0.8215888"
+  ANDROID_SDK_BUILD_TOOLS: "34.0.0"
+  ANDROID_SDK_PLATFORM: "android-34"
+  DEFAULT_KEYSTORE_PASSWORD: "11111111"
+  DEFAULT_KEY_PASSWORD: "11111111"
+  DEFAULT_KEY_ALIAS: "key0"
+
+jobs:
+  build:
+    name: Assemble ${{ github.event.inputs.build_type || 'release' }} APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform + build-tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;${ANDROID_SDK_PLATFORM}" \
+            "build-tools;${ANDROID_SDK_BUILD_TOOLS}" \
+            "cmdline-tools;latest"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          sdkmanager --list_installed 2>/dev/null | head -40 || true
+
+      - name: Install NDK ${{ env.NDK_VERSION }}
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r24
+          link-to-sdk: true
+          add-to-path: true
+
+      - name: Resolve NDK path
+        shell: bash
+        run: |
+          set -euo pipefail
+          # nttld/setup-ndk exposes the path; also try SDK ndk folder for exact version pin
+          CANDIDATES=(
+            "${{ steps.setup-ndk.outputs.ndk-path }}"
+            "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}"
+            "${ANDROID_SDK_ROOT}/ndk-bundle"
+          )
+          NDK_PATH=""
+          for c in "${CANDIDATES[@]}"; do
+            if [ -n "$c" ] && [ -d "$c" ] && [ -f "$c/ndk-build" -o -f "$c/ndk-build.cmd" -o -d "$c/toolchains" ]; then
+              NDK_PATH="$c"
+              break
+            fi
+          done
+          if [ -z "$NDK_PATH" ]; then
+            # Last resort: any ndk under SDK
+            NDK_PATH="$(find "${ANDROID_SDK_ROOT}/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1 || true)"
+          fi
+          if [ -z "$NDK_PATH" ] || [ ! -d "$NDK_PATH" ]; then
+            echo "::error::NDK not found after install"
+            ls -la "${ANDROID_SDK_ROOT}" || true
+            ls -la "${ANDROID_SDK_ROOT}/ndk" || true
+            exit 1
+          fi
+          # If Gradle wants exact ndkVersion 24.0.8215888, symlink it
+          mkdir -p "${ANDROID_SDK_ROOT}/ndk"
+          if [ ! -e "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" ]; then
+            ln -sfn "${NDK_PATH}" "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}"
+            echo "Symlinked ${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION} -> ${NDK_PATH}"
+          fi
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "Resolved NDK: ${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}"
+          ls -la "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" | head -15
+          # Prove ndk-build exists
+          ls -la "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}/ndk-build" || ls -la "${NDK_PATH}/ndk-build"
+
+      - name: Write local.properties
+        shell: bash
+        run: |
+          cat > local.properties <<EOF
+          sdk.dir=${ANDROID_SDK_ROOT}
+          ndk.dir=${ANDROID_NDK_HOME}
+          EOF
+          sed -i 's/^[[:space:]]*//' local.properties
+          cat local.properties
+
+      - name: Prepare signing keystore
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          mkdir -p app
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            echo "Using KEYSTORE_BASE64 secret"
+            echo "${KEYSTORE_BASE64}" | base64 -d > app/zen.jks
+          elif [ -f app/zen.jks ]; then
+            echo "Using committed app/zen.jks ($(wc -c < app/zen.jks) bytes)"
+          else
+            echo "::error::No keystore found. Commit app/zen.jks or set KEYSTORE_BASE64 secret."
+            exit 1
+          fi
+          {
+            echo "SIGN_STORE_PASSWORD=${KEYSTORE_PASSWORD:-$DEFAULT_KEYSTORE_PASSWORD}"
+            echo "SIGN_KEY_PASSWORD=${KEY_PASSWORD:-$DEFAULT_KEY_PASSWORD}"
+            echo "SIGN_KEY_ALIAS=${KEY_ALIAS:-$DEFAULT_KEY_ALIAS}"
+          } >> "$GITHUB_ENV"
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Resolve build type
+        id: meta
+        shell: bash
+        run: |
+          BUILD_TYPE="${{ github.event.inputs.build_type || 'release' }}"
+          echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
+          if [ "$BUILD_TYPE" = "debug" ]; then
+            echo "gradle_task=:app:assembleAnoyDebug :app:assembleOgcheatsDebug" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_anoy=app/build/outputs/apk/anoy/debug/*.apk" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_og=app/build/outputs/apk/ogcheats/debug/*.apk" >> "$GITHUB_OUTPUT"
+          else
+            echo "gradle_task=:app:assembleAnoyRelease :app:assembleOgcheatsRelease" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_anoy=app/build/outputs/apk/anoy/release/*.apk" >> "$GITHUB_OUTPUT"
+            echo "apk_glob_og=app/build/outputs/apk/ogcheats/release/*.apk" >> "$GITHUB_OUTPUT"
+          fi
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          BRANCH_SAFE="$(echo "${GITHUB_REF_NAME}" | tr '/' '-')"
+          echo "artifact_name=anoyloader-${BRANCH_SAFE}-${SHORT_SHA}-${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "branch_safe=${BRANCH_SAFE}" >> "$GITHUB_OUTPUT"
+
+      - name: Environment dump
+        shell: bash
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
+          free -h || true
+          df -h . || true
+
+      - name: Build APK (NDK + minify)
+        id: gradle_build
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p ci-logs
+          sed -i '/^org\.gradle\.java\.home=/d' gradle.properties || true
+
+          set +e
+          ./gradlew --stop >/dev/null 2>&1 || true
+          # gradle_task may contain multiple project tasks (Anoy + OG Cheats)
+          # shellcheck disable=SC2086
+          ./gradlew clean ${{ steps.meta.outputs.gradle_task }} \
+            --no-daemon \
+            --stacktrace \
+            --info \
+            --warning-mode=all \
+            -Dorg.gradle.java.home="${JAVA_HOME}" \
+            -Dfile.encoding=UTF-8 \
+            2>&1 | tee ci-logs/gradle-build.log
+          CODE=${PIPESTATUS[0]}
+          set -e
+
+          echo "======== GRADLE EXIT CODE: ${CODE} ========"
+          tail -n 120 ci-logs/gradle-build.log || true
+
+          grep -n -E "What went wrong|FAILURE:|Execution failed|error:|BUILD FAILED|Could not|ndk-build|AAPT|R8|OutOfMemory|Caused by:" \
+            ci-logs/gradle-build.log | tail -n 100 > ci-logs/gradle-errors.txt || true
+          echo "======== ERROR MARKERS ========"
+          cat ci-logs/gradle-errors.txt || true
+
+          python3 ci-scripts/report_gradle_failure.py || true
+          exit ${CODE}
+
+      - name: Upload build logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-logs-${{ steps.meta.outputs.artifact_name }}
+          path: |
+            ci-logs/**
+            app/build/outputs/**/*
+            Bcore/build/outputs/**/*
+            **/ndkBuild/**/*
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Locate and rename APKs
+        id: apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          OUT_DIR="dist"
+          mkdir -p "${OUT_DIR}"
+          BRANCH="${{ steps.meta.outputs.branch_safe }}"
+          SHA="${{ steps.meta.outputs.short_sha }}"
+          TYPE="${{ steps.meta.outputs.build_type }}"
+
+          copy_one() {
+            local label="$1"
+            local glob="$2"
+            local prefix="$3"
+            local files=( ${glob} )
+            if [ ${#files[@]} -eq 0 ]; then
+              echo "::error::No ${label} APK produced (glob=${glob}). Searching..."
+              find . -name '*.apk' 2>/dev/null | head -30 || true
+              return 1
+            fi
+            local src="${files[0]}"
+            local out_name="${prefix}-${BRANCH}-${SHA}-${TYPE}.apk"
+            cp -f "${src}" "${OUT_DIR}/${out_name}"
+            cp -f "${src}" "${OUT_DIR}/$(basename "${src}")"
+            local size
+            size="$(du -h "${OUT_DIR}/${out_name}" | cut -f1)"
+            echo "Built ${label}: ${out_name} (${size})"
+            echo "${label}_path=${OUT_DIR}/${out_name}" >> "$GITHUB_OUTPUT"
+            echo "${label}_name=${out_name}" >> "$GITHUB_OUTPUT"
+            echo "${label}_size=${size}" >> "$GITHUB_OUTPUT"
+          }
+
+          copy_one "anoy" "${{ steps.meta.outputs.apk_glob_anoy }}" "AnoyLoader"
+          copy_one "og"   "${{ steps.meta.outputs.apk_glob_og }}"   "OGCheats"
+
+          # Primary outputs = Anoy Loader (release body back-compat)
+          ANOY_NAME="AnoyLoader-${BRANCH}-${SHA}-${TYPE}.apk"
+          OG_NAME="OGCheats-${BRANCH}-${SHA}-${TYPE}.apk"
+          echo "path=${OUT_DIR}/${ANOY_NAME}" >> "$GITHUB_OUTPUT"
+          echo "name=${ANOY_NAME}" >> "$GITHUB_OUTPUT"
+          echo "size=$(du -h "${OUT_DIR}/${ANOY_NAME}" | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "og_path=${OUT_DIR}/${OG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "og_name=${OG_NAME}" >> "$GITHUB_OUTPUT"
+          ls -lah "${OUT_DIR}"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Job summary
+        if: success()
+        shell: bash
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## AnoyLoader APK build
+
+          | | |
+          |---|---|
+          | **Branch** | \`${{ github.ref_name }}\` |
+          | **Commit** | \`${{ steps.meta.outputs.short_sha }}\` |
+          | **Type** | \`${{ steps.meta.outputs.build_type }}\` |
+          | **Anoy Loader APK** | \`${{ steps.apk.outputs.name }}\` |
+          | **Anoy Size** | ${{ steps.apk.outputs.size }} |
+          | **OG Cheats APK** | \`${{ steps.apk.outputs.og_name }}\` |
+          | **OG Size** | ${{ steps.apk.outputs.og_size }} |
+          | **NDK** | ${{ env.NDK_VERSION }} |
+          | **JDK** | 17 (Temurin) |
+
+          Download the APK from this run's **Artifacts** panel.
+          EOF
+
+      - name: Failure summary
+        if: failure()
+        shell: bash
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Build failed
+
+          Download the **gradle-logs-*** artifact from this run for the full \`gradle-build.log\`.
+
+          Last error markers:
+          \`\`\`
+          $(tail -n 40 ci-logs/gradle-errors.txt 2>/dev/null || echo "(no error extract)")
+          \`\`\`
+          EOF
+
+      - name: Resolve release tag
+        id: rel
+        if: >-
+          success() && (
+            startsWith(github.ref, 'refs/tags/v')
+            || (github.event_name == 'workflow_dispatch'
+                && github.event.inputs.create_release == 'true'
+                && github.event.inputs.release_tag != '')
+          )
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${{ github.event.inputs.release_tag }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          if [[ "${TAG}" == *beta* || "${TAG}" == *alpha* || "${TAG}" == *rc* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved release tag: ${TAG}"
+
+      - name: Create GitHub Release (optional)
+        if: >-
+          success() && steps.rel.outputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.rel.outputs.tag }}
+          name: Anoy Loader ${{ steps.rel.outputs.tag }}
+          body: |
+            ## Anoy Loader ${{ steps.rel.outputs.tag }}
+
+            Automated signed release from `${{ github.ref_name }}` @ `${{ steps.meta.outputs.short_sha }}`.
+
+            | | |
+            |---|---|
+            | **Tag** | `${{ steps.rel.outputs.tag }}` |
+            | **versionName** | see app/build.gradle |
+            | **versionCode** | see app/build.gradle |
+            | **ABI** | arm64-v8a |
+            | **Min SDK** | 24 |
+            | **Target SDK** | 33 |
+
+            ### Apps in this release
+            | App | Package | Telegram |
+            |---|---|---|
+            | **Anoy Loader** | `com.ryzen` | @libAkAudioVisiual |
+            | **OG Cheats** | `com.ogcheats` | @CrimeCell |
+
+            ### Changelog
+            - Dual APK monorepo: Anoy Loader + OG Cheats (shared engine, separate branding)
+            - OG Cheats icon from `Helper/` + Telegram `@CrimeCell`
+            - Remove VPN detection gate on login / authenticate
+            - Survive GMS RestrictionsManager SecurityException for com.android.vending (Android 16; stub now registered)
+            - Survive ProxyService bind failures when GMS CheckinService is missing from vending ClassLoader
+            - Filter non-dex config splits from ApplicationInfo.splitSourceDirs (Android 16 ClassLoader)
+            - Fix NPE in RCore.enableRedirect when createPackageContext returns null (Samsung API 36)
+            - Survive makeApplication null + ConfigurationChange NPE on Samsung API 36
+            - Broaden mid-session crash survival for GMS/Play/pool worker failures
+            - Android 16 PUBG Global crash fixes (GMS broadcast, AccountAuthenticator, Dynamite, Apache HTTP)
+
+            ### Install
+            1. Uninstall any previous AnoyLoader build if the signature differs
+            2. Install **Anoy Loader**: `${{ steps.apk.outputs.name }}`
+               or **OG Cheats**: `${{ steps.apk.outputs.og_name }}`
+            3. For PUBG GL: open app → INSTALL again → LAUNCH
+
+            Both APKs share the same sandbox engine; only branding, package id, icon, and Telegram contact differ.
+          files: |
+            ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.og_path }}
+          draft: false
+          # Treat tags containing "beta"/"alpha"/"rc" as prereleases
+          prerelease: ${{ steps.rel.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -26,7 +26,13 @@ public class ProxyService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return AppServiceDispatcher.get().onBind(intent);
+        try {
+            return AppServiceDispatcher.get().onBind(intent);
+        } catch (Throwable t) {
+            // Never crash host main thread (Android 16 bindService).
+            t.printStackTrace();
+            return null;
+        }
     }
 
     @Override

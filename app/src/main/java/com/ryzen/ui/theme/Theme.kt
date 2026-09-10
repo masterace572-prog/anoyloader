@@ -1,7 +1,10 @@
 package com.ryzen.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -9,50 +12,69 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // =====================================================
-// THEME INTEGRATION (Material 3 + Extended Tokens)
+// THEME — Material 3 mapped from warm tokens
+// Dynamic color disabled. Flat surfaces. Edge-to-edge.
 // =====================================================
 
 private val DarkMaterialColorScheme = darkColorScheme(
-    primary = AccentTerracottaDark,
-    onPrimary = DarkBackground,
-    primaryContainer = AccentTerracottaTintDark,
+    primary = DarkAccent,
+    onPrimary = DarkOnAccent,
+    primaryContainer = DarkAccentSubtle,
     onPrimaryContainer = DarkTextPrimary,
+    secondary = DarkTextSecondary,
+    onSecondary = DarkBackground,
+    secondaryContainer = DarkSurfaceSubtle,
+    onSecondaryContainer = DarkTextPrimary,
+    tertiary = DarkTextTertiary,
+    onTertiary = DarkBackground,
     background = DarkBackground,
     onBackground = DarkTextPrimary,
     surface = DarkSurface,
     onSurface = DarkTextPrimary,
-    surfaceVariant = DarkSurfaceElevated,
+    surfaceVariant = DarkSurfaceSubtle,
     onSurfaceVariant = DarkTextSecondary,
-    outline = DarkBorder,
-    outlineVariant = DarkBorderSubtle,
-    error = ErrorDark,
-    onError = DarkBackground
+    outline = DarkOutline,
+    outlineVariant = DarkOutline,
+    error = DarkError,
+    onError = DarkOnAccent,
+    inverseSurface = LightSurface,
+    inverseOnSurface = LightTextPrimary,
+    inversePrimary = LightAccent,
+    scrim = Color.Black.copy(alpha = 0.4f)
 )
 
 private val LightMaterialColorScheme = lightColorScheme(
-    primary = AccentTerracottaLight,
-    onPrimary = LightSurface,
-    primaryContainer = AccentTerracottaTintLight,
+    primary = LightAccent,
+    onPrimary = LightOnAccent,
+    primaryContainer = LightAccentSubtle,
     onPrimaryContainer = LightTextPrimary,
+    secondary = LightTextSecondary,
+    onSecondary = LightBackground,
+    secondaryContainer = LightSurfaceSubtle,
+    onSecondaryContainer = LightTextPrimary,
+    tertiary = LightTextTertiary,
+    onTertiary = LightBackground,
     background = LightBackground,
     onBackground = LightTextPrimary,
     surface = LightSurface,
     onSurface = LightTextPrimary,
-    surfaceVariant = LightSurfaceElevated,
+    surfaceVariant = LightSurfaceSubtle,
     onSurfaceVariant = LightTextSecondary,
-    outline = LightBorder,
-    outlineVariant = LightBorderSubtle,
-    error = ErrorLight,
-    onError = LightSurface
+    outline = LightOutline,
+    outlineVariant = LightOutline,
+    error = LightError,
+    onError = LightOnAccent,
+    inverseSurface = DarkSurface,
+    inverseOnSurface = DarkTextPrimary,
+    inversePrimary = DarkAccent,
+    scrim = Color.Black.copy(alpha = 0.32f)
 )
-
-private val DarkExtendedColors = DarkAppColors
-private val LightExtendedColors = LightAppColors
 
 @Composable
 fun AppTheme(
@@ -60,7 +82,7 @@ fun AppTheme(
     content: @Composable () -> Unit
 ) {
     val materialColorScheme = if (darkTheme) DarkMaterialColorScheme else LightMaterialColorScheme
-    val extendedColors = if (darkTheme) DarkExtendedColors else LightExtendedColors
+    val extendedColors = if (darkTheme) DarkAppColors else LightAppColors
     val spacing = Spacing()
 
     val view = LocalView.current
@@ -87,6 +109,21 @@ fun AppTheme(
             typography = AppTypography,
             content = content
         )
+    }
+}
+
+/** Flat canvas root — solid background token only. */
+@Composable
+fun AppBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.background)
+    ) {
+        content()
     }
 }
 

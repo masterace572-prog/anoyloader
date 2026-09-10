@@ -17,6 +17,7 @@ import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.Build;
 
+import java.util.zip.ZipFile;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -293,8 +294,13 @@ public class PackageManagerCompat {
             ai.metaData = p.mAppMetaData;
         }
         ai.dataDir = BEnvironment.getDataDir(ai.packageName, userId).getAbsolutePath();
-        if (!p.installOption.isFlag(InstallOption.FLAG_SYSTEM)) {
-            ai.nativeLibraryDir = BEnvironment.getAppLibDir(ai.packageName).getAbsolutePath();
+        // ALWAYS point nativeLibraryDir at the BlackBox-extracted lib folder.
+        // Even FLAG_SYSTEM installs cannot rely on the host app's /data/app/.../lib path
+        // (SELinux blocks cross-UID reads). PUBG Global crashes when libUE4.so is unreachable.
+        ai.nativeLibraryDir = BEnvironment.getAppLibDir(ai.packageName).getAbsolutePath();
+        try {
+            FileUtils.mkdirs(ai.nativeLibraryDir);
+        } catch (Throwable ignored) {
         }
         ai.processName = BPackageManagerService.fixProcessName(p.packageName, ai.packageName);
         ai.publicSourceDir = sourceDir;
@@ -302,8 +308,54 @@ public class PackageManagerCompat {
         ai.uid = p.mExtras.appId;
 //        ai.uid = baseApplication.uid;
 
+        // Preserve split APK paths from the real host install when available.
+        // Without splitSourceDirs, ClassLoader only sees base.apk and PUBG Global
+        // (Play Asset Delivery / config.arm64_v8a) crashes after a few seconds.
+        //
+        // Android 16 is stricter: non-dex config splits (config.en, config.zh,
+        // phonesky_* native-only, etc.) throw suppressed IOException
+        // "Failed to find entry 'classes.dex'" when building PathClassLoader.
+        // Keep splits that either have classes.dex OR look like ABI/feature code
+        // splits needed for native libs / feature modules.
+        try {
+            ApplicationInfo hostAi = BlackBoxCore.getPackageManager()
+                    .getApplicationInfo(p.packageName, 0);
+            if (hostAi != null) {
+                String[] hostSplits = hostAi.splitSourceDirs;
+                String[] hostNames = (Build.VERSION.SDK_INT >= 26) ? hostAi.splitNames : null;
+                if (hostSplits != null && hostSplits.length > 0) {
+                    java.util.ArrayList<String> keptDirs = new java.util.ArrayList<>();
+                    java.util.ArrayList<String> keptNames = new java.util.ArrayList<>();
+                    for (int i = 0; i < hostSplits.length; i++) {
+                        String path = hostSplits[i];
+                        String name = (hostNames != null && i < hostNames.length) ? hostNames[i] : null;
+                        if (shouldKeepSplit(path, name)) {
+                            keptDirs.add(path);
+                            if (name != null) keptNames.add(name);
+                        }
+                    }
+                    if (!keptDirs.isEmpty()) {
+                        ai.splitSourceDirs = keptDirs.toArray(new String[0]);
+                        ai.splitPublicSourceDirs = keptDirs.toArray(new String[0]);
+                        if (Build.VERSION.SDK_INT >= 26 && !keptNames.isEmpty()
+                                && keptNames.size() == keptDirs.size()) {
+                            ai.splitNames = keptNames.toArray(new String[0]);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
         if (BuildCompat.isL()) {
             BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.CPU_ABI);
+            // Prefer 64-bit primary ABI explicitly on arm64 devices
+            try {
+                if (Build.SUPPORTED_64_BIT_ABIS != null && Build.SUPPORTED_64_BIT_ABIS.length > 0) {
+                    BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.SUPPORTED_64_BIT_ABIS[0]);
+                }
+            } catch (Throwable ignored) {
+            }
             BRApplicationInfoL.get(ai)._set_scanPublicSourceDir(BRApplicationInfoL.get(baseApplication).scanPublicSourceDir());
             BRApplicationInfoL.get(ai)._set_scanSourceDir(BRApplicationInfoL.get(baseApplication).scanSourceDir());
         }
@@ -327,6 +379,61 @@ public class PackageManagerCompat {
         return ai;
     }
 
+
+    /**
+     * Decide whether a host split APK should be placed on the virtual ClassLoader path.
+     * Locale/density config splits and pure native feature modules without classes.dex
+     * cause Android 16 DexFile.openDexFileNative to fail loudly.
+     */
+    private static boolean shouldKeepSplit(String path, String splitName) {
+        if (path == null || path.isEmpty()) return false;
+        String lowerPath = path.toLowerCase();
+        String lowerName = splitName != null ? splitName.toLowerCase() : "";
+
+        // Always keep if the APK actually contains dex (feature modules with code).
+        if (apkHasClassesDex(path)) {
+            return true;
+        }
+
+        // ABI config splits carry .so even without classes.dex.
+        // On API 36+ PathClassLoader fails hard if the split has no classes.dex, so drop them;
+        // native libs remain reachable via base.apk!/lib and nativeLibraryDir extraction.
+        if (lowerName.contains("config.arm") || lowerName.contains("config.x86")
+                || lowerName.contains("config.armeabi")
+                || lowerPath.contains("config.arm") || lowerPath.contains("config.x86")
+                || lowerPath.contains("split_config.arm") || lowerPath.contains("split_config.x86")) {
+            return Build.VERSION.SDK_INT < 36;
+        }
+
+        // Drop pure locale / density config splits without dex.
+        if (lowerName.startsWith("config.") || lowerPath.contains("split_config.")) {
+            return false;
+        }
+        // Drop known Play Store native-only feature modules without dex.
+        if (lowerName.contains("phonesky") || lowerPath.contains("phonesky")) {
+            return false;
+        }
+        // Unknown non-dex split: drop to avoid ClassLoader construction failures.
+        return false;
+    }
+
+    private static boolean apkHasClassesDex(String apkPath) {
+        ZipFile zf = null;
+        try {
+            java.io.File f = new java.io.File(apkPath);
+            if (!f.isFile() || f.length() == 0) return false;
+            zf = new ZipFile(f);
+            return zf.getEntry("classes.dex") != null
+                    || zf.getEntry("classes2.dex") != null;
+        } catch (Throwable t) {
+            return false;
+        } finally {
+            if (zf != null) {
+                try { zf.close(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
     private static boolean checkUseInstalledOrHidden(int flags, BPackageUserState state,
                                                      ApplicationInfo appInfo) {
         if (AppSystemEnv.isBlackPackage(appInfo.packageName))
@@ -339,23 +446,23 @@ public class PackageManagerCompat {
     }
 
     private static void fixJar(ApplicationInfo info) {
-        String APACHE_LEGACY_JAR = "/system/framework/org.apache.http.legacy.boot.jar";
-        String APACHE_LEGACY_JAR_Q = "/system/framework/org.apache.http.legacy.jar";
+        // Always advertise org.apache.http.legacy — IMSDK/Volley still needs ProtocolVersion
+        // on Android 10–16. Prefer every readable candidate path.
         Set<String> sharedLibraryFileList = new HashSet<>();
-        if (BuildCompat.isQ()) {
-            if (!FileUtils.isExist(APACHE_LEGACY_JAR_Q)) {
-                sharedLibraryFileList.add(APACHE_LEGACY_JAR);
-            } else {
-                sharedLibraryFileList.add(APACHE_LEGACY_JAR_Q);
+        try {
+            for (String path : top.niunaijun.blackbox.utils.compat.ApacheHttpLegacyCompat.resolveAllJarPaths()) {
+                sharedLibraryFileList.add(path);
             }
-        } else {
-            sharedLibraryFileList.add(APACHE_LEGACY_JAR);
+        } catch (Throwable ignored) {
+            sharedLibraryFileList.add("/system/framework/org.apache.http.legacy.jar");
+            sharedLibraryFileList.add("/system/framework/org.apache.http.legacy.boot.jar");
         }
-//        if (BXposedManagerService.get().isXPEnable()) {
-//            ApplicationInfo base = BlackBoxCore.getContext().getApplicationInfo();
-//            sharedLibraryFileList.add(base.sourceDir);
-//        }
-//        sharedLibraryFileList.add(BEnvironment.JUNIT_JAR.getAbsolutePath());
+        // Preserve any libraries already declared by the package.
+        if (info.sharedLibraryFiles != null) {
+            for (String existing : info.sharedLibraryFiles) {
+                if (existing != null) sharedLibraryFileList.add(existing);
+            }
+        }
         info.sharedLibraryFiles = sharedLibraryFileList.toArray(new String[]{});
     }
 
