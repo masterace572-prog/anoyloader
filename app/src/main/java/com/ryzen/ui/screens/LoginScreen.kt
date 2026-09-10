@@ -13,15 +13,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.ryzen.ui.theme.AppRadii
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -41,38 +41,37 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.ryzen.ui.components.AppBadge
-import com.ryzen.ui.components.BadgeTone
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ryzen.R
+import com.ryzen.ui.components.AppBadge
 import com.ryzen.ui.components.AppButton
 import com.ryzen.ui.components.AppCard
 import com.ryzen.ui.components.AppDialog
 import com.ryzen.ui.components.AppProgressBar
 import com.ryzen.ui.components.AppTextField
+import com.ryzen.ui.components.BadgeTone
 import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.PermissionsDialog
 import com.ryzen.ui.components.PermissionsDialogState
 import com.ryzen.ui.theme.AppBackground
+import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
 
 data class LoadingDialogState(
     val isVisible: Boolean = false,
     val title: String = "Authenticating",
-    val message: String = "Verifying license key...",
+    val message: String = "Verifying license key…",
     val progress: Int? = null,
     val isError: Boolean = false,
     val onDismiss: () -> Unit = {},
@@ -130,236 +129,232 @@ fun LoginScreen(
             .navigationBarsPadding()
             .imePadding()
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(
+                    horizontal = AppTheme.spacing.screenHorizontal,
+                    vertical = AppTheme.spacing.xl
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(AppTheme.spacing.xxl))
 
+            // Brand
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 440.dp)
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(AppRadii.lg))
+                        .background(AppTheme.colors.surfaceElevated)
+                        .border(1.dp, AppTheme.colors.outline, RoundedCornerShape(AppRadii.lg)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher),
+                        contentDescription = stringResource(id = R.string.app_name),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(AppRadii.lg)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(AppTheme.spacing.md))
 
-                // Brand Header Section
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(88.dp)
-                            .clip(RoundedCornerShape(AppRadii.lg))
-                            .background(AppTheme.colors.surfaceElevated)
-                            .border(1.dp, AppTheme.colors.border, RoundedCornerShape(AppRadii.lg)),
-                        contentAlignment = Alignment.Center
+                Text(
+                    text = stringResource(id = R.string.brand_name),
+                    style = AppTheme.typography.headlineSmall,
+                    color = AppTheme.colors.textPrimary
+                )
+
+                Spacer(modifier = Modifier.height(AppTheme.spacing.xxs))
+
+                Text(
+                    text = stringResource(id = R.string.brand_subtitle_auth),
+                    style = AppTheme.typography.bodyMedium,
+                    color = AppTheme.colors.textSecondary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(AppTheme.spacing.xl))
+
+            // Auth card
+            AppCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 440.dp),
+                elevated = true,
+                contentPadding = AppTheme.spacing.lg
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_launcher),
-                            contentDescription = stringResource(id = R.string.app_name) + " App Icon",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(AppRadii.lg)),
-                            contentScale = ContentScale.Crop
+                        Text(
+                            text = stringResource(id = R.string.label_license_key),
+                            style = AppTheme.typography.titleSmall,
+                            color = AppTheme.colors.textPrimary
+                        )
+                        AppBadge(
+                            text = if (isSystemOnline) {
+                                stringResource(id = R.string.status_online)
+                            } else {
+                                stringResource(id = R.string.status_maintenance)
+                            },
+                            tone = if (isSystemOnline) BadgeTone.SUCCESS else BadgeTone.WARNING
                         )
                     }
 
                     Spacer(modifier = Modifier.height(AppTheme.spacing.md))
 
-                    Text(
-                        text = stringResource(id = R.string.brand_name),
-                        style = AppTheme.typography.displaySmall.copy(
-                            fontWeight = FontWeight.SemiBold
+                    AppTextField(
+                        value = keyText,
+                        onValueChange = onKeyChange,
+                        placeholder = "XXXX-XXXX-XXXX-XXXX",
+                        leadingIcon = Icons.Outlined.Key,
+                        visualTransformation = if (isKeyVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Ascii,
+                            imeAction = ImeAction.Done
                         ),
-                        color = AppTheme.colors.textPrimary
-                    )
-
-                    Spacer(modifier = Modifier.height(AppTheme.spacing.xxs))
-
-                    Text(
-                        text = "Secure Sandbox Authentication",
-                        style = AppTheme.typography.bodyMedium,
-                        color = AppTheme.colors.textSecondary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(AppTheme.spacing.xl))
-
-                // Main Authentication Card
-                AppCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevated = true,
-                    contentPadding = AppTheme.spacing.lg
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Card Title & System Status Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "License key",
-                                style = AppTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = AppTheme.colors.textPrimary
-                            )
-
-                            AppBadge(
-                                text = if (isSystemOnline) "Online" else "Maintenance",
-                                tone = if (isSystemOnline) BadgeTone.SUCCESS else BadgeTone.WARNING
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
-                        // Input Box with Show/Hide and Paste Actions
-                        AppTextField(
-                            value = keyText,
-                            onValueChange = onKeyChange,
-                            leadingIcon = Icons.Outlined.Key,
-                            visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Ascii,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = { onAuthenticateClick() }
-                            ),
-                            isError = keyError != null,
-                            errorMessage = keyError,
-                            trailingContent = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(
-                                        onClick = onToggleKeyVisibility,
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isKeyVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                                            contentDescription = if (isKeyVisible) "Hide license key" else "Show license key",
-                                            tint = AppTheme.colors.textSecondary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(4.dp))
-
-                                    IconButton(
-                                        onClick = onPasteClick,
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.ContentPaste,
-                                            contentDescription = "Paste license key from clipboard",
-                                            tint = AppTheme.colors.accent,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                        keyboardActions = KeyboardActions(
+                            onDone = { onAuthenticateClick() }
+                        ),
+                        isError = keyError != null,
+                        errorMessage = keyError,
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = onToggleKeyVisibility,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isKeyVisible) {
+                                            Icons.Outlined.Visibility
+                                        } else {
+                                            Icons.Outlined.VisibilityOff
+                                        },
+                                        contentDescription = if (isKeyVisible) {
+                                            "Hide license key"
+                                        } else {
+                                            "Show license key"
+                                        },
+                                        tint = AppTheme.colors.textSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onPasteClick,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.ContentPaste,
+                                        contentDescription = "Paste license key",
+                                        tint = AppTheme.colors.textSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
-                        )
-
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.sm))
-
-                        // Save Key Option Row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { onSaveKeyToggle(!isSaveKeyEnabled) },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = isSaveKeyEnabled,
-                                onCheckedChange = onSaveKeyToggle,
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = AppTheme.colors.accent,
-                                    uncheckedColor = AppTheme.colors.border,
-                                    checkmarkColor = AppTheme.colors.onAccent
-                                ),
-                                modifier = Modifier.size(24.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(AppTheme.spacing.xs))
-
-                            Text(
-                                text = "Save license key on this device",
-                                style = AppTheme.typography.bodySmall,
-                                color = AppTheme.colors.textSecondary
-                            )
                         }
+                    )
 
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
+                    Spacer(modifier = Modifier.height(AppTheme.spacing.sm))
 
-                        // Authenticate Action Button
-                        AppButton(
-                            text = "Authenticate",
-                            onClick = onAuthenticateClick,
-                            loading = isAuthenticating,
-                            variant = ButtonVariant.PRIMARY,
-                            fullWidth = true
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onSaveKeyToggle(!isSaveKeyEnabled) },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isSaveKeyEnabled,
+                            onCheckedChange = onSaveKeyToggle,
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = AppTheme.colors.accent,
+                                uncheckedColor = AppTheme.colors.outline,
+                                checkmarkColor = AppTheme.colors.onAccent
+                            ),
+                            modifier = Modifier.size(24.dp)
                         )
-
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
-
-                        // Telegram Get Key Button
-                        AppButton(
-                            text = "Get license key",
-                            onClick = onGetKeyClick,
-                            variant = ButtonVariant.SECONDARY,
-                            leadingPainter = painterResource(id = R.drawable.ic_telegram_app),
-                            fullWidth = true
+                        Spacer(modifier = Modifier.width(AppTheme.spacing.xs))
+                        Text(
+                            text = stringResource(id = R.string.action_save_key),
+                            style = AppTheme.typography.bodySmall,
+                            color = AppTheme.colors.textSecondary
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(AppTheme.spacing.xl))
+                    Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
 
-                // Footer Area
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.brand_enterprise),
-                        style = AppTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = AppTheme.colors.textSecondary
+                    AppButton(
+                        text = stringResource(id = R.string.action_authenticate),
+                        onClick = onAuthenticateClick,
+                        loading = isAuthenticating,
+                        enabled = !isAuthenticating,
+                        variant = ButtonVariant.PRIMARY,
+                        fullWidth = true
                     )
 
-                    Spacer(modifier = Modifier.height(AppTheme.spacing.xxs))
+                    Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
-                    Text(
-                        text = "Protected with Advanced Sandboxing & Anti-Tamper Core",
-                        style = AppTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = AppTheme.colors.textTertiary
+                    AppButton(
+                        text = stringResource(id = R.string.action_get_key),
+                        onClick = onGetKeyClick,
+                        variant = ButtonVariant.SECONDARY,
+                        leadingPainter = painterResource(id = R.drawable.ic_telegram_app),
+                        fullWidth = true
                     )
                 }
-
-                Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
             }
+
+            Spacer(modifier = Modifier.height(AppTheme.spacing.xxl))
+            Spacer(modifier = Modifier.height(AppTheme.spacing.xl))
+
+            // Footer
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = stringResource(id = R.string.brand_enterprise),
+                    style = AppTheme.typography.labelMedium,
+                    color = AppTheme.colors.textSecondary
+                )
+                Spacer(modifier = Modifier.height(AppTheme.spacing.xxs))
+                Text(
+                    text = stringResource(id = R.string.security_footer),
+                    style = AppTheme.typography.bodySmall,
+                    color = AppTheme.colors.textTertiary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(AppTheme.spacing.md))
         }
 
-        // Loading & Progress Modal Dialog
+        // Loading / error dialog
         if (loadingDialogState != null && loadingDialogState.isVisible) {
             AppDialog(
                 onDismissRequest = {
-                    if (loadingDialogState.isError) {
-                        loadingDialogState.onDismiss()
-                    }
+                    if (loadingDialogState.isError) loadingDialogState.onDismiss()
                 },
                 title = loadingDialogState.title,
-                subtitle = if (loadingDialogState.isError) null else "Please wait while operations finish"
+                subtitle = if (loadingDialogState.isError) null else "Please wait"
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -369,29 +364,24 @@ fun LoginScreen(
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(AppRadii.md))
                                 .background(AppTheme.colors.surfaceSubtle),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Warning,
                                 contentDescription = null,
-                                tint = AppTheme.colors.textSecondary,
+                                tint = AppTheme.colors.error,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-
                         Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
                         Text(
                             text = loadingDialogState.message,
                             style = AppTheme.typography.bodyMedium,
-                            color = AppTheme.colors.error,
-                            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm)
+                            color = AppTheme.colors.error
                         )
-
                         Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-
                         if (loadingDialogState.onRetry != null) {
                             AppButton(
                                 text = "Retry",
@@ -401,97 +391,69 @@ fun LoginScreen(
                             )
                             Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
                         }
-
                         AppButton(
                             text = "Dismiss",
                             onClick = loadingDialogState.onDismiss,
                             variant = ButtonVariant.SECONDARY,
                             fullWidth = true
                         )
+                    } else if (loadingDialogState.progress != null) {
+                        AppProgressBar(
+                            progress = (loadingDialogState.progress.coerceIn(0, 100)) / 100f,
+                            statusText = loadingDialogState.message,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     } else {
-                        if (loadingDialogState.progress != null) {
-                            AppProgressBar(
-                                progress = (loadingDialogState.progress.coerceIn(0, 100)) / 100f,
-                                statusText = loadingDialogState.message,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        } else {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(36.dp),
-                                color = AppTheme.colors.accent,
-                                strokeWidth = 3.dp
-                            )
-
-                            Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
-                            Text(
-                                text = loadingDialogState.message,
-                                style = AppTheme.typography.bodyMedium,
-                                color = AppTheme.colors.textSecondary
-                            )
-                        }
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            color = AppTheme.colors.accent,
+                            strokeWidth = 2.5.dp
+                        )
+                        Spacer(modifier = Modifier.height(AppTheme.spacing.md))
+                        Text(
+                            text = loadingDialogState.message,
+                            style = AppTheme.typography.bodyMedium,
+                            color = AppTheme.colors.textSecondary
+                        )
                     }
                 }
             }
         }
 
-        // Server Maintenance Modal Dialog
+        // Maintenance
         if (maintenanceDialogState != null && maintenanceDialogState.isVisible) {
             AppDialog(
                 onDismissRequest = {},
-                title = "Server Maintenance Active",
-                subtitle = "Access is temporarily locked by administrators"
+                title = "Server maintenance",
+                subtitle = "Access is temporarily locked"
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(AppTheme.colors.surfaceSubtle),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = AppTheme.colors.textSecondary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = maintenanceDialogState.message.ifBlank { "The authentication server is undergoing scheduled maintenance." },
+                        text = maintenanceDialogState.message.ifBlank {
+                            "The authentication server is undergoing scheduled maintenance."
+                        },
                         style = AppTheme.typography.bodyMedium,
                         color = AppTheme.colors.textPrimary
                     )
-
                     if (maintenanceDialogState.estimatedEnd.isNotBlank()) {
                         Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
                         Text(
-                            text = "Estimated Completion: ${maintenanceDialogState.estimatedEnd}",
-                            style = AppTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = AppTheme.colors.accent
+                            text = "Estimated completion: ${maintenanceDialogState.estimatedEnd}",
+                            style = AppTheme.typography.bodySmall,
+                            color = AppTheme.colors.textSecondary
                         )
                     }
-
                     Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-
                     AppButton(
-                        text = "Refresh Status",
+                        text = "Refresh status",
                         onClick = maintenanceDialogState.onRefresh,
                         variant = ButtonVariant.PRIMARY,
                         leadingIcon = Icons.Outlined.Refresh,
                         fullWidth = true
                     )
-
                     Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
-
                     AppButton(
-                        text = "Exit App",
+                        text = "Exit app",
                         onClick = maintenanceDialogState.onExit,
                         variant = ButtonVariant.DESTRUCTIVE,
                         fullWidth = true
@@ -500,27 +462,22 @@ fun LoginScreen(
             }
         }
 
-        // Server Announcement Modal Dialog
+        // Announcement
         if (announcementDialogState != null && announcementDialogState.isVisible) {
             AppDialog(
                 onDismissRequest = announcementDialogState.onContinue,
                 title = announcementDialogState.title.ifBlank { "Announcement" }
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = announcementDialogState.message,
                         style = AppTheme.typography.bodyMedium,
                         color = AppTheme.colors.textSecondary
                     )
-
                     Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-
                     if (announcementDialogState.onOpenLink != null) {
                         AppButton(
-                            text = "Open Link",
+                            text = "Open link",
                             onClick = announcementDialogState.onOpenLink,
                             variant = ButtonVariant.PRIMARY,
                             leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
@@ -528,7 +485,6 @@ fun LoginScreen(
                         )
                         Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
                     }
-
                     AppButton(
                         text = "Continue",
                         onClick = announcementDialogState.onContinue,
@@ -552,7 +508,7 @@ fun LoginScreen(
     }
 }
 
-@Preview(name = "Login Screen - Dark", showBackground = true)
+@Preview(name = "Login — Dark", showBackground = true)
 @Composable
 fun PreviewLoginScreenDark() {
     AppTheme(darkTheme = true) {
@@ -572,7 +528,7 @@ fun PreviewLoginScreenDark() {
     }
 }
 
-@Preview(name = "Login Screen - Light", showBackground = true)
+@Preview(name = "Login — Light", showBackground = true)
 @Composable
 fun PreviewLoginScreenLight() {
     AppTheme(darkTheme = false) {

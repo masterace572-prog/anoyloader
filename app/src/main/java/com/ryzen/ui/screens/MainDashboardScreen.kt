@@ -1,16 +1,12 @@
 package com.ryzen.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,18 +32,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ryzen.R
 import com.ryzen.model.GameVersion
 import com.ryzen.model.ManagedGame
@@ -62,8 +53,11 @@ import com.ryzen.ui.components.BadgeTone
 import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.GameNotInstalledDialog
 import com.ryzen.ui.components.GameNotInstalledDialogState
+import com.ryzen.ui.components.SectionHeader
 import com.ryzen.ui.theme.AppMotion
+import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 private data class ActionButtonState(
     val text: String,
@@ -109,23 +103,31 @@ fun MainDashboardScreen(
     onDismissGameNotInstalledDialog: () -> Unit = {}
 ) {
     val gameTitle = selectedGame.getDisplayTitle()
+    // Bottom nav is 56dp + system insets; keep content clear of it
+    val bottomContentPad = 72.dp
 
-    // Transparent root — ambient canvas comes from MAct AppBackground
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // 1. TOP BAR (Clean compact title + small expiry indicator)
             AppTopBar(
                 title = stringResource(id = R.string.brand_name),
-                subtitle = "Virtualization Engine",
+                subtitle = "Virtualization engine",
                 trailingContent = {
                     Text(
-                        text = if (isLifetime) "Lifetime" else if (days != "00") "${days}d ${hours}h" else "${hours}h ${mins}m",
+                        text = when {
+                            isLifetime -> stringResource(id = R.string.status_lifetime)
+                            days != "00" -> "${days}d ${hours}h"
+                            else -> "${hours}h ${mins}m"
+                        },
                         style = AppTheme.typography.labelMedium,
-                        color = AppTheme.colors.success
+                        color = if (isLifetime) {
+                            AppTheme.colors.accent
+                        } else {
+                            AppTheme.colors.success
+                        }
                     )
                 }
             )
@@ -137,24 +139,17 @@ fun MainDashboardScreen(
                     .align(Alignment.CenterHorizontally)
                     .padding(horizontal = AppTheme.spacing.screenHorizontal)
             ) {
-                Spacer(modifier = Modifier.height(AppTheme.spacing.md))
+                Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
 
-                // 2. TARGET APPS SECTION HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Target application",
-                        style = AppTheme.typography.labelSmall.copy(
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.sp
-                        ),
-                        color = AppTheme.colors.textSecondary
+                    SectionHeader(
+                        text = stringResource(id = R.string.header_target_app),
+                        modifier = Modifier.weight(1f)
                     )
-
                     IconButton(
                         onClick = onOptionsClick,
                         modifier = Modifier.size(48.dp)
@@ -163,16 +158,11 @@ fun MainDashboardScreen(
                             imageVector = Icons.Outlined.MoreVert,
                             contentDescription = "Options",
                             tint = AppTheme.colors.textSecondary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
-
-                // BGMI-only product — no multi-game selector
-
-                                // 4. CLEAN & MODERN GAME CARDS (Multi-version support, e.g. 4.5.0 and 4.6.0)
                 val versionsToDisplay = if (selectedGame.versions.isNotEmpty()) {
                     selectedGame.versions
                 } else {
@@ -200,58 +190,94 @@ fun MainDashboardScreen(
                     val isVerComingSoon = version.isComingSoon || selectedGame.isComingSoon
                     val isMatchingHostVersion = isHostGameInstalled && (
                         (version.versionCode > 0 && hostInstalledVersionCode == version.versionCode.toLong()) ||
-                        (hostInstalledVersionName.isNotBlank() && hostInstalledVersionName == version.versionName)
-                    )
+                            (hostInstalledVersionName.isNotBlank() &&
+                                hostInstalledVersionName == version.versionName)
+                        )
 
-                    // Tag badge fetched from server
                     val versionTag = version.tag.ifBlank { "Latest" }
                     val (badgeText, badgeTone) = when {
-                        isVerComingSoon -> Pair("Coming soon", BadgeTone.ACCENT)
-                        !isGameEnabled -> Pair("Disabled", BadgeTone.ERROR)
-                        versionTag.equals("LATEST", ignoreCase = true) -> Pair("Latest", BadgeTone.SUCCESS)
-                        versionTag.equals("STABLE", ignoreCase = true) -> Pair("Stable", BadgeTone.SUCCESS)
-                        versionTag.equals("BETA", ignoreCase = true) -> Pair("Beta", BadgeTone.WARNING)
-                        versionTag.equals("TEST", ignoreCase = true) -> Pair("Test", BadgeTone.ACCENT)
-                        versionTag.equals("COMING SOON", ignoreCase = true) -> Pair("Coming soon", BadgeTone.ACCENT)
-                        else -> Pair(versionTag, BadgeTone.NEUTRAL)
+                        isVerComingSoon ->
+                            stringResource(id = R.string.status_coming_soon) to BadgeTone.ACCENT
+                        !isGameEnabled ->
+                            stringResource(id = R.string.status_disabled) to BadgeTone.ERROR
+                        versionTag.equals("LATEST", ignoreCase = true) ->
+                            stringResource(id = R.string.status_latest) to BadgeTone.SUCCESS
+                        versionTag.equals("STABLE", ignoreCase = true) ->
+                            stringResource(id = R.string.status_stable) to BadgeTone.SUCCESS
+                        versionTag.equals("BETA", ignoreCase = true) ->
+                            stringResource(id = R.string.status_beta) to BadgeTone.WARNING
+                        versionTag.equals("TEST", ignoreCase = true) ->
+                            stringResource(id = R.string.status_test) to BadgeTone.ACCENT
+                        versionTag.equals("COMING SOON", ignoreCase = true) ->
+                            stringResource(id = R.string.status_coming_soon) to BadgeTone.ACCENT
+                        else -> versionTag to BadgeTone.NEUTRAL
                     }
 
                     val cardButtonState = when {
-                        isVerComingSoon -> {
-                            ActionButtonState("Coming soon", false, ButtonVariant.SECONDARY, Icons.Outlined.Schedule)
-                        }
-                        !isGameEnabled -> {
-                            ActionButtonState("Unavailable", false, ButtonVariant.SECONDARY, null)
-                        }
-                        !isHostGameInstalled -> {
-                            ActionButtonState("$gameTitle Not Installed", true, ButtonVariant.PRIMARY, Icons.Outlined.Download)
-                        }
-                        !isMatchingHostVersion -> {
-                            ActionButtonState("Version Not Installed", false, ButtonVariant.SECONDARY, null)
-                        }
-                        isInstalling -> {
-                            ActionButtonState("Installing to Sandbox...", false, ButtonVariant.PRIMARY, null)
-                        }
-                        isCopyingObb -> {
-                            ActionButtonState("Synchronizing OBB...", false, ButtonVariant.PRIMARY, null)
-                        }
-                        isLaunching -> {
-                            ActionButtonState("Starting engine...", false, ButtonVariant.PRIMARY, null)
-                        }
-                        !isClonedInContainer -> {
-                            ActionButtonState("Install", true, ButtonVariant.PRIMARY, Icons.Outlined.Download)
-                        }
-                        !hasObb -> {
-                            ActionButtonState("Synchronize OBB", true, ButtonVariant.PRIMARY, Icons.Outlined.Sync)
-                        }
-                        else -> {
-                            ActionButtonState("Launch", true, ButtonVariant.PRIMARY, Icons.Outlined.PlayArrow)
-                        }
+                        isVerComingSoon -> ActionButtonState(
+                            stringResource(id = R.string.status_coming_soon),
+                            false,
+                            ButtonVariant.SECONDARY,
+                            Icons.Outlined.Schedule
+                        )
+                        !isGameEnabled -> ActionButtonState(
+                            "Unavailable",
+                            false,
+                            ButtonVariant.SECONDARY,
+                            null
+                        )
+                        !isHostGameInstalled -> ActionButtonState(
+                            "$gameTitle not installed",
+                            true,
+                            ButtonVariant.PRIMARY,
+                            Icons.Outlined.Download
+                        )
+                        !isMatchingHostVersion -> ActionButtonState(
+                            "Version not installed",
+                            false,
+                            ButtonVariant.SECONDARY,
+                            null
+                        )
+                        isInstalling -> ActionButtonState(
+                            "Installing…",
+                            false,
+                            ButtonVariant.PRIMARY,
+                            null
+                        )
+                        isCopyingObb -> ActionButtonState(
+                            "Synchronizing OBB…",
+                            false,
+                            ButtonVariant.PRIMARY,
+                            null
+                        )
+                        isLaunching -> ActionButtonState(
+                            "Starting…",
+                            false,
+                            ButtonVariant.PRIMARY,
+                            null
+                        )
+                        !isClonedInContainer -> ActionButtonState(
+                            stringResource(id = R.string.action_install),
+                            true,
+                            ButtonVariant.PRIMARY,
+                            Icons.Outlined.Download
+                        )
+                        !hasObb -> ActionButtonState(
+                            stringResource(id = R.string.action_sync_obb),
+                            true,
+                            ButtonVariant.PRIMARY,
+                            Icons.Outlined.Sync
+                        )
+                        else -> ActionButtonState(
+                            stringResource(id = R.string.action_launch),
+                            true,
+                            ButtonVariant.PRIMARY,
+                            Icons.Outlined.PlayArrow
+                        )
                     }
 
                     AppCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = AppTheme.shapes.large,
                         elevated = true,
                         contentPadding = AppTheme.spacing.md
                     ) {
@@ -260,18 +286,21 @@ fun MainDashboardScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Game Icon (Dedicated icon per game)
                                 Box(
                                     modifier = Modifier
-                                        .size(52.dp)
-                                        .clip(AppTheme.shapes.medium)
-                                        .background(AppTheme.colors.surfaceElevated)
-                                        .border(1.dp, AppTheme.colors.borderSubtle, AppTheme.shapes.medium),
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(AppRadii.md))
+                                        .background(AppTheme.colors.surfaceSubtle)
+                                        .border(
+                                            1.dp,
+                                            AppTheme.colors.outline,
+                                            RoundedCornerShape(AppRadii.md)
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Image(
                                         painter = painterResource(id = R.drawable.india),
-                                        contentDescription = "$gameTitle Icon",
+                                        contentDescription = gameTitle,
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Crop
                                     )
@@ -282,34 +311,24 @@ fun MainDashboardScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = gameTitle,
-                                        style = AppTheme.typography.titleMedium.copy(
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        ),
+                                        style = AppTheme.typography.titleMedium,
                                         color = AppTheme.colors.textPrimary
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "Version ${version.versionName}",
-                                        style = AppTheme.typography.bodySmall.copy(
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
+                                        style = AppTheme.typography.bodySmall,
                                         color = AppTheme.colors.textSecondary
                                     )
                                 }
 
-                                // Server-driven Status Badge (e.g. LATEST, BETA, TEST, STABLE, COMING SOON)
-                                AppBadge(
-                                    text = badgeText,
-                                    tone = badgeTone
-                                )
+                                AppBadge(text = badgeText, tone = badgeTone)
                             }
 
                             Spacer(modifier = Modifier.height(AppTheme.spacing.md))
 
-                            // Action Button
-                            val isRunningThis = isMatchingHostVersion && (isLaunching || isCopyingObb || isInstalling)
+                            val isRunningThis =
+                                isMatchingHostVersion && (isLaunching || isCopyingObb || isInstalling)
                             AppButton(
                                 text = cardButtonState.text,
                                 onClick = {
@@ -317,19 +336,32 @@ fun MainDashboardScreen(
                                         isVerComingSoon -> {}
                                         !isGameEnabled -> {}
                                         !isHostGameInstalled -> {
-                                            if (onLaunchVersionClick != null) onLaunchVersionClick(version) else onLaunchClick()
+                                            if (onLaunchVersionClick != null) {
+                                                onLaunchVersionClick(version)
+                                            } else {
+                                                onLaunchClick()
+                                            }
                                         }
                                         !isMatchingHostVersion -> {}
                                         !isClonedInContainer -> {
-                                            if (onInstallVersionClick != null) onInstallVersionClick(version) else onInstallClick()
+                                            if (onInstallVersionClick != null) {
+                                                onInstallVersionClick(version)
+                                            } else {
+                                                onInstallClick()
+                                            }
                                         }
                                         !hasObb -> onSyncObbClick()
                                         else -> {
-                                            if (onLaunchVersionClick != null) onLaunchVersionClick(version) else onLaunchClick()
+                                            if (onLaunchVersionClick != null) {
+                                                onLaunchVersionClick(version)
+                                            } else {
+                                                onLaunchClick()
+                                            }
                                         }
                                     }
                                 },
-                                enabled = cardButtonState.enabled && !isLaunching && !isCopyingObb && !isInstalling,
+                                enabled = cardButtonState.enabled &&
+                                    !isLaunching && !isCopyingObb && !isInstalling,
                                 loading = isRunningThis,
                                 leadingIcon = if (!isRunningThis) cardButtonState.icon else null,
                                 variant = cardButtonState.variant,
@@ -339,13 +371,10 @@ fun MainDashboardScreen(
                     }
                 }
 
-                // 5. PROGRESS CARD (Visible only during active operations)
                 AnimatedVisibility(
                     visible = isCopyingObb || isInstalling,
-                    enter = fadeIn(tween(AppMotion.DurationStandard)) +
-                        slideInVertically(tween(AppMotion.DurationStandard)) { it / 8 },
-                    exit = fadeOut(tween(AppMotion.DurationFast)) +
-                        slideOutVertically(tween(AppMotion.DurationFast)) { it / 10 }
+                    enter = fadeIn(tween(AppMotion.DurationScreen)),
+                    exit = fadeOut(tween(AppMotion.DurationState))
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Spacer(modifier = Modifier.height(AppTheme.spacing.md))
@@ -361,24 +390,26 @@ fun MainDashboardScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(AppTheme.spacing.xxl))
-                Spacer(modifier = Modifier.navigationBarsPadding())
+                Spacer(modifier = Modifier.height(bottomContentPad))
             }
         }
 
-        // 7. START OPTIONS MODAL DIALOG
         if (showOptionsDialog) {
             AppDialog(
                 onDismissRequest = onOptionsDismiss,
-                title = "Launch Options",
-                subtitle = "Manage $gameTitle sandbox environment"
+                title = "Launch options",
+                subtitle = "Manage $gameTitle sandbox"
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)
                 ) {
                     AppButton(
-                        text = if (isClonedInContainer) "Launch $gameTitle" else "Install $gameTitle to Sandbox",
+                        text = if (isClonedInContainer) {
+                            "Launch $gameTitle"
+                        } else {
+                            "Install $gameTitle"
+                        },
                         onClick = {
                             onOptionsDismiss()
                             if (isClonedInContainer) onLaunchClick() else onInstallClick()
@@ -387,9 +418,8 @@ fun MainDashboardScreen(
                         variant = ButtonVariant.PRIMARY,
                         fullWidth = true
                     )
-
                     AppButton(
-                        text = "Sync OBB assets",
+                        text = stringResource(id = R.string.action_sync_obb),
                         onClick = {
                             onOptionsDismiss()
                             onSyncObbClick()
@@ -398,9 +428,8 @@ fun MainDashboardScreen(
                         variant = ButtonVariant.SECONDARY,
                         fullWidth = true
                     )
-
                     AppButton(
-                        text = "Clear login credentials",
+                        text = stringResource(id = R.string.action_clear_credentials),
                         onClick = {
                             onOptionsDismiss()
                             onClearLoginClick()
@@ -409,11 +438,8 @@ fun MainDashboardScreen(
                         variant = ButtonVariant.DESTRUCTIVE,
                         fullWidth = true
                     )
-
-                    Spacer(modifier = Modifier.height(AppTheme.spacing.xxs))
-
                     AppButton(
-                        text = "Cancel",
+                        text = stringResource(id = R.string.action_cancel),
                         onClick = onOptionsDismiss,
                         variant = ButtonVariant.TERTIARY,
                         fullWidth = true
@@ -422,7 +448,6 @@ fun MainDashboardScreen(
             }
         }
 
-        // Game Not Installed Dialog
         GameNotInstalledDialog(
             state = gameNotInstalledDialogState,
             onInstallFromPlayStore = onInstallFromPlayStore,
@@ -431,11 +456,7 @@ fun MainDashboardScreen(
     }
 }
 
-// =====================================================
-// PREVIEWS (Both Light & Dark Themes Verified)
-// =====================================================
-
-@Preview(name = "Dark Theme", showBackground = true)
+@Preview(name = "Dashboard — Dark", showBackground = true)
 @Composable
 private fun MainDashboardScreenDarkPreview() {
     AppTheme(darkTheme = true) {
@@ -443,33 +464,17 @@ private fun MainDashboardScreenDarkPreview() {
             days = "59",
             hours = "17",
             mins = "42",
-            secs = "10",
-            isLifetime = false,
-            isLaunching = false,
-            isInstalling = false,
-            isCopyingObb = false,
-            obbProgress = 0.45f,
-            progressMessage = "Copying OBB: 45%",
             hasObb = true,
             isClonedInContainer = true,
             games = ManagedGame.DEFAULT_GAMES,
             selectedGame = ManagedGame.DEFAULT_BGMI,
-            selectedVersion = ManagedGame.DEFAULT_BGMI.versions[0],
-            isHostGameInstalled = true,
             hostInstalledVersionName = "4.5.0",
-            hostInstalledVersionCode = 21325L,
-            onLaunchClick = {},
-            onInstallClick = {},
-            onSyncObbClick = {},
-            onClearLoginClick = {},
-            showOptionsDialog = false,
-            onOptionsDismiss = {},
-            onOptionsClick = {}
+            hostInstalledVersionCode = 21325L
         )
     }
 }
 
-@Preview(name = "Light Theme", showBackground = true)
+@Preview(name = "Dashboard — Light", showBackground = true)
 @Composable
 private fun MainDashboardScreenLightPreview() {
     AppTheme(darkTheme = false) {
@@ -477,28 +482,12 @@ private fun MainDashboardScreenLightPreview() {
             days = "59",
             hours = "17",
             mins = "42",
-            secs = "10",
-            isLifetime = false,
-            isLaunching = false,
-            isInstalling = false,
-            isCopyingObb = false,
-            obbProgress = 0.45f,
-            progressMessage = "Copying OBB: 45%",
             hasObb = true,
             isClonedInContainer = false,
             games = ManagedGame.DEFAULT_GAMES,
             selectedGame = ManagedGame.DEFAULT_BGMI,
-            selectedVersion = ManagedGame.DEFAULT_BGMI.versions[0],
-            isHostGameInstalled = true,
             hostInstalledVersionName = "4.5.0",
-            hostInstalledVersionCode = 21325L,
-            onLaunchClick = {},
-            onInstallClick = {},
-            onSyncObbClick = {},
-            onClearLoginClick = {},
-            showOptionsDialog = false,
-            onOptionsDismiss = {},
-            onOptionsClick = {}
+            hostInstalledVersionCode = 21325L
         )
     }
 }

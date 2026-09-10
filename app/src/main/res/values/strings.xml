@@ -4,11 +4,11 @@
 
     <!-- Branding & Subtitles -->
     <string name="brand_name">Anoy Loader</string>
-    <string name="brand_subtitle_engine">Virtualization Engine &amp; Security Core</string>
+    <string name="brand_subtitle_engine">Virtualization engine &amp; security core</string>
     <string name="brand_subtitle_auth">Secure Sandbox Authentication</string>
     <string name="brand_enterprise">Anoy Loader Enterprise</string>
     <string name="security_footer">Protected with Advanced Sandboxing &amp; Anti-Tamper Core</string>
-    <string name="userspace_badge">Userspace Sandboxing • Anti-Tamper Protected</string>
+    <string name="userspace_badge">Userspace sandboxing · Anti-tamper protected</string>
     <string name="telegram_url">https://t.me/libAkAudioVisiual</string>
     <string name="telegram_handle">@libAkAudioVisiual</string>
     <string name="http_user_agent">Mozilla/5.0 (Linux; Android) Anoy-Loader</string>

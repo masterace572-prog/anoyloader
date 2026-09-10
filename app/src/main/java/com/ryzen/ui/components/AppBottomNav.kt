@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,7 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppTheme
@@ -40,6 +39,10 @@ enum class MainNavTab(
     SETTINGS("Settings", Icons.Outlined.Settings)
 }
 
+/**
+ * Flat bottom navigation — surface background, 1dp top outline, no shadow/pill.
+ * Selected = accent tint; unselected = textSecondary. Outlined icons only.
+ */
 @Composable
 fun AppBottomNav(
     selectedTab: MainNavTab,
@@ -51,23 +54,6 @@ fun AppBottomNav(
             .fillMaxWidth()
             .background(AppTheme.colors.surface)
             .navigationBarsPadding()
-            .pointerInput(selectedTab) {
-                var dragAccumulator = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = { dragAccumulator = 0f },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        dragAccumulator += dragAmount
-                        if (dragAccumulator > 40f && selectedTab != MainNavTab.SETTINGS) {
-                            onTabSelected(MainNavTab.SETTINGS)
-                            dragAccumulator = 0f
-                        } else if (dragAccumulator < -40f && selectedTab != MainNavTab.GAMES) {
-                            onTabSelected(MainNavTab.GAMES)
-                            dragAccumulator = 0f
-                        }
-                    }
-                )
-            }
     ) {
         HorizontalDivider(thickness = 1.dp, color = AppTheme.colors.outline)
 
@@ -75,12 +61,12 @@ fun AppBottomNav(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             MainNavTab.values().forEach { tab ->
                 val isSelected = selectedTab == tab
-                val interactionSource = remember { MutableInteractionSource() }
+                val interactionSource = remember(tab) { MutableInteractionSource() }
 
                 val contentColor by animateColorAsState(
                     targetValue = if (isSelected) {
@@ -88,8 +74,11 @@ fun AppBottomNav(
                     } else {
                         AppTheme.colors.textSecondary
                     },
-                    animationSpec = tween(AppMotion.DurationState),
-                    label = "navColor"
+                    animationSpec = tween(
+                        durationMillis = AppMotion.DurationState,
+                        easing = AppMotion.EasingStandard
+                    ),
+                    label = "navColor_${tab.name}"
                 )
 
                 Box(
@@ -98,8 +87,10 @@ fun AppBottomNav(
                         .height(56.dp)
                         .clickable(
                             interactionSource = interactionSource,
-                            indication = null
-                        ) { onTabSelected(tab) },
+                            indication = null,
+                            role = Role.Tab,
+                            onClick = { onTabSelected(tab) }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -110,7 +101,7 @@ fun AppBottomNav(
                             imageVector = tab.icon,
                             contentDescription = tab.title,
                             tint = contentColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                         Text(
                             text = tab.title,
