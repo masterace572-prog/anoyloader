@@ -422,6 +422,7 @@ CREATE TABLE IF NOT EXISTS public.game_versions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id VARCHAR(64) NOT NULL REFERENCES public.managed_games(id) ON DELETE CASCADE,
     version_name VARCHAR(32) NOT NULL,       -- e.g. "4.6.0"
+    version_code INT NOT NULL DEFAULT 0,         -- e.g. 21525
     obb_name VARCHAR(128) NOT NULL,          -- e.g. "main.21525.com.pubg.imobile.obb"
     tag VARCHAR(32) NOT NULL DEFAULT 'LATEST', -- 'LATEST' | 'BETA' | 'TEST' | 'STABLE'
     status_text VARCHAR(64) NOT NULL DEFAULT 'Ready',
