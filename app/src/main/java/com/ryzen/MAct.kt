@@ -315,7 +315,7 @@ class MAct : AppCompatActivity() {
 
             if (isContainerInstalled) {
                 // Smart Game Update Detection:
-                // If host game updated to a newer version (e.g. 21525),
+                // If host game updated to a newer version (e.g. 21535),
                 // automatically unclone old container APK & clean old container OBB, preserving user data.
                 if (savedClonedCode > 0L && savedClonedCode != appInfo.versionCode) {
                     Log.i("MAct", "Host ${game.getDisplayTitle()} updated from code $savedClonedCode to ${appInfo.versionCode}. Cleaning old container...")

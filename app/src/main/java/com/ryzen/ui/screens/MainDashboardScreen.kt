@@ -469,7 +469,7 @@ private fun MainDashboardScreenDarkPreview() {
             games = ManagedGame.DEFAULT_GAMES,
             selectedGame = ManagedGame.DEFAULT_BGMI,
             hostInstalledVersionName = "4.6.0",
-            hostInstalledVersionCode = 21525L
+            hostInstalledVersionCode = 21535L
         )
     }
 }
@@ -487,7 +487,7 @@ private fun MainDashboardScreenLightPreview() {
             games = ManagedGame.DEFAULT_GAMES,
             selectedGame = ManagedGame.DEFAULT_BGMI,
             hostInstalledVersionName = "4.6.0",
-            hostInstalledVersionCode = 21525L
+            hostInstalledVersionCode = 21535L
         )
     }
 }

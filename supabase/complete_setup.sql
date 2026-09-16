@@ -437,15 +437,15 @@ SET title = EXCLUDED.title,
     icon_type = EXCLUDED.icon_type;
 
 
--- Promote BGMI 4.6.0 (21525) as the only active default; retire 4.5.0
+-- Promote BGMI 4.6.0 (21535) as the only active default; retire older builds
 UPDATE public.game_versions
 SET is_active = false, is_default = false, updated_at = now()
-WHERE game_id = 'bgmi' AND (version_name = '4.5.0' OR version_code = 21325 OR version_code = 21455);
+WHERE game_id = 'bgmi' AND (version_name = '4.5.0' OR version_code IN (21325, 21455, 21525));
 
 UPDATE public.game_versions
 SET version_name = '4.6.0',
-    version_code = 21525,
-    obb_name = 'main.21525.com.pubg.imobile.obb',
+    version_code = 21535,
+    obb_name = 'main.21535.com.pubg.imobile.obb',
     tag = 'LATEST',
     status_text = 'Ready',
     lib_name = 'libbgmi.so',
@@ -455,9 +455,9 @@ SET version_name = '4.6.0',
     updated_at = now()
 WHERE game_id = 'bgmi' AND version_name = '4.6.0';
 
--- BGMI v4.6.0 (Build 21525)
+-- BGMI v4.6.0 (Build 21535)
 INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_name, lib_version, lib_download_url, is_default, is_active, sort_order)
-SELECT 'bgmi', '4.6.0', 21525, 'main.21525.com.pubg.imobile.obb', 'LATEST', 'Ready', 'libbgmi.so', 'libbgmi.so', '', true, true, 0
+SELECT 'bgmi', '4.6.0', 21535, 'main.21535.com.pubg.imobile.obb', 'LATEST', 'Ready', 'libbgmi.so', 'libbgmi.so', '', true, true, 0
 WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_name = '4.6.0');
 
 

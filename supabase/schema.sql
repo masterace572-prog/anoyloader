@@ -422,8 +422,8 @@ CREATE TABLE IF NOT EXISTS public.game_versions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id VARCHAR(64) NOT NULL REFERENCES public.managed_games(id) ON DELETE CASCADE,
     version_name VARCHAR(32) NOT NULL,       -- e.g. "4.6.0"
-    version_code INT NOT NULL DEFAULT 0,         -- e.g. 21525
-    obb_name VARCHAR(128) NOT NULL,          -- e.g. "main.21525.com.pubg.imobile.obb"
+    version_code INT NOT NULL DEFAULT 0,         -- e.g. 21535
+    obb_name VARCHAR(128) NOT NULL,          -- e.g. "main.21535.com.pubg.imobile.obb"
     tag VARCHAR(32) NOT NULL DEFAULT 'LATEST', -- 'LATEST' | 'BETA' | 'TEST' | 'STABLE'
     status_text VARCHAR(64) NOT NULL DEFAULT 'Ready',
     lib_version VARCHAR(32) NOT NULL DEFAULT '1.0',
@@ -452,15 +452,15 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Seed initial versions
 
--- Promote BGMI 4.6.0 (21525) as the only active default; retire 4.5.0
+-- Promote BGMI 4.6.0 (21535) as the only active default; retire older builds
 UPDATE public.game_versions
 SET is_active = false, is_default = false, updated_at = now()
-WHERE game_id = 'bgmi' AND (version_name = '4.5.0' OR version_code = 21325 OR version_code = 21455);
+WHERE game_id = 'bgmi' AND (version_name = '4.5.0' OR version_code IN (21325, 21455, 21525));
 
 UPDATE public.game_versions
 SET version_name = '4.6.0',
-    version_code = 21525,
-    obb_name = 'main.21525.com.pubg.imobile.obb',
+    version_code = 21535,
+    obb_name = 'main.21535.com.pubg.imobile.obb',
     tag = 'LATEST',
     status_text = 'Ready',
     lib_name = 'libbgmi.so',
@@ -471,8 +471,8 @@ SET version_name = '4.6.0',
 WHERE game_id = 'bgmi' AND version_name = '4.6.0';
 
 INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_version, lib_download_url, is_default, is_active, sort_order)
-SELECT 'bgmi', '4.6.0', 21525, 'main.21525.com.pubg.imobile.obb', 'LATEST', 'Ready', '1.0', '', true, true, 0
-WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_code = 21525);
+SELECT 'bgmi', '4.6.0', 21535, 'main.21535.com.pubg.imobile.obb', 'LATEST', 'Ready', '1.0', '', true, true, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_code = 21535);
 
 
 INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_version, lib_download_url, is_default, is_active, sort_order)
