@@ -22,10 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.SystemUpdate
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,7 +41,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ryzen.R
 import com.ryzen.ui.components.AppButton
-import com.ryzen.ui.components.AppCard
 import com.ryzen.ui.components.AppDialog
 import com.ryzen.ui.components.AppProgressBar
 import com.ryzen.ui.components.ButtonVariant
@@ -74,7 +70,6 @@ fun SplashScreen(
     modifier: Modifier = Modifier
 ) {
     var startAnim by remember { mutableStateOf(false) }
-
     val contentAlpha by animateFloatAsState(
         targetValue = if (startAnim) 1f else 0f,
         animationSpec = tween(
@@ -84,9 +79,7 @@ fun SplashScreen(
         label = "splashAlpha"
     )
 
-    LaunchedEffect(Unit) {
-        startAnim = true
-    }
+    LaunchedEffect(Unit) { startAnim = true }
 
     AppBackground(modifier = modifier) {
         Box(
@@ -95,31 +88,18 @@ fun SplashScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            Text(
-                text = "v$versionName",
-                style = AppTheme.typography.labelMedium,
-                color = AppTheme.colors.textTertiary,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        top = AppTheme.spacing.lg,
-                        end = AppTheme.spacing.screenHorizontal
-                    )
-            )
-
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .alpha(contentAlpha)
-                    .padding(horizontal = AppTheme.spacing.xl),
+                    .alpha(contentAlpha),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(AppRadii.lg))
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(20.dp))
                         .background(AppTheme.colors.surfaceElevated)
-                        .border(1.dp, AppTheme.colors.outline, RoundedCornerShape(AppRadii.lg)),
+                        .border(1.dp, AppTheme.colors.outline, RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
@@ -127,37 +107,23 @@ fun SplashScreen(
                         contentDescription = stringResource(id = R.string.app_name),
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(AppRadii.lg)),
+                            .clip(RoundedCornerShape(20.dp)),
                         contentScale = ContentScale.Crop
                     )
                 }
-
-                Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-
+                Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = stringResource(id = R.string.brand_name),
                     style = AppTheme.typography.headlineMedium,
                     color = AppTheme.colors.textPrimary
-                )
-
-                Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
-
-                Text(
-                    text = stringResource(id = R.string.brand_subtitle_engine),
-                    style = AppTheme.typography.bodyMedium,
-                    color = AppTheme.colors.textSecondary
                 )
             }
 
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
                     .alpha(contentAlpha)
-                    .padding(
-                        horizontal = AppTheme.spacing.screenHorizontal,
-                        vertical = AppTheme.spacing.xxl
-                    ),
+                    .padding(bottom = AppTheme.spacing.xxl),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
@@ -165,22 +131,20 @@ fun SplashScreen(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(14.dp),
                         strokeWidth = 2.dp,
                         color = AppTheme.colors.textPrimary
                     )
-                    Spacer(modifier = Modifier.width(AppTheme.spacing.sm))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = statusText,
                         style = AppTheme.typography.bodySmall,
                         color = AppTheme.colors.textSecondary
                     )
                 }
-
-                Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = stringResource(id = R.string.userspace_badge),
+                    text = "v$versionName",
                     style = AppTheme.typography.labelSmall,
                     color = AppTheme.colors.textTertiary
                 )
@@ -194,75 +158,37 @@ fun SplashScreen(
                         updateDialogState.onLaterClick()
                     }
                 },
-                title = stringResource(id = R.string.update_available),
-                subtitle = stringResource(
-                    id = R.string.update_ready,
-                    updateDialogState.serverVersionName
-                )
+                title = "Update ${updateDialogState.serverVersionName}"
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     if (updateDialogState.isDownloading) {
                         AppProgressBar(
                             progress = (updateDialogState.downloadProgress.coerceIn(0, 100)) / 100f,
-                            statusText = updateDialogState.downloadStatusText.ifBlank {
-                                stringResource(id = R.string.downloading_update)
-                            },
+                            statusText = updateDialogState.downloadStatusText.ifBlank { "Downloading…" },
                             modifier = Modifier.fillMaxWidth()
                         )
                     } else {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(AppRadii.md))
-                                .background(AppTheme.colors.surfaceSubtle),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.SystemUpdate,
-                                contentDescription = null,
-                                tint = AppTheme.colors.textSecondary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-
                         if (updateDialogState.changelog.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-                            AppCard(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = AppTheme.spacing.md
-                            ) {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        text = stringResource(id = R.string.whats_new),
-                                        style = AppTheme.typography.labelMedium,
-                                        color = AppTheme.colors.textSecondary
-                                    )
-                                    Spacer(modifier = Modifier.height(AppTheme.spacing.xxs))
-                                    Text(
-                                        text = updateDialogState.changelog,
-                                        style = AppTheme.typography.bodySmall,
-                                        color = AppTheme.colors.textPrimary
-                                    )
-                                }
-                            }
+                            Text(
+                                text = updateDialogState.changelog,
+                                style = AppTheme.typography.bodyMedium,
+                                color = AppTheme.colors.textSecondary
+                            )
+                            Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
                         }
-
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-
                         AppButton(
-                            text = stringResource(id = R.string.action_update_now),
+                            text = "Update",
                             onClick = updateDialogState.onUpdateClick,
                             variant = ButtonVariant.PRIMARY,
                             leadingIcon = Icons.Outlined.CloudDownload,
                             fullWidth = true
                         )
-
                         if (!updateDialogState.isMandatory) {
                             Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
                             AppButton(
-                                text = stringResource(id = R.string.action_later),
+                                text = "Later",
                                 onClick = updateDialogState.onLaterClick,
-                                variant = ButtonVariant.SECONDARY,
+                                variant = ButtonVariant.TERTIARY,
                                 fullWidth = true
                             )
                         }
@@ -274,63 +200,27 @@ fun SplashScreen(
         if (maintenanceDialogState != null && maintenanceDialogState.isVisible) {
             AppDialog(
                 onDismissRequest = {},
-                title = stringResource(id = R.string.server_maintenance),
-                subtitle = stringResource(id = R.string.server_unavailable)
+                title = "Under maintenance"
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(AppRadii.md))
-                            .background(AppTheme.colors.surfaceSubtle),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = AppTheme.colors.warning,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(AppTheme.spacing.md))
-
                     Text(
-                        text = maintenanceDialogState.message.ifBlank {
-                            stringResource(id = R.string.maintenance_default)
-                        },
+                        text = maintenanceDialogState.message.ifBlank { "Please try again shortly." },
                         style = AppTheme.typography.bodyMedium,
-                        color = AppTheme.colors.textPrimary
+                        color = AppTheme.colors.textSecondary
                     )
-
-                    if (maintenanceDialogState.estimatedEnd.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
-                        Text(
-                            text = stringResource(
-                                id = R.string.estimated_completion,
-                                maintenanceDialogState.estimatedEnd
-                            ),
-                            style = AppTheme.typography.bodySmall,
-                            color = AppTheme.colors.textSecondary
-                        )
-                    }
-
                     Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-
                     AppButton(
-                        text = stringResource(id = R.string.action_check_status),
+                        text = "Retry",
                         onClick = maintenanceDialogState.onRefresh,
                         variant = ButtonVariant.PRIMARY,
                         leadingIcon = Icons.Outlined.Refresh,
                         fullWidth = true
                     )
-
                     Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
-
                     AppButton(
-                        text = stringResource(id = R.string.action_exit_app),
+                        text = "Exit",
                         onClick = maintenanceDialogState.onExit,
-                        variant = ButtonVariant.DESTRUCTIVE,
+                        variant = ButtonVariant.TERTIARY,
                         fullWidth = true
                     )
                 }
@@ -343,10 +233,7 @@ fun SplashScreen(
 @Composable
 fun PreviewSplashScreenDark() {
     AppTheme(darkTheme = true) {
-        SplashScreen(
-            versionName = "1.4.0",
-            statusText = "Initializing security core…"
-        )
+        SplashScreen(versionName = "1.4.1", statusText = "Starting…")
     }
 }
 
@@ -354,9 +241,6 @@ fun PreviewSplashScreenDark() {
 @Composable
 fun PreviewSplashScreenLight() {
     AppTheme(darkTheme = false) {
-        SplashScreen(
-            versionName = "1.4.0",
-            statusText = "Checking for updates…"
-        )
+        SplashScreen(versionName = "1.4.1", statusText = "Checking updates…")
     }
 }

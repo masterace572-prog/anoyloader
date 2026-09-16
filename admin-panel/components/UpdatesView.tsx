@@ -56,17 +56,13 @@ export function UpdatesView() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-3xl text-ink">Updates</h1>
-        <p className="mt-1 text-sm text-muted">Publish native library packages and in-app APK updates.</p>
-      </div>
+      <h1 className="text-2xl text-ink">Updates</h1>
 
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-5">
-          <h2 className="text-base text-ink">Native library</h2>
-          <p className="mt-1 text-sm text-muted">Clients download and unpack this ZIP into the sandbox.</p>
+          <h2 className="text-base text-ink">Library</h2>
           <div className="mt-4 rounded-lg border border-line bg-subtle p-3 text-sm">
             <div className="flex justify-between text-muted">
               <span>Active version</span>
@@ -130,8 +126,7 @@ export function UpdatesView() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-base text-ink">Loader APK</h2>
-          <p className="mt-1 text-sm text-muted">Optional or mandatory in-app update for the loader itself.</p>
+          <h2 className="text-base text-ink">App</h2>
           <div className="mt-4 rounded-lg border border-line bg-subtle p-3 text-sm">
             <div className="flex justify-between text-muted">
               <span>Active version</span>

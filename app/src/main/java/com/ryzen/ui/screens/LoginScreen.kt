@@ -171,14 +171,6 @@ fun LoginScreen(
                     style = AppTheme.typography.headlineSmall,
                     color = AppTheme.colors.textPrimary
                 )
-
-                Spacer(modifier = Modifier.height(AppTheme.spacing.xxs))
-
-                Text(
-                    text = stringResource(id = R.string.brand_subtitle_auth),
-                    style = AppTheme.typography.bodyMedium,
-                    color = AppTheme.colors.textSecondary
-                )
             }
 
             Spacer(modifier = Modifier.height(AppTheme.spacing.xl))
@@ -217,7 +209,7 @@ fun LoginScreen(
                     AppTextField(
                         value = keyText,
                         onValueChange = onKeyChange,
-                        placeholder = stringResource(id = R.string.hint_license_key),
+                        placeholder = "License key",
                         leadingIcon = Icons.Outlined.Key,
                         visualTransformation = if (isKeyVisible) {
                             VisualTransformation.None
@@ -285,18 +277,12 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(id = R.string.action_save_key),
-                                style = AppTheme.typography.bodyMedium,
-                                color = AppTheme.colors.textPrimary
-                            )
-                            Text(
-                                text = stringResource(id = R.string.action_save_key_hint),
-                                style = AppTheme.typography.bodySmall,
-                                color = AppTheme.colors.textTertiary
-                            )
-                        }
+                        Text(
+                            text = "Remember key",
+                            style = AppTheme.typography.bodyMedium,
+                            color = AppTheme.colors.textPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
                         Spacer(modifier = Modifier.width(AppTheme.spacing.sm))
                         Switch(
                             checked = isSaveKeyEnabled,
@@ -334,18 +320,6 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(AppTheme.spacing.xxl))
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = stringResource(id = R.string.security_footer),
-                    style = AppTheme.typography.bodySmall,
-                    color = AppTheme.colors.textTertiary
-                )
-            }
         }
 
         if (loadingDialogState != null && loadingDialogState.isVisible) {

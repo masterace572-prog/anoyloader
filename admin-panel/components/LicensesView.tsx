@@ -132,19 +132,15 @@ export function LicensesView({ onLiveChange }: { onLiveChange: (live: boolean) =
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-serif text-3xl text-ink">Licenses</h1>
-          <p className="mt-1 text-sm text-muted">Create, extend, and revoke access keys.</p>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl text-ink">Keys</h1>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={load} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
-            New key
+            New
           </Button>
         </div>
       </div>

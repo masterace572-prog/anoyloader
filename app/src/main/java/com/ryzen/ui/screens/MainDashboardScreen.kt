@@ -57,7 +57,6 @@ import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.EmptyState
 import com.ryzen.ui.components.GameNotInstalledDialog
 import com.ryzen.ui.components.GameNotInstalledDialogState
-import com.ryzen.ui.components.SectionHeader
 import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
@@ -117,7 +116,6 @@ fun MainDashboardScreen(
         ) {
             AppTopBar(
                 title = stringResource(id = R.string.brand_name),
-                subtitle = stringResource(id = R.string.dashboard_subtitle),
                 trailingContent = {
                     AppCountdownTimer(
                         days = days,
@@ -149,22 +147,18 @@ fun MainDashboardScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SectionHeader(
-                        text = stringResource(id = R.string.header_target_app),
-                        modifier = Modifier.weight(1f)
-                    )
                     IconButton(
                         onClick = onOptionsClick,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.MoreVert,
                             contentDescription = stringResource(id = R.string.action_options),
                             tint = AppTheme.colors.textSecondary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -394,14 +388,7 @@ fun MainDashboardScreen(
                                 fullWidth = true
                             )
 
-                            if (cardButtonState.hint.isNotBlank() && !isRunningThis) {
-                                Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
-                                Text(
-                                    text = cardButtonState.hint,
-                                    style = AppTheme.typography.bodySmall,
-                                    color = AppTheme.colors.textTertiary
-                                )
-                            }
+
                         }
                     }
                 }
@@ -432,19 +419,14 @@ fun MainDashboardScreen(
         if (showOptionsDialog) {
             AppDialog(
                 onDismissRequest = onOptionsDismiss,
-                title = stringResource(id = R.string.launch_options_title),
-                subtitle = stringResource(id = R.string.launch_options_subtitle, gameTitle)
+                title = gameTitle
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)
                 ) {
                     AppButton(
-                        text = if (isClonedInContainer) {
-                            stringResource(id = R.string.action_launch_named, gameTitle)
-                        } else {
-                            stringResource(id = R.string.action_install_named, gameTitle)
-                        },
+                        text = if (isClonedInContainer) "Launch" else "Install",
                         onClick = {
                             onOptionsDismiss()
                             if (isClonedInContainer) onLaunchClick() else onInstallClick()
@@ -454,7 +436,7 @@ fun MainDashboardScreen(
                         fullWidth = true
                     )
                     AppButton(
-                        text = stringResource(id = R.string.action_sync_obb),
+                        text = "Sync OBB",
                         onClick = {
                             onOptionsDismiss()
                             onSyncObbClick()
@@ -464,7 +446,7 @@ fun MainDashboardScreen(
                         fullWidth = true
                     )
                     AppButton(
-                        text = stringResource(id = R.string.action_clear_credentials),
+                        text = "Clear login",
                         onClick = {
                             onOptionsDismiss()
                             onClearLoginClick()

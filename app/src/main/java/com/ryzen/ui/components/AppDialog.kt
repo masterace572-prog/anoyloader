@@ -44,37 +44,34 @@ fun AppDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppTheme.spacing.lg),
+                .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 440.dp)
+                    .widthIn(max = 400.dp)
                     .background(AppTheme.colors.surfaceElevated, shape)
                     .border(1.dp, AppTheme.colors.outline, shape)
-                    .padding(AppTheme.spacing.xl),
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
                     text = title,
-                    style = AppTheme.typography.headlineSmall,
+                    style = AppTheme.typography.titleLarge,
                     color = AppTheme.colors.textPrimary,
                     textAlign = TextAlign.Start
                 )
-
                 if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = subtitle,
-                        style = AppTheme.typography.bodyMedium,
+                        style = AppTheme.typography.bodySmall,
                         color = AppTheme.colors.textSecondary,
                         textAlign = TextAlign.Start
                     )
                 }
-
-                Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-
+                Spacer(modifier = Modifier.height(16.dp))
                 content()
             }
         }

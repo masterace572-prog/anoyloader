@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, clearAdminToken } from '@/lib/api';
 import { FeedbackProvider } from './feedback';
-import { GamesView } from './GamesView';
 import { LicensesView } from './LicensesView';
 import { LoginView } from './LoginView';
 import { AppView, Shell } from './Shell';
@@ -26,7 +25,6 @@ function Dashboard() {
       }}
     >
       {view === 'licenses' ? <LicensesView onLiveChange={setLive} /> : null}
-      {view === 'games' ? <GamesView /> : null}
       {view === 'updates' ? <UpdatesView /> : null}
       {view === 'system' ? <SystemView /> : null}
     </Shell>
@@ -57,16 +55,14 @@ export default function App() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted">
-        <Spinner /> Checking session
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted">
+        <Spinner />
       </div>
     );
   }
 
   if (!authenticated) {
-    return (
-      <LoginView configured={pinConfigured} onAuthenticated={() => setAuthenticated(true)} />
-    );
+    return <LoginView configured={pinConfigured} onAuthenticated={() => setAuthenticated(true)} />;
   }
 
   return (

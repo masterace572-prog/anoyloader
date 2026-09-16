@@ -191,29 +191,6 @@ class LogAct : AppCompatActivity() {
                 )
             } else {
                 maintenanceDialogState.value = null
-
-                if (config.announcementActive && config.announcementTitle.trim().isNotEmpty()) {
-                    val announcementKey = "announcement_seen_" + config.announcementTitle.hashCode()
-                    if (!prefs.getBool(announcementKey, false)) {
-                        announcementDialogState.value = AnnouncementDialogState(
-                            isVisible = true,
-                            title = config.announcementTitle,
-                            message = config.announcementMessage,
-                            link = config.announcementLink?.takeIf { it.isNotBlank() },
-                            onContinue = {
-                                prefs.setBool(announcementKey, true)
-                                announcementDialogState.value = null
-                            },
-                            onOpenLink = {
-                                prefs.setBool(announcementKey, true)
-                                announcementDialogState.value = null
-                                try {
-                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(config.announcementLink.trim())))
-                                } catch (ignored: Throwable) {}
-                            }
-                        )
-                    }
-                }
             }
         }
     }

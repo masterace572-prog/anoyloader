@@ -1,16 +1,15 @@
 'use client';
 
 import React from 'react';
-import { FileArchive, KeyRound, LogOut, Settings2, Swords } from 'lucide-react';
+import { FileArchive, KeyRound, LogOut, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
-export type AppView = 'licenses' | 'games' | 'updates' | 'system';
+export type AppView = 'licenses' | 'updates' | 'system';
 
 const NAV: { id: AppView; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'licenses', label: 'Licenses', icon: KeyRound },
-  { id: 'games', label: 'Games', icon: Swords },
+  { id: 'licenses', label: 'Keys', icon: KeyRound },
   { id: 'updates', label: 'Updates', icon: FileArchive },
-  { id: 'system', label: 'System', icon: Settings2 },
+  { id: 'system', label: 'Maintenance', icon: Settings2 },
 ];
 
 export function Shell({
@@ -28,14 +27,11 @@ export function Shell({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 border-r border-line bg-surface lg:flex lg:flex-col">
-        <div className="flex h-16 items-center px-5">
-          <div>
-            <div className="font-serif text-lg text-ink">Anoy</div>
-            <div className="text-xs text-muted">Control</div>
-          </div>
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 border-r border-line bg-surface lg:flex lg:flex-col">
+        <div className="flex h-14 items-center px-5">
+          <div className="text-[15px] font-medium text-ink">Anoy</div>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-2">
+        <nav className="flex-1 space-y-0.5 px-3">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = view === item.id;
@@ -45,7 +41,7 @@ export function Shell({
                 type="button"
                 onClick={() => onView(item.id)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                  'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
                   active ? 'bg-subtle text-ink' : 'text-muted hover:bg-subtle hover:text-ink'
                 )}
               >
@@ -55,11 +51,7 @@ export function Shell({
             );
           })}
         </nav>
-        <div className="border-t border-line p-4">
-          <div className="mb-3 flex items-center justify-between text-xs">
-            <span className="text-muted">Database</span>
-            <span className={live ? 'text-success' : 'text-warning'}>{live ? 'Live' : 'Offline'}</span>
-          </div>
+        <div className="border-t border-line p-3">
           <button
             type="button"
             onClick={onLogout}
@@ -73,22 +65,19 @@ export function Shell({
 
       <header className="sticky top-0 z-20 border-b border-line bg-surface lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
-          <div>
-            <div className="font-serif text-base text-ink">Anoy</div>
-            <div className="text-xs text-muted">{live ? 'Live' : 'Offline'}</div>
-          </div>
+          <div className="text-[15px] font-medium text-ink">Anoy</div>
           <button type="button" onClick={onLogout} className="rounded-lg p-2 text-muted hover:bg-subtle hover:text-ink">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex gap-1 overflow-x-auto no-scrollbar px-3 pb-2">
+        <div className="flex gap-1 px-3 pb-2">
           {NAV.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => onView(item.id)}
               className={cn(
-                'shrink-0 rounded-lg px-3 py-1.5 text-sm',
+                'flex-1 rounded-lg py-1.5 text-sm',
                 view === item.id ? 'bg-subtle text-ink' : 'text-muted'
               )}
             >
@@ -98,8 +87,8 @@ export function Shell({
         </div>
       </header>
 
-      <main className="min-h-screen lg:pl-60">
-        <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">{children}</div>
+      <main className="min-h-screen lg:pl-56">
+        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-8">{children}</div>
       </main>
     </div>
   );
