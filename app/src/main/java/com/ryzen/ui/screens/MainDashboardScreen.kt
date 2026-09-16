@@ -170,7 +170,7 @@ fun MainDashboardScreen(
                         GameVersion(
                             id = "${selectedGame.id}_default",
                             gameId = selectedGame.id,
-                            versionName = hostInstalledVersionName.ifBlank { "4.5.0" },
+                            versionName = hostInstalledVersionName.ifBlank { "4.6.0" },
                             versionCode = hostInstalledVersionCode.toInt(),
                             obbName = "",
                             tag = "LATEST",
@@ -468,8 +468,8 @@ private fun MainDashboardScreenDarkPreview() {
             isClonedInContainer = true,
             games = ManagedGame.DEFAULT_GAMES,
             selectedGame = ManagedGame.DEFAULT_BGMI,
-            hostInstalledVersionName = "4.5.0",
-            hostInstalledVersionCode = 21325L
+            hostInstalledVersionName = "4.6.0",
+            hostInstalledVersionCode = 21525L
         )
     }
 }
@@ -486,8 +486,8 @@ private fun MainDashboardScreenLightPreview() {
             isClonedInContainer = false,
             games = ManagedGame.DEFAULT_GAMES,
             selectedGame = ManagedGame.DEFAULT_BGMI,
-            hostInstalledVersionName = "4.5.0",
-            hostInstalledVersionCode = 21325L
+            hostInstalledVersionName = "4.6.0",
+            hostInstalledVersionCode = 21525L
         )
     }
 }

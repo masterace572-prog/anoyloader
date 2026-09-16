@@ -436,15 +436,30 @@ SET title = EXCLUDED.title,
     lib_name = EXCLUDED.lib_name,
     icon_type = EXCLUDED.icon_type;
 
--- BGMI v4.5.0 (Build 21325)
-INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_name, lib_version, lib_download_url, is_default, is_active, sort_order)
-SELECT 'bgmi', '4.5.0', 21325, 'main.21325.com.pubg.imobile.obb', 'LATEST', 'Ready', 'libbgmi450.so', 'libbgmi450.so', '', true, true, 0
-WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_name = '4.5.0');
 
--- BGMI v4.6.0 (Build 21455)
+-- Promote BGMI 4.6.0 (21525) as the only active default; retire 4.5.0
+UPDATE public.game_versions
+SET is_active = false, is_default = false, updated_at = now()
+WHERE game_id = 'bgmi' AND (version_name = '4.5.0' OR version_code = 21325 OR version_code = 21455);
+
+UPDATE public.game_versions
+SET version_name = '4.6.0',
+    version_code = 21525,
+    obb_name = 'main.21525.com.pubg.imobile.obb',
+    tag = 'LATEST',
+    status_text = 'Ready',
+    lib_name = 'libbgmi.so',
+    lib_version = 'libbgmi.so',
+    is_default = true,
+    is_active = true,
+    updated_at = now()
+WHERE game_id = 'bgmi' AND version_name = '4.6.0';
+
+-- BGMI v4.6.0 (Build 21525)
 INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_name, lib_version, lib_download_url, is_default, is_active, sort_order)
-SELECT 'bgmi', '4.6.0', 21455, 'main.21455.com.pubg.imobile.obb', 'BETA', 'Beta Build', 'libbgmi460.so', 'libbgmi460.so', '', false, true, 1
+SELECT 'bgmi', '4.6.0', 21525, 'main.21525.com.pubg.imobile.obb', 'LATEST', 'Ready', 'libbgmi.so', 'libbgmi.so', '', true, true, 0
 WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_name = '4.6.0');
+
 
 -- PUBG GL v3.6.0 (Build 19120)
 INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_name, lib_version, lib_download_url, is_default, is_active, sort_order)
@@ -454,8 +469,8 @@ WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'pubg_globa
 -- Backfill existing versions with lib_name if blank
 UPDATE public.game_versions
 SET lib_name = CASE
-    WHEN version_name LIKE '4.5%' THEN 'libbgmi450.so'
-    WHEN version_name LIKE '4.6%' THEN 'libbgmi460.so'
+    WHEN version_name LIKE '4.6%' THEN 'libbgmi.so'
+    WHEN version_name LIKE '4.5%' THEN 'libbgmi.so'
     WHEN version_name LIKE '3.6%' THEN 'libpubgm360.so'
     WHEN lib_version LIKE '%.so' THEN lib_version
     ELSE 'libbgmi.so'

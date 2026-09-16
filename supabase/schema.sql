@@ -421,9 +421,8 @@ CREATE POLICY "Allow insert/update to managed_games" ON public.managed_games FOR
 CREATE TABLE IF NOT EXISTS public.game_versions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id VARCHAR(64) NOT NULL REFERENCES public.managed_games(id) ON DELETE CASCADE,
-    version_name VARCHAR(32) NOT NULL,       -- e.g. "4.5.0", "4.6.0"
-    version_code INT NOT NULL,               -- e.g. 21325, 21455
-    obb_name VARCHAR(128) NOT NULL,          -- e.g. "main.21325.com.pubg.imobile.obb"
+    version_name VARCHAR(32) NOT NULL,       -- e.g. "4.6.0"
+    obb_name VARCHAR(128) NOT NULL,          -- e.g. "main.21525.com.pubg.imobile.obb"
     tag VARCHAR(32) NOT NULL DEFAULT 'LATEST', -- 'LATEST' | 'BETA' | 'TEST' | 'STABLE'
     status_text VARCHAR(64) NOT NULL DEFAULT 'Ready',
     lib_version VARCHAR(32) NOT NULL DEFAULT '1.0',
@@ -451,13 +450,29 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Seed initial versions
-INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_version, lib_download_url, is_default, is_active, sort_order)
-SELECT 'bgmi', '4.5.0', 21325, 'main.21325.com.pubg.imobile.obb', 'LATEST', 'Ready', '1.0', '', true, true, 0
-WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_code = 21325);
+
+-- Promote BGMI 4.6.0 (21525) as the only active default; retire 4.5.0
+UPDATE public.game_versions
+SET is_active = false, is_default = false, updated_at = now()
+WHERE game_id = 'bgmi' AND (version_name = '4.5.0' OR version_code = 21325 OR version_code = 21455);
+
+UPDATE public.game_versions
+SET version_name = '4.6.0',
+    version_code = 21525,
+    obb_name = 'main.21525.com.pubg.imobile.obb',
+    tag = 'LATEST',
+    status_text = 'Ready',
+    lib_name = 'libbgmi.so',
+    lib_version = 'libbgmi.so',
+    is_default = true,
+    is_active = true,
+    updated_at = now()
+WHERE game_id = 'bgmi' AND version_name = '4.6.0';
 
 INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_version, lib_download_url, is_default, is_active, sort_order)
-SELECT 'bgmi', '4.6.0', 21455, 'main.21455.com.pubg.imobile.obb', 'BETA', 'Beta Build', '1.1-beta', '', false, true, 1
-WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_code = 21455);
+SELECT 'bgmi', '4.6.0', 21525, 'main.21525.com.pubg.imobile.obb', 'LATEST', 'Ready', '1.0', '', true, true, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.game_versions WHERE game_id = 'bgmi' AND version_code = 21525);
+
 
 INSERT INTO public.game_versions (game_id, version_name, version_code, obb_name, tag, status_text, lib_version, lib_download_url, is_default, is_active, sort_order)
 SELECT 'pubg_global', '3.6.0', 19120, 'main.19120.com.tencent.ig.obb', 'LATEST', 'Ready', '1.0', '', true, true, 0

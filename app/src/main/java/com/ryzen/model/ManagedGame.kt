@@ -105,11 +105,11 @@ data class ManagedGame(
             sortOrder = 0,
             versions = listOf(
                 GameVersion(
-                    id = "bgmi_4_5_0",
+                    id = "bgmi_4_6_0",
                     gameId = "bgmi",
-                    versionName = "4.5.0",
-                    versionCode = 21325,
-                    obbName = "main.21325.com.pubg.imobile.obb",
+                    versionName = "4.6.0",
+                    versionCode = 21525,
+                    obbName = "main.21525.com.pubg.imobile.obb",
                     tag = "LATEST",
                     statusText = "Ready",
                     libName = BGMI_LIB,
