@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#F7F7F5</color>
+    <color name="bg_dark">#F7F7F5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surfaceElevated">#FFFFFF</color>
+    <color name="surfaceSubtle">#EFEFED</color>
+    <color name="outline">#E3E2DD</color>
+    <color name="text_primary">#111110</color>
+    <color name="text_secondary">#5C5B57</color>
+    <color name="text_muted">#8B8A84</color>
+    <color name="primary">#111110</color>
+    <color name="primaryVariant">#2A2A28</color>
+    <color name="secondary">#111110</color>
+    <color name="accent">#111110</color>
+    <color name="onAccent">#F7F7F5</color>
+    <color name="accentSubtle">#EFEFED</color>
+    <color name="error">#C23B32</color>
+    <color name="success">#3D6B4F</color>
+    <color name="warning">#9A6B1B</color>
+    <color name="black">#111110</color>
+    <color name="white">#FFFFFF</color>
+    <color name="card_dark">#FFFFFF</color>
+    <color name="card_stroke">#E3E2DD</color>
+    <color name="input_bg">#EFEFED</color>
+    <color name="background2">#EFEFED</color>
+    <color name="secondary2">#EFEFED</color>
+    <color name="primaryText">#111110</color>
+    <color name="hintText">#8B8A84</color>
+    <color name="button">#111110</color>
+    <color name="buttonPrimary">#111110</color>
+    <color name="colorAccent">#111110</color>
+    <color name="darker_gray">#E3E2DD</color>
+    <color name="borderBright">#111110</color>
+</resources>

@@ -1,0 +1,130 @@
+<resources>
+    <string name="app_name">Anoy Loader</string>
+    <string name="copyright"> copyright</string>
+
+    <!-- Branding & Subtitles -->
+    <string name="brand_name">Anoy Loader</string>
+    <string name="brand_subtitle_engine">Secure virtualization</string>
+    <string name="brand_subtitle_auth">Sign in with your license</string>
+    <string name="brand_enterprise">Anoy Loader</string>
+    <string name="security_footer">Sandboxed runtime · Anti-tamper core</string>
+    <string name="userspace_badge">Userspace sandbox</string>
+    <string name="telegram_url">https://t.me/libAkAudioVisiual</string>
+    <string name="telegram_handle">@libAkAudioVisiual</string>
+    <string name="http_user_agent">Mozilla/5.0 (Linux; Android) Anoy-Loader</string>
+    <string name="crash_report_header">Anoy Loader Crash Report</string>
+
+    <!-- Status & Badges -->
+    <string name="status_online">Online</string>
+    <string name="status_maintenance">Maintenance</string>
+    <string name="status_lifetime">Lifetime</string>
+    <string name="status_active">Active</string>
+    <string name="status_coming_soon">Coming soon</string>
+    <string name="status_disabled">Disabled</string>
+    <string name="status_latest">Latest</string>
+    <string name="status_stable">Stable</string>
+    <string name="status_beta">Beta</string>
+    <string name="status_test">Test</string>
+    <string name="status_fatal">Fatal</string>
+    <string name="status_ready">Ready</string>
+
+    <!-- Authentication -->
+    <string name="label_license_key">License key</string>
+    <string name="hint_license_key">XXXX-XXXX-XXXX-XXXX</string>
+    <string name="action_authenticate">Continue</string>
+    <string name="action_get_key">Get a license</string>
+    <string name="action_save_key">Remember this key</string>
+    <string name="action_save_key_hint">Stored only on this device</string>
+    <string name="cd_show_key">Show license key</string>
+    <string name="cd_hide_key">Hide license key</string>
+    <string name="cd_paste_key">Paste license key</string>
+    <string name="auth_please_wait">Please wait</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_dismiss">Dismiss</string>
+
+    <!-- Dashboard & Actions -->
+    <string name="header_target_app">Target application</string>
+    <string name="dashboard_subtitle">Virtualization engine</string>
+    <string name="action_launch">Launch</string>
+    <string name="action_install">Install</string>
+    <string name="action_sync_obb">Sync OBB assets</string>
+    <string name="action_clear_credentials">Clear login credentials</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_options">Options</string>
+    <string name="label_version">Version %1$s</string>
+    <string name="status_unavailable">Unavailable</string>
+    <string name="status_not_installed">%1$s not installed</string>
+    <string name="status_version_missing">Version not installed</string>
+    <string name="status_installing">Installing…</string>
+    <string name="status_syncing_obb">Synchronizing OBB…</string>
+    <string name="status_starting">Starting…</string>
+    <string name="hint_install_host">Install the official app from Play Store first.</string>
+    <string name="hint_install_sandbox">Install this version into the sandbox.</string>
+    <string name="hint_sync_obb">Copy OBB assets into the sandbox.</string>
+    <string name="hint_ready_launch">Ready to launch.</string>
+    <string name="hint_coming_soon">This version is not available yet.</string>
+    <string name="empty_games_title">No applications</string>
+    <string name="empty_games_message">No target applications are configured for this license.</string>
+    <string name="launch_options_title">Launch options</string>
+    <string name="launch_options_subtitle">Manage %1$s sandbox</string>
+    <string name="action_launch_named">Launch %1$s</string>
+    <string name="action_install_named">Install %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">License, sandbox, and support</string>
+    <string name="active_license">License</string>
+    <string name="sandbox_maintenance">Sandbox</string>
+    <string name="support_inquiries">Support</string>
+    <string name="contact_admin_telegram">Message on Telegram</string>
+    <string name="support_title">Need help?</string>
+    <string name="support_body">Message the administrator for support, reports, and subscriptions.</string>
+    <string name="clear_login_title">Clear login data</string>
+    <string name="clear_login_subtitle">Remove saved account credentials from the sandbox</string>
+    <string name="reset_guest_title">Reset guest</string>
+    <string name="reset_guest_subtitle">Generate a new guest identity</string>
+    <string name="clear_resources_title">Clear resources</string>
+    <string name="clear_resources_subtitle">Remove downloaded maps and cache. OBB is kept.</string>
+    <string name="clear_resources_confirm_title">Clear resources?</string>
+    <string name="clear_resources_confirm_body">Downloaded maps and cache will be removed. OBB files are kept. In-game resources must be redownloaded.</string>
+    <string name="reset_guest_confirm_title">Reset guest?</string>
+    <string name="reset_guest_confirm_body">Wipes guest login, device ID, and related caches, then writes a new random guest UUID. OBB is kept.</string>
+    <string name="action_clear_resources">Clear resources</string>
+    <string name="action_reset_guest">Reset guest</string>
+    <string name="key_copied">Key copied</string>
+    <string name="cd_copy_key">Copy key</string>
+    <string name="cd_toggle_key">Toggle key visibility</string>
+    <string name="license_lifetime_hint">Unlimited lifetime subscription</string>
+    <string name="license_expires_hint">Expires %1$s · %2$sd %3$sh left</string>
+    <string name="license_remaining_hint">Remaining %1$sd %2$sh %3$sm</string>
+    <string name="app_version_line">%1$s v%2$s · %3$d</string>
+
+    <!-- Updates / maintenance -->
+    <string name="update_available">Update available</string>
+    <string name="update_ready">Version %1$s is ready to install</string>
+    <string name="whats_new">What\'s new</string>
+    <string name="downloading_update">Downloading update…</string>
+    <string name="action_update_now">Update now</string>
+    <string name="action_later">Later</string>
+    <string name="server_maintenance">Server maintenance</string>
+    <string name="server_unavailable">The application is temporarily unavailable</string>
+    <string name="maintenance_default">Server is undergoing scheduled maintenance.</string>
+    <string name="estimated_completion">Estimated completion: %1$s</string>
+    <string name="action_check_status">Check status</string>
+    <string name="action_exit_app">Exit app</string>
+    <string name="access_locked">Access is temporarily locked</string>
+    <string name="auth_maintenance_default">The authentication server is undergoing scheduled maintenance.</string>
+    <string name="action_refresh_status">Refresh status</string>
+    <string name="announcement_default">Announcement</string>
+    <string name="action_open_link">Open link</string>
+    <string name="action_continue">Continue</string>
+
+    <!-- Crash Screen -->
+    <string name="crash_title">Something went wrong</string>
+    <string name="crash_subtitle">An unhandled exception was captured</string>
+    <string name="error_summary">Error summary</string>
+    <string name="action_copy_log">Copy log</string>
+    <string name="action_restart_app">Restart app</string>
+    <string name="unknown_exception">Unknown runtime exception</string>
+    <string name="no_stack_trace">No detailed stack trace available</string>
+</resources>

@@ -1,0 +1,479 @@
+package top.niunaijun.blackbox.core.system.pm;
+
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.ConfigurationInfo;
+import android.content.pm.FeatureInfo;
+import android.content.pm.InstrumentationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageParser;
+import android.content.pm.PermissionInfo;
+import android.content.pm.ProviderInfo;
+import android.content.pm.ServiceInfo;
+import android.content.res.AssetManager;
+import android.content.res.Resources;
+import android.os.Build;
+
+import java.util.zip.ZipFile;
+import java.util.HashSet;
+import java.util.Set;
+
+import black.android.content.pm.BRApplicationInfoL;
+import black.android.content.pm.BRApplicationInfoN;
+import black.android.content.pm.BRPackageParserSigningDetails;
+import black.android.content.pm.BRSigningInfo;
+import black.android.content.res.BRAssetManager;
+import top.niunaijun.blackbox.BlackBoxCore;
+import top.niunaijun.blackbox.core.env.AppSystemEnv;
+import top.niunaijun.blackbox.core.env.BEnvironment;
+import top.niunaijun.blackbox.entity.pm.InstallOption;
+import top.niunaijun.blackbox.utils.ArrayUtils;
+import top.niunaijun.blackbox.utils.FileUtils;
+import top.niunaijun.blackbox.utils.compat.BuildCompat;
+
+/**
+ * Created by Milk on 4/15/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
+@SuppressLint({"SdCardPath", "NewApi"})
+public class PackageManagerCompat {
+
+    public static PackageInfo generatePackageInfo(BPackageSettings ps, int flags, BPackageUserState state, int userId) {
+        if (ps == null) {
+            return null;
+        }
+        BPackage p = ps.pkg;
+        if (p != null) {
+            PackageInfo packageInfo = null;
+            try {
+                packageInfo = generatePackageInfo(p, flags, 0, 0, state, userId);
+            } catch (Throwable ignored) {
+            }
+            return packageInfo;
+        }
+        return null;
+    }
+
+    public static PackageInfo generatePackageInfo(BPackage p, int flags, long firstInstallTime, long lastUpdateTime, BPackageUserState state, int userId) {
+        if (!checkUseInstalledOrHidden(flags, state, p.applicationInfo)) {
+            return null;
+        }
+
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = p.packageName;
+        pi.versionCode = p.mVersionCode;
+        pi.versionName = p.mVersionName;
+        pi.sharedUserId = p.mSharedUserId;
+        pi.sharedUserLabel = p.mSharedUserLabel;
+        pi.applicationInfo = generateApplicationInfo(p, flags, state, userId);
+
+        pi.firstInstallTime = firstInstallTime;
+        pi.lastUpdateTime = lastUpdateTime;
+        if (!p.requestedPermissions.isEmpty()) {
+            String[] requestedPermissions = new String[p.requestedPermissions.size()];
+            p.requestedPermissions.toArray(requestedPermissions);
+            pi.requestedPermissions = requestedPermissions;
+        }
+        
+        if ((flags & FileUtils.FileMode.MODE_IRUSR) != 0) {
+            pi.gids = new int[0];
+        }
+
+        if ((flags & PackageManager.GET_CONFIGURATIONS) != 0) {
+            int N = p.configPreferences != null ? p.configPreferences.size() : 0;
+            if (N > 0) {
+                pi.configPreferences = new ConfigurationInfo[N];
+                p.configPreferences.toArray(pi.configPreferences);
+            }
+            N = p.reqFeatures != null ? p.reqFeatures.size() : 0;
+            if (N > 0) {
+                pi.reqFeatures = new FeatureInfo[N];
+                p.reqFeatures.toArray(pi.reqFeatures);
+            }
+        }
+        if ((flags & PackageManager.GET_ACTIVITIES) != 0) {
+            pi.activities = null;
+            final int N = p.activities.size();
+            if (N > 0) {
+                int num = 0;
+                final ActivityInfo[] res = new ActivityInfo[N];
+                for (int i = 0; i < N; i++) {
+                    final BPackage.Activity a = p.activities.get(i);
+                    res[num++] = generateActivityInfo(a, flags, state, userId);
+                }
+                pi.activities = ArrayUtils.trimToSize(res, num);
+            }
+        }
+        if ((flags & PackageManager.GET_RECEIVERS) != 0) {
+            pi.receivers = null;
+            final int N = p.receivers.size();
+            if (N > 0) {
+                int num = 0;
+                final ActivityInfo[] res = new ActivityInfo[N];
+                for (int i = 0; i < N; i++) {
+                    final BPackage.Activity a = p.receivers.get(i);
+                    res[num++] = generateActivityInfo(a, flags, state, userId);
+                }
+                pi.receivers = ArrayUtils.trimToSize(res, num);
+            }
+        }
+        if ((flags & PackageManager.GET_SERVICES) != 0) {
+            pi.services = null;
+            final int N = p.services.size();
+            if (N > 0) {
+                int num = 0;
+                final ServiceInfo[] res = new ServiceInfo[N];
+                for (int i = 0; i < N; i++) {
+                    final BPackage.Service s = p.services.get(i);
+                    res[num++] = generateServiceInfo(s, flags, state, userId);
+                }
+                pi.services = ArrayUtils.trimToSize(res, num);
+            }
+        }
+        if ((flags & PackageManager.GET_PROVIDERS) != 0) {
+            pi.providers = null;
+            final int N = p.providers.size();
+            if (N > 0) {
+                int num = 0;
+                final ProviderInfo[] res = new ProviderInfo[N];
+                for (int i = 0; i < N; i++) {
+                    final BPackage.Provider pr = p.providers.get(i);
+                    ProviderInfo providerInfo = generateProviderInfo(pr, flags, state, userId);
+                    if (providerInfo != null) {
+                        res[num++] = providerInfo;
+                    }
+                }
+                pi.providers = ArrayUtils.trimToSize(res, num);
+            }
+        }
+        if ((flags & PackageManager.GET_INSTRUMENTATION) != 0) {
+            pi.instrumentation = null;
+            int N = p.instrumentation.size();
+            if (N > 0) {
+                pi.instrumentation = new InstrumentationInfo[N];
+                for (int i = 0; i < N; i++) {
+                    pi.instrumentation[i] = generateInstrumentationInfo(
+                            p.instrumentation.get(i), flags);
+                }
+            }
+        }
+        if ((flags & PackageManager.GET_PERMISSIONS) != 0) {
+            pi.permissions = null;
+            int N = p.permissions.size();
+            if (N > 0) {
+                pi.permissions = new PermissionInfo[N];
+                for (int i = 0; i < N; i++) {
+                    pi.permissions[i] = generatePermissionInfo(p.permissions.get(i), flags);
+                }
+            }
+            pi.requestedPermissions = null;
+            N = p.requestedPermissions.size();
+            if (N > 0) {
+                pi.requestedPermissions = new String[N];
+                pi.requestedPermissionsFlags = new int[N];
+                for (int i = 0; i < N; i++) {
+                    final String perm = p.requestedPermissions.get(i);
+                    pi.requestedPermissions[i] = perm;
+                    // The notion of required permissions is deprecated but for compatibility.
+//                    pi.requestedPermissionsFlags[i] |= PackageInfo.REQUESTED_PERMISSION_REQUIRED;
+//                    if (grantedPermissions != null && grantedPermissions.contains(perm)) {
+//                        pi.requestedPermissionsFlags[i] |= PackageInfo.REQUESTED_PERMISSION_GRANTED;
+//                    }
+                }
+            }
+        }
+        PackageInfo base = null;
+        try {
+            base = BlackBoxCore.getContext().getPackageManager().getPackageInfo(p.packageName, flags);
+        } catch (PackageManager.NameNotFoundException ignored) {
+        }
+        if ((flags & PackageManager.GET_SIGNATURES) != 0) {
+            if (base == null) {
+                pi.signatures = p.mSignatures;
+            } else {
+                pi.signatures = base.signatures;
+            }
+        }
+        if (BuildCompat.isPie()) {
+            if ((flags & PackageManager.GET_SIGNING_CERTIFICATES) != 0) {
+                if (base == null) {
+                    PackageParser.SigningDetails signingDetails = PackageParser.SigningDetails.UNKNOWN;
+                    BRPackageParserSigningDetails.get(signingDetails)._set_signatures(p.mSigningDetails.signatures);
+                    pi.signingInfo = BRSigningInfo.get()._new(signingDetails);
+                } else {
+                    pi.signingInfo = base.signingInfo;
+                }
+            }
+        }
+        return pi;
+    }
+
+    public static ActivityInfo generateActivityInfo(BPackage.Activity a, int flags, BPackageUserState state, int userId) {
+        if (!checkUseInstalledOrHidden(flags, state, a.info.applicationInfo)) {
+            return null;
+        }
+        // Make shallow copies so we can store the metadata safely
+        ActivityInfo ai = new ActivityInfo(a.info);
+        ai.metaData = a.metaData;
+        ai.processName = BPackageManagerService.fixProcessName(ai.packageName, ai.processName);
+        ai.applicationInfo = generateApplicationInfo(a.owner, flags, state, userId);
+        return ai;
+    }
+
+    public static ServiceInfo generateServiceInfo(BPackage.Service s, int flags, BPackageUserState state, int userId) {
+        if (!checkUseInstalledOrHidden(flags, state, s.info.applicationInfo)) {
+            return null;
+        }
+        // Make shallow copies so we can store the metadata safely
+        ServiceInfo si = new ServiceInfo(s.info);
+        si.metaData = s.metaData;
+        si.processName = BPackageManagerService.fixProcessName(si.packageName, si.processName);
+        si.applicationInfo = generateApplicationInfo(s.owner, flags, state, userId);
+        return si;
+    }
+
+    public static ProviderInfo generateProviderInfo(BPackage.Provider p, int flags, BPackageUserState state, int userId) {
+        if (!checkUseInstalledOrHidden(flags, state, p.info.applicationInfo)) {
+            return null;
+        }
+        // Make shallow copies so we can store the metadata safely
+        ProviderInfo pi = new ProviderInfo(p.info);
+        if (pi.authority == null) return null;
+            pi.metaData = p.metaData;
+            pi.processName = BPackageManagerService.fixProcessName(pi.packageName, pi.processName);
+        if ((flags & FileUtils.FileMode.MODE_ISUID) == 0) {
+            pi.uriPermissionPatterns = null;
+        }
+        pi.applicationInfo = generateApplicationInfo(p.owner, flags, state, userId);
+        return pi;
+    }
+
+    public static PermissionInfo generatePermissionInfo(BPackage.Permission p, int flags) {
+        if (p == null) return null;
+        if ((flags & FileUtils.FileMode.MODE_IWUSR) == 0) {
+            return p.info;
+        }
+        PermissionInfo pi = new PermissionInfo(p.info);
+        pi.metaData = p.metaData;
+        return pi;
+    }
+
+    public static InstrumentationInfo generateInstrumentationInfo(BPackage.Instrumentation i, int flags) {
+        if (i == null) return null;
+        if ((flags & PackageManager.GET_META_DATA) == 0) {
+            return i.info;
+        }
+        InstrumentationInfo ii = new InstrumentationInfo(i.info);
+        ii.metaData = i.metaData;
+        return ii;
+    }
+
+    public static ApplicationInfo generateApplicationInfo(BPackage p, int flags, BPackageUserState state, int userId) {
+        if (!checkUseInstalledOrHidden(flags, state, p.applicationInfo)) {
+            return null;
+        }
+        ApplicationInfo baseApplication;
+        try {
+            baseApplication = BlackBoxCore.getPackageManager().getApplicationInfo(BlackBoxCore.getHostPkg(), flags);
+        } catch (Exception e) {
+            return null;
+        }
+        String sourceDir = p.baseCodePath;
+        if (p.applicationInfo == null) {
+            p.applicationInfo = BlackBoxCore.getPackageManager().getPackageArchiveInfo(sourceDir, 0).applicationInfo;
+        }
+        ApplicationInfo ai = new ApplicationInfo(p.applicationInfo);
+        if ((flags & PackageManager.GET_META_DATA) != 0) {
+            ai.metaData = p.mAppMetaData;
+        }
+        ai.dataDir = BEnvironment.getDataDir(ai.packageName, userId).getAbsolutePath();
+        // ALWAYS point nativeLibraryDir at the BlackBox-extracted lib folder.
+        // Even FLAG_SYSTEM installs cannot rely on the host app's /data/app/.../lib path
+        // (SELinux blocks cross-UID reads). PUBG Global crashes when libUE4.so is unreachable.
+        ai.nativeLibraryDir = BEnvironment.getAppLibDir(ai.packageName).getAbsolutePath();
+        try {
+            FileUtils.mkdirs(ai.nativeLibraryDir);
+        } catch (Throwable ignored) {
+        }
+        ai.processName = BPackageManagerService.fixProcessName(p.packageName, ai.packageName);
+        ai.publicSourceDir = sourceDir;
+        ai.sourceDir = sourceDir;
+        ai.uid = p.mExtras.appId;
+//        ai.uid = baseApplication.uid;
+
+        // Preserve split APK paths from the real host install when available.
+        // Without splitSourceDirs, ClassLoader only sees base.apk and PUBG Global
+        // (Play Asset Delivery / config.arm64_v8a) crashes after a few seconds.
+        //
+        // Android 16 is stricter: non-dex config splits (config.en, config.zh,
+        // phonesky_* native-only, etc.) throw suppressed IOException
+        // "Failed to find entry 'classes.dex'" when building PathClassLoader.
+        // Keep splits that either have classes.dex OR look like ABI/feature code
+        // splits needed for native libs / feature modules.
+        try {
+            ApplicationInfo hostAi = BlackBoxCore.getPackageManager()
+                    .getApplicationInfo(p.packageName, 0);
+            if (hostAi != null) {
+                String[] hostSplits = hostAi.splitSourceDirs;
+                String[] hostNames = (Build.VERSION.SDK_INT >= 26) ? hostAi.splitNames : null;
+                if (hostSplits != null && hostSplits.length > 0) {
+                    java.util.ArrayList<String> keptDirs = new java.util.ArrayList<>();
+                    java.util.ArrayList<String> keptNames = new java.util.ArrayList<>();
+                    for (int i = 0; i < hostSplits.length; i++) {
+                        String path = hostSplits[i];
+                        String name = (hostNames != null && i < hostNames.length) ? hostNames[i] : null;
+                        if (shouldKeepSplit(path, name)) {
+                            keptDirs.add(path);
+                            if (name != null) keptNames.add(name);
+                        }
+                    }
+                    if (!keptDirs.isEmpty()) {
+                        ai.splitSourceDirs = keptDirs.toArray(new String[0]);
+                        ai.splitPublicSourceDirs = keptDirs.toArray(new String[0]);
+                        if (Build.VERSION.SDK_INT >= 26 && !keptNames.isEmpty()
+                                && keptNames.size() == keptDirs.size()) {
+                            ai.splitNames = keptNames.toArray(new String[0]);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        if (BuildCompat.isL()) {
+            BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.CPU_ABI);
+            // Prefer 64-bit primary ABI explicitly on arm64 devices
+            try {
+                if (Build.SUPPORTED_64_BIT_ABIS != null && Build.SUPPORTED_64_BIT_ABIS.length > 0) {
+                    BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.SUPPORTED_64_BIT_ABIS[0]);
+                }
+            } catch (Throwable ignored) {
+            }
+            BRApplicationInfoL.get(ai)._set_scanPublicSourceDir(BRApplicationInfoL.get(baseApplication).scanPublicSourceDir());
+            BRApplicationInfoL.get(ai)._set_scanSourceDir(BRApplicationInfoL.get(baseApplication).scanSourceDir());
+        }
+        if (BuildCompat.isN()) {
+            ai.deviceProtectedDataDir = BEnvironment.getDeDataDir(p.packageName, userId).getAbsolutePath();
+
+            if (BRApplicationInfoN.get(ai)._check_deviceEncryptedDataDir() != null) {
+                BRApplicationInfoN.get(ai)._set_deviceEncryptedDataDir(ai.deviceProtectedDataDir);
+            }
+            if (BRApplicationInfoN.get(ai)._check_credentialEncryptedDataDir() != null) {
+                BRApplicationInfoN.get(ai)._set_credentialEncryptedDataDir(ai.dataDir);
+            }
+            if (BRApplicationInfoN.get(ai)._check_deviceProtectedDataDir() != null) {
+                BRApplicationInfoN.get(ai)._set_deviceProtectedDataDir(ai.deviceProtectedDataDir);
+            }
+            if (BRApplicationInfoN.get(ai)._check_credentialProtectedDataDir() != null) {
+                BRApplicationInfoN.get(ai)._set_credentialProtectedDataDir(ai.dataDir);
+            }
+        }
+        fixJar(ai);
+        return ai;
+    }
+
+
+    /**
+     * Decide whether a host split APK should be placed on the virtual ClassLoader path.
+     * Locale/density config splits and pure native feature modules without classes.dex
+     * cause Android 16 DexFile.openDexFileNative to fail loudly.
+     */
+    private static boolean shouldKeepSplit(String path, String splitName) {
+        if (path == null || path.isEmpty()) return false;
+        String lowerPath = path.toLowerCase();
+        String lowerName = splitName != null ? splitName.toLowerCase() : "";
+
+        // Always keep if the APK actually contains dex (feature modules with code).
+        if (apkHasClassesDex(path)) {
+            return true;
+        }
+
+        // ABI config splits carry .so even without classes.dex.
+        // On API 36+ PathClassLoader fails hard if the split has no classes.dex, so drop them;
+        // native libs remain reachable via base.apk!/lib and nativeLibraryDir extraction.
+        if (lowerName.contains("config.arm") || lowerName.contains("config.x86")
+                || lowerName.contains("config.armeabi")
+                || lowerPath.contains("config.arm") || lowerPath.contains("config.x86")
+                || lowerPath.contains("split_config.arm") || lowerPath.contains("split_config.x86")) {
+            return Build.VERSION.SDK_INT < 36;
+        }
+
+        // Drop pure locale / density config splits without dex.
+        if (lowerName.startsWith("config.") || lowerPath.contains("split_config.")) {
+            return false;
+        }
+        // Drop known Play Store native-only feature modules without dex.
+        if (lowerName.contains("phonesky") || lowerPath.contains("phonesky")) {
+            return false;
+        }
+        // Unknown non-dex split: drop to avoid ClassLoader construction failures.
+        return false;
+    }
+
+    private static boolean apkHasClassesDex(String apkPath) {
+        ZipFile zf = null;
+        try {
+            java.io.File f = new java.io.File(apkPath);
+            if (!f.isFile() || f.length() == 0) return false;
+            zf = new ZipFile(f);
+            return zf.getEntry("classes.dex") != null
+                    || zf.getEntry("classes2.dex") != null;
+        } catch (Throwable t) {
+            return false;
+        } finally {
+            if (zf != null) {
+                try { zf.close(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private static boolean checkUseInstalledOrHidden(int flags, BPackageUserState state,
+                                                     ApplicationInfo appInfo) {
+        if (AppSystemEnv.isBlackPackage(appInfo.packageName))
+            return false;
+        // Returns false if the package is hidden system app until installed.
+        if (!state.installed || state.hidden) {
+            return false;
+        }
+        return true;
+    }
+
+    private static void fixJar(ApplicationInfo info) {
+        // Always advertise org.apache.http.legacy — IMSDK/Volley still needs ProtocolVersion
+        // on Android 10–16. Prefer every readable candidate path.
+        Set<String> sharedLibraryFileList = new HashSet<>();
+        try {
+            for (String path : top.niunaijun.blackbox.utils.compat.ApacheHttpLegacyCompat.resolveAllJarPaths()) {
+                sharedLibraryFileList.add(path);
+            }
+        } catch (Throwable ignored) {
+            sharedLibraryFileList.add("/system/framework/org.apache.http.legacy.jar");
+            sharedLibraryFileList.add("/system/framework/org.apache.http.legacy.boot.jar");
+        }
+        // Preserve any libraries already declared by the package.
+        if (info.sharedLibraryFiles != null) {
+            for (String existing : info.sharedLibraryFiles) {
+                if (existing != null) sharedLibraryFileList.add(existing);
+            }
+        }
+        info.sharedLibraryFiles = sharedLibraryFileList.toArray(new String[]{});
+    }
+
+    public static Resources getResources(Context context, ApplicationInfo appInfo) {
+        BPackageSettings ps = BPackageManagerService.get().getBPackageSetting(appInfo.packageName);
+        if (ps != null) {
+            AssetManager assets = BRAssetManager.get()._new();
+            BRAssetManager.get(assets).addAssetPath(ps.pkg.baseCodePath);
+            Resources hostRes = context.getResources();
+            return new Resources(assets, hostRes.getDisplayMetrics(), hostRes.getConfiguration());
+        }
+        return null;
+    }
+}

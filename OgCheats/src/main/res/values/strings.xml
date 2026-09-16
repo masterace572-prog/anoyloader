@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OG Cheats</string>
+    <string name="brand_name">OG Cheats</string>
+    <string name="brand_enterprise">OG Cheats Enterprise</string>
+    <string name="telegram_url">https://t.me/CrimeCell</string>
+    <string name="telegram_handle">@CrimeCell</string>
+    <string name="http_user_agent">Mozilla/5.0 (Linux; Android) OG-Cheats</string>
+    <string name="crash_report_header">OG Cheats Crash Report</string>
+</resources>

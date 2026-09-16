@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="spacing_xxs">4dp</dimen>
+    <dimen name="spacing_xs">8dp</dimen>
+    <dimen name="spacing_sm">12dp</dimen>
+    <dimen name="spacing_md">16dp</dimen>
+    <dimen name="spacing_lg">20dp</dimen>
+    <dimen name="spacing_xl">24dp</dimen>
+    <dimen name="spacing_xxl">32dp</dimen>
+    <dimen name="spacing_section">32dp</dimen>
+    <dimen name="spacing_huge">40dp</dimen>
+    <dimen name="spacing_massive">48dp</dimen>
+    <dimen name="screen_padding">20dp</dimen>
+    <dimen name="radius_input">8dp</dimen>
+    <dimen name="radius_button">10dp</dimen>
+    <dimen name="radius_card">12dp</dimen>
+    <dimen name="radius_dialog">16dp</dimen>
+    <dimen name="radius_sheet">24dp</dimen>
+    <dimen name="min_touch_target">48dp</dimen>
+</resources>
