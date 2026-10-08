@@ -28,7 +28,7 @@ fun AppCountdownTimer(
     val label = if (isLifetime) {
         "Lifetime"
     } else {
-        "$days:$hours:$mins:$secs"
+        "${days}d  ${hours}h  ${mins}m  ${secs}s"
     }
 
     Box(
@@ -40,7 +40,7 @@ fun AppCountdownTimer(
     ) {
         Text(
             text = label,
-            style = TabularNumberStyle,
+            style = AppTheme.typography.titleMedium.copy(fontFamily = com.ryzen.ui.theme.MonoFontFamily),
             color = AppTheme.colors.textPrimary
         )
     }

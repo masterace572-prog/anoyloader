@@ -168,11 +168,17 @@ fun LoginScreen(
 
                 Text(
                     text = stringResource(id = R.string.brand_name),
-                    style = AppTheme.typography.headlineSmall,
+                    style = AppTheme.typography.headlineMedium,
                     color = AppTheme.colors.textPrimary
                 )
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.brand_subtitle_auth),
+                style = AppTheme.typography.bodyMedium,
+                color = AppTheme.colors.textSecondary
+            )
             Spacer(modifier = Modifier.height(AppTheme.spacing.xl))
 
             AppCard(
@@ -209,7 +215,9 @@ fun LoginScreen(
                     AppTextField(
                         value = keyText,
                         onValueChange = onKeyChange,
-                        placeholder = "License key",
+                        placeholder = stringResource(R.string.hint_license_key),
+                        enabled = !isAuthenticating,
+                        helperText = stringResource(R.string.license_field_hint),
                         leadingIcon = Icons.Outlined.Key,
                         visualTransformation = if (isKeyVisible) {
                             VisualTransformation.None
@@ -221,7 +229,7 @@ fun LoginScreen(
                             imeAction = ImeAction.Done
                         ),
                         keyboardActions = KeyboardActions(
-                            onDone = { onAuthenticateClick() }
+                            onDone = { if (!isAuthenticating && keyText.isNotBlank()) onAuthenticateClick() }
                         ),
                         isError = keyError != null,
                         errorMessage = keyError,
@@ -229,7 +237,7 @@ fun LoginScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
                                     onClick = onToggleKeyVisibility,
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier.size(48.dp)
                                 ) {
                                     Icon(
                                         imageVector = if (isKeyVisible) {
@@ -246,22 +254,19 @@ fun LoginScreen(
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
-                                IconButton(
-                                    onClick = onPasteClick,
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.ContentPaste,
-                                        contentDescription = stringResource(id = R.string.cd_paste_key),
-                                        tint = AppTheme.colors.textSecondary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
                             }
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(AppTheme.spacing.md))
+                    AppButton(
+                        text = stringResource(R.string.action_paste_key),
+                        onClick = onPasteClick,
+                        enabled = !isAuthenticating,
+                        variant = ButtonVariant.TERTIARY,
+                        leadingIcon = Icons.Outlined.ContentPaste,
+                        fullWidth = true
+                    )
+                    Spacer(modifier = Modifier.height(AppTheme.spacing.xs))
 
                     val rememberInteraction = remember { MutableInteractionSource() }
                     Row(
@@ -277,12 +282,18 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "Remember key",
-                            style = AppTheme.typography.bodyMedium,
-                            color = AppTheme.colors.textPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.action_save_key),
+                                style = AppTheme.typography.bodyMedium,
+                                color = AppTheme.colors.textPrimary
+                            )
+                            Text(
+                                text = stringResource(R.string.action_save_key_hint),
+                                style = AppTheme.typography.bodySmall,
+                                color = AppTheme.colors.textSecondary
+                            )
+                        }
                         Spacer(modifier = Modifier.width(AppTheme.spacing.sm))
                         Switch(
                             checked = isSaveKeyEnabled,
@@ -303,7 +314,7 @@ fun LoginScreen(
                         text = stringResource(id = R.string.action_authenticate),
                         onClick = onAuthenticateClick,
                         loading = isAuthenticating,
-                        enabled = !isAuthenticating,
+                        enabled = !isAuthenticating && keyText.isNotBlank(),
                         variant = ButtonVariant.PRIMARY,
                         fullWidth = true
                     )

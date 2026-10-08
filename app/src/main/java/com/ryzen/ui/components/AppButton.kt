@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -62,7 +62,7 @@ fun AppButton(
     fullWidth: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val buttonHeight = if (size == ButtonSize.COMPACT) 40.dp else 48.dp
+    val buttonHeight = if (size == ButtonSize.COMPACT) 48.dp else 52.dp
     val widthModifier = if (fullWidth) modifier.fillMaxWidth() else modifier
     val shape = RoundedCornerShape(AppRadii.sm)
     val isEnabled = enabled && !loading
@@ -75,7 +75,7 @@ fun AppButton(
         }
         TextButton(
             onClick = onClick,
-            modifier = widthModifier.height(buttonHeight),
+            modifier = widthModifier.heightIn(min = buttonHeight),
             enabled = isEnabled,
             interactionSource = interactionSource,
             shape = shape,
@@ -100,7 +100,7 @@ fun AppButton(
 
     val containerColor = customContainerColor ?: when (variant) {
         ButtonVariant.PRIMARY -> AppTheme.colors.accent
-        ButtonVariant.SECONDARY -> Color.Transparent
+        ButtonVariant.SECONDARY -> AppTheme.colors.surface
         else -> Color.Transparent
     }
     val contentColor = customContentColor ?: when (variant) {
@@ -115,7 +115,7 @@ fun AppButton(
 
     Button(
         onClick = onClick,
-        modifier = widthModifier.height(buttonHeight),
+        modifier = widthModifier.heightIn(min = buttonHeight),
         enabled = isEnabled,
         interactionSource = interactionSource,
         shape = shape,

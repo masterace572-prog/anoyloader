@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +58,7 @@ import com.ryzen.ui.components.ButtonVariant
 import com.ryzen.ui.components.EmptyState
 import com.ryzen.ui.components.GameNotInstalledDialog
 import com.ryzen.ui.components.GameNotInstalledDialogState
+import com.ryzen.ui.components.SetupChecklist
 import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
@@ -106,7 +108,7 @@ fun MainDashboardScreen(
     onDismissGameNotInstalledDialog: () -> Unit = {}
 ) {
     val gameTitle = selectedGame.getDisplayTitle()
-    val bottomContentPad = 72.dp
+    val bottomContentPad = 112.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -116,14 +118,11 @@ fun MainDashboardScreen(
         ) {
             AppTopBar(
                 title = stringResource(id = R.string.brand_name),
+                subtitle = stringResource(R.string.dashboard_subtitle),
                 trailingContent = {
-                    AppCountdownTimer(
-                        days = days,
-                        hours = hours,
-                        mins = mins,
-                        secs = secs,
-                        isLifetime = isLifetime
-                    )
+                    IconButton(onClick = onOptionsClick) {
+                        Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_options), tint = AppTheme.colors.textSecondary)
+                    }
                 }
             )
 
@@ -135,6 +134,19 @@ fun MainDashboardScreen(
                     .padding(horizontal = AppTheme.spacing.screenHorizontal)
             ) {
                 Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
+                AppCard(modifier = Modifier.fillMaxWidth(), containerColor = AppTheme.colors.surface, contentPadding = 18.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(stringResource(R.string.license_time_title), style = AppTheme.typography.labelMedium, color = AppTheme.colors.textSecondary)
+                        AppCountdownTimer(days = days, hours = hours, mins = mins, secs = secs, isLifetime = isLifetime)
+                    }
+                }
+                Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
+                Text(stringResource(R.string.games_section_title), style = AppTheme.typography.headlineSmall, color = AppTheme.colors.textPrimary)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(stringResource(R.string.games_section_subtitle), style = AppTheme.typography.bodySmall, color = AppTheme.colors.textSecondary)
+                Spacer(modifier = Modifier.height(AppTheme.spacing.md))
+                SetupChecklist(hostInstalled = isHostGameInstalled, containerInstalled = isClonedInContainer, assetsReady = hasObb)
+                Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
 
                 if (games.size > 1) {
                     AppSegmented(
@@ -143,24 +155,6 @@ fun MainDashboardScreen(
                         onSelect = { index -> onSelectGame(games[index]) }
                     )
                     Spacer(modifier = Modifier.height(AppTheme.spacing.lg))
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onOptionsClick,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.MoreVert,
-                            contentDescription = stringResource(id = R.string.action_options),
-                            tint = AppTheme.colors.textSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
                 }
 
                 val versionsToDisplay = if (selectedGame.versions.isNotEmpty()) {
@@ -315,12 +309,21 @@ fun MainDashboardScreen(
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.india),
-                                        contentDescription = gameTitle,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
+                                    if (selectedGame.packageName == "com.pubg.imobile") {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.india),
+                                            contentDescription = gameTitle,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Outlined.SportsEsports,
+                                            contentDescription = gameTitle,
+                                            tint = AppTheme.colors.accent,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
                                 }
 
                                 Spacer(modifier = Modifier.width(AppTheme.spacing.md))
@@ -347,6 +350,12 @@ fun MainDashboardScreen(
 
                             Spacer(modifier = Modifier.height(AppTheme.spacing.md))
 
+                            Text(
+                                text = cardButtonState.hint.ifBlank { stringResource(R.string.hint_ready_launch) },
+                                style = AppTheme.typography.bodySmall,
+                                color = AppTheme.colors.textSecondary
+                            )
+                            Spacer(modifier = Modifier.height(AppTheme.spacing.md))
                             val isRunningThis =
                                 isMatchingHostVersion && (isLaunching || isCopyingObb || isInstalling)
                             AppButton(

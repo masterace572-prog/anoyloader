@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useFeedback } from "./feedback";
+
 import { api } from "@/lib/api";
-import { Button, Field, Input } from "./ui";
+import { Button, Field, Input, Spinner } from "./ui";
 type Key = {
   id: string;
   name: string;
@@ -14,6 +16,8 @@ type Key = {
   last_used_at: string | null;
 };
 export function ApiKeysView() {
+  const { notify, confirm } = useFeedback();
+  const [loading, setLoading] = useState(true);
   const [keys, setKeys] = useState<Key[]>([]);
   const [name, setName] = useState("");
   const [days, setDays] = useState(30);
@@ -26,6 +30,8 @@ export function ApiKeysView() {
       setKeys((await api<{ keys: Key[] }>("/api/admin/api-keys")).keys);
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setLoading(false);
     }
   }
   useEffect(() => {
@@ -34,7 +40,10 @@ export function ApiKeysView() {
   return (
     <div className="space-y-7">
       <header>
-        <h1 className="text-2xl">Developer access</h1>
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-accent">
+          Developer tools
+        </p>
+        <h1 className="text-3xl font-semibold">API access</h1>
         <p className="mt-2 text-sm text-muted">
           Create scoped credentials for license automation.{" "}
           <Link href="/docs" className="underline">
@@ -62,6 +71,9 @@ export function ApiKeysView() {
             });
             setSecret(data.secret);
             setName("");
+            notify(
+              "API key created. Copy the secret before leaving this page.",
+            );
             await load();
           } catch (e: any) {
             setError(e.message);
@@ -81,7 +93,10 @@ export function ApiKeysView() {
               onChange={(e) => setName(e.target.value)}
             />
           </Field>
-          <Field label="Expires in (days)">
+          <Field
+            label="Expires in (days)"
+            hint="Choose 1–365 days. Shorter expiry is safer."
+          >
             <Input
               required
               type="number"
@@ -123,6 +138,7 @@ export function ApiKeysView() {
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(secret);
+                notify("API secret copied.");
               } catch {
                 setError(
                   "Clipboard unavailable. Select and copy the secret manually.",
@@ -138,7 +154,13 @@ export function ApiKeysView() {
         </div>
       )}
       <div className="space-y-3">
-        {keys.length === 0 && (
+        {loading && (
+          <div className="flex items-center gap-2 rounded-xl border border-line p-5 text-sm text-muted">
+            <Spinner />
+            Loading API keys…
+          </div>
+        )}
+        {!loading && keys.length === 0 && (
           <p className="text-sm text-muted">No API keys yet.</p>
         )}
         {keys.map((key) => (
@@ -172,9 +194,12 @@ export function ApiKeysView() {
                 disabled={busy}
                 onClick={async () => {
                   if (
-                    !window.confirm(
-                      `Revoke ${key.name}? Integrations using it will stop working.`,
-                    )
+                    !(await confirm({
+                      title: "Revoke this API key?",
+                      message: `Integrations using ${key.name} will stop working immediately. This cannot be undone.`,
+                      confirmLabel: "Revoke key",
+                      danger: true,
+                    }))
                   )
                     return;
                   setBusy(true);

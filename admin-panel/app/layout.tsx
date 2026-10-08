@@ -17,7 +17,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('anoy-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark'}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-background font-sans text-ink antialiased">
         {children}
       </body>

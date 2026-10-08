@@ -30,7 +30,7 @@
 
     <!-- Authentication -->
     <string name="label_license_key">License key</string>
-    <string name="hint_license_key">XXXX-XXXX-XXXX-XXXX</string>
+    <string name="hint_license_key">Enter your license key</string>
     <string name="action_authenticate">Continue</string>
     <string name="action_get_key">Get a license</string>
     <string name="action_save_key">Remember this key</string>
@@ -44,7 +44,7 @@
 
     <!-- Dashboard & Actions -->
     <string name="header_target_app">Target application</string>
-    <string name="dashboard_subtitle">Virtualization engine</string>
+    <string name="dashboard_subtitle">Your virtual game space</string>
     <string name="action_launch">Launch</string>
     <string name="action_install">Install</string>
     <string name="action_sync_obb">Sync OBB assets</string>
@@ -127,4 +127,21 @@
     <string name="action_restart_app">Restart app</string>
     <string name="unknown_exception">Unknown runtime exception</string>
     <string name="no_stack_trace">No detailed stack trace available</string>
+
+    <!-- Guided UI -->
+    <string name="license_field_hint">Use the license key shared by your administrator.</string>
+    <string name="action_paste_key">Paste from clipboard</string>
+    <string name="license_time_title">License time remaining</string>
+    <string name="games_section_title">Your games</string>
+    <string name="games_section_subtitle">Choose a game and follow the setup steps below.</string>
+    <string name="setup_title">Get ready to play</string>
+    <string name="setup_ready_title">Setup complete</string>
+    <string name="setup_official_game">Official game installed</string>
+    <string name="setup_virtual_copy">Game added to virtual space</string>
+    <string name="setup_game_assets">Game assets ready</string>
+    <string name="setup_complete">Complete</string>
+    <string name="setup_hint">The game card below shows the next step.</string>
+    <string name="settings_tools_hint">Troubleshooting tools for the selected game. Review each action before continuing.</string>
+    <string name="clear_login_confirm_title">Clear saved game login?</string>
+    <string name="clear_login_confirm_body">Saved login credentials for the selected game will be removed. You will need to sign in again.</string>
 </resources>

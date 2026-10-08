@@ -18,7 +18,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // =====================================================
-// THEME — Material 3 mapped from ink tokens
+// THEME — Material 3 mapped from slate and blue tokens
 // Dynamic color disabled. Flat surfaces. Edge-to-edge.
 // =====================================================
 

@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.sp
 import com.ryzen.R
 
 // =====================================================
-// TYPOGRAPHY — Source Serif 4 display, Inter UI, Mono code
+// TYPOGRAPHY — Inter headings and UI, Mono code
 // Letter spacing 0 everywhere. Sentence case in copy.
 // =====================================================
 
@@ -37,43 +37,43 @@ private val ZeroTracking = 0.sp
 
 val AppTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.Normal,
+        fontFamily = SansFontFamily,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 36.sp,
         lineHeight = 44.sp,
         letterSpacing = ZeroTracking
     ),
     displayMedium = TextStyle(
-        fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.Normal,
+        fontFamily = SansFontFamily,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
         letterSpacing = ZeroTracking
     ),
     displaySmall = TextStyle(
-        fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.Normal,
+        fontFamily = SansFontFamily,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
         letterSpacing = ZeroTracking
     ),
     headlineLarge = TextStyle(
-        fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.Normal,
+        fontFamily = SansFontFamily,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
         letterSpacing = ZeroTracking
     ),
     headlineMedium = TextStyle(
-        fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.Normal,
+        fontFamily = SansFontFamily,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
         letterSpacing = ZeroTracking
     ),
     headlineSmall = TextStyle(
-        fontFamily = SerifFontFamily,
-        fontWeight = FontWeight.Normal,
+        fontFamily = SansFontFamily,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
         lineHeight = 28.sp,
         letterSpacing = ZeroTracking

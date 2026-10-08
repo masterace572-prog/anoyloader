@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,6 +33,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import com.ryzen.ui.theme.AppMotion
 import com.ryzen.ui.theme.AppRadii
 import com.ryzen.ui.theme.AppTheme
@@ -102,12 +106,12 @@ fun AppTextField(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .heightIn(min = 56.dp)
                 .clip(shape)
-                .background(AppTheme.colors.surfaceSubtle)
+                .background(AppTheme.colors.background)
                 .border(1.dp, borderColor, shape)
-                .onFocusChanged { isFocused = it.isFocused }
-                .padding(horizontal = 14.dp),
+                .onFocusChanged { isFocused = it.hasFocus }
+                .padding(horizontal = 14.dp, vertical = 4.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
@@ -139,7 +143,10 @@ fun AppTextField(
                     BasicTextField(
                         value = value,
                         onValueChange = onValueChange,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().semantics {
+                            contentDescription = label ?: placeholder ?: "Text input"
+                            if (isError && errorMessage != null) error(errorMessage)
+                        },
                         enabled = enabled,
                         textStyle = AppTheme.typography.bodyLarge.copy(
                             color = if (enabled) AppTheme.colors.textPrimary else AppTheme.colors.textTertiary

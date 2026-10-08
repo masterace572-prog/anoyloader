@@ -74,6 +74,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var isKeyRevealed by remember { mutableStateOf(false) }
+    var showConfirmClearLoginDialog by remember { mutableStateOf(false) }
     var showConfirmClearDataDialog by remember { mutableStateOf(false) }
     var showConfirmResetGuestDialog by remember { mutableStateOf(false) }
 
@@ -86,7 +87,7 @@ fun SettingsScreen(
 
     val expiryLine = when {
         isLifetime -> "Lifetime"
-        else -> "$days:$hours:$mins remaining"
+        else -> "${days}d ${hours}h ${mins}m remaining"
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -95,7 +96,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            AppTopBar(title = "Settings")
+            AppTopBar(title = stringResource(R.string.settings_title), subtitle = stringResource(R.string.settings_subtitle))
 
             Column(
                 modifier = Modifier
@@ -134,11 +135,11 @@ fun SettingsScreen(
                             )
                             IconButton(
                                 onClick = { isKeyRevealed = !isKeyRevealed },
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isKeyRevealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                    contentDescription = null,
+                                    contentDescription = stringResource(if (isKeyRevealed) R.string.cd_hide_key else R.string.cd_show_key),
                                     tint = AppTheme.colors.textSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -151,11 +152,11 @@ fun SettingsScreen(
                                         Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                     }
                                 },
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.ContentCopy,
-                                    contentDescription = null,
+                                    contentDescription = stringResource(R.string.cd_copy_key),
                                     tint = AppTheme.colors.textSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -172,21 +173,28 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                Text(stringResource(R.string.sandbox_maintenance), style = AppTheme.typography.titleMedium, color = AppTheme.colors.textPrimary)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(stringResource(R.string.settings_tools_hint), style = AppTheme.typography.bodySmall, color = AppTheme.colors.textSecondary)
+                Spacer(modifier = Modifier.height(12.dp))
                 AppRowGroup {
                     AppListRow(
-                        title = "Clear login",
+                        title = stringResource(R.string.clear_login_title),
+                        subtitle = stringResource(R.string.clear_login_subtitle),
                         leadingIcon = Icons.Outlined.CleaningServices,
                         showDivider = true,
-                        onClick = { onClearLoginClick(selectedGame) }
+                        onClick = { showConfirmClearLoginDialog = true }
                     )
                     AppListRow(
-                        title = "Reset guest",
+                        title = stringResource(R.string.reset_guest_title),
+                        subtitle = stringResource(R.string.reset_guest_subtitle),
                         leadingIcon = Icons.Outlined.RestartAlt,
                         showDivider = true,
                         onClick = { showConfirmResetGuestDialog = true }
                     )
                     AppListRow(
-                        title = "Clear cache",
+                        title = stringResource(R.string.clear_resources_title),
+                        subtitle = stringResource(R.string.clear_resources_subtitle),
                         leadingIcon = Icons.Outlined.DeleteSweep,
                         destructive = true,
                         onClick = { showConfirmClearDataDialog = true }
@@ -196,7 +204,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 AppButton(
-                    text = "Telegram",
+                    text = stringResource(R.string.contact_admin_telegram),
                     onClick = onContactAdminClick,
                     leadingPainter = painterResource(id = R.drawable.ic_telegram_app),
                     variant = ButtonVariant.SECONDARY,
@@ -212,14 +220,31 @@ fun SettingsScreen(
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
 
-                Spacer(modifier = Modifier.height(72.dp))
+                Spacer(modifier = Modifier.height(112.dp))
+            }
+        }
+
+        if (showConfirmClearLoginDialog) {
+            AppDialog(
+                onDismissRequest = { showConfirmClearLoginDialog = false },
+                title = stringResource(R.string.clear_login_confirm_title),
+                subtitle = stringResource(R.string.clear_login_confirm_body)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppButton(text = stringResource(R.string.action_clear_credentials), onClick = {
+                        showConfirmClearLoginDialog = false
+                        onClearLoginClick(selectedGame)
+                    }, variant = ButtonVariant.DESTRUCTIVE)
+                    AppButton(text = stringResource(R.string.action_cancel), onClick = { showConfirmClearLoginDialog = false }, variant = ButtonVariant.TERTIARY)
+                }
             }
         }
 
         if (showConfirmClearDataDialog) {
             AppDialog(
                 onDismissRequest = { showConfirmClearDataDialog = false },
-                title = "Clear cache?"
+                title = stringResource(R.string.clear_resources_confirm_title),
+                subtitle = stringResource(R.string.clear_resources_confirm_body)
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -247,7 +272,8 @@ fun SettingsScreen(
         if (showConfirmResetGuestDialog) {
             AppDialog(
                 onDismissRequest = { showConfirmResetGuestDialog = false },
-                title = "Reset guest?"
+                title = stringResource(R.string.reset_guest_confirm_title),
+                subtitle = stringResource(R.string.reset_guest_confirm_body)
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),

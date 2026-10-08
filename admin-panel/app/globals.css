@@ -3,82 +3,159 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0e0e0d;
-  --surface: #161615;
-  --elevated: #1c1c1a;
-  --subtle: #232321;
-  --line: #2c2c29;
-  --ink: #f4f3ef;
-  --muted: #a8a7a1;
-  --faint: #787770;
-  --accent: #f4f3ef;
-  --on-accent: #111110;
-  --success: #8bb59a;
-  --warning: #d2a24c;
-  --danger: #e07a72;
-  --scrim: rgba(0, 0, 0, 0.64);
+  color-scheme: dark;
+  --bg-rgb: 11 17 32;
+  --bg: rgb(var(--bg-rgb));
+  --surface-rgb: 17 27 46;
+  --surface: rgb(var(--surface-rgb));
+  --elevated-rgb: 23 35 56;
+  --elevated: rgb(var(--elevated-rgb));
+  --subtle-rgb: 28 42 64;
+  --subtle: rgb(var(--subtle-rgb));
+  --line-rgb: 42 59 84;
+  --line: rgb(var(--line-rgb));
+  --ink-rgb: 237 243 255;
+  --ink: rgb(var(--ink-rgb));
+  --muted-rgb: 176 191 213;
+  --muted: rgb(var(--muted-rgb));
+  --faint-rgb: 144 162 188;
+  --faint: rgb(var(--faint-rgb));
+  --accent-rgb: 145 183 255;
+  --accent: rgb(var(--accent-rgb));
+  --on-accent-rgb: 10 32 68;
+  --on-accent: rgb(var(--on-accent-rgb));
+  --success-rgb: 121 217 179;
+  --success: rgb(var(--success-rgb));
+  --warning-rgb: 241 198 124;
+  --warning: rgb(var(--warning-rgb));
+  --danger-rgb: 255 156 168;
+  --danger: rgb(var(--danger-rgb));
+  --scrim: rgba(4, 9, 20, 0.76);
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-serif: var(--font-sans);
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
-
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-rgb: 243 246 251;
+  --bg: rgb(var(--bg-rgb));
+  --surface-rgb: 255 255 255;
+  --surface: rgb(var(--surface-rgb));
+  --elevated-rgb: 255 255 255;
+  --elevated: rgb(var(--elevated-rgb));
+  --subtle-rgb: 237 242 250;
+  --subtle: rgb(var(--subtle-rgb));
+  --line-rgb: 215 225 239;
+  --line: rgb(var(--line-rgb));
+  --ink-rgb: 21 36 60;
+  --ink: rgb(var(--ink-rgb));
+  --muted-rgb: 83 101 127;
+  --muted: rgb(var(--muted-rgb));
+  --faint-rgb: 96 115 142;
+  --faint: rgb(var(--faint-rgb));
+  --accent-rgb: 39 93 219;
+  --accent: rgb(var(--accent-rgb));
+  --on-accent-rgb: 255 255 255;
+  --on-accent: rgb(var(--on-accent-rgb));
+  --success-rgb: 22 114 79;
+  --success: rgb(var(--success-rgb));
+  --warning-rgb: 145 96 14;
+  --warning: rgb(var(--warning-rgb));
+  --danger-rgb: 183 44 69;
+  --danger: rgb(var(--danger-rgb));
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px;
+}
 html,
 body {
   min-height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-sans), Inter, system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
-
 body {
   overflow-x: hidden;
 }
-
+h1,
+h2,
+h3 {
+  letter-spacing: -0.025em;
+}
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+button:not(:disabled) {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
 ::selection {
-  background: var(--ink);
+  background: var(--accent);
   color: var(--on-accent);
 }
-
+input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 ::-webkit-scrollbar-thumb {
   background: var(--line);
-  border-radius: 9999px;
+  border-radius: 20px;
 }
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--faint);
-}
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
-  -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.hero-grid {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
-
-input,
-textarea,
-button,
-select {
-  font-family: inherit;
+.fade-in {
+  animation: enter 240ms ease-out both;
 }
-
-:root {
-  --font-sans: Arial, Helvetica, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: "Courier New", monospace;
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

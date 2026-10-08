@@ -1,26 +1,38 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { useFeedback } from './feedback';
-import { Button, Card, ErrorBanner, Field, Input, Textarea, Toggle } from './ui';
+import React, { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { useFeedback } from "./feedback";
+import {
+  Button,
+  Card,
+  ErrorBanner,
+  Field,
+  Input,
+  Textarea,
+  Toggle,
+} from "./ui";
 
 export function UpdatesView() {
   const { notify } = useFeedback();
   const [error, setError] = useState<string | null>(null);
-  const [libVersion, setLibVersion] = useState('');
-  const [libUrl, setLibUrl] = useState('');
-  const [libActive, setLibActive] = useState({ version: '', url: '', updated: '' });
-  const [apkName, setApkName] = useState('');
-  const [apkCode, setApkCode] = useState('');
-  const [apkUrl, setApkUrl] = useState('');
-  const [apkChangelog, setApkChangelog] = useState('');
+  const [libVersion, setLibVersion] = useState("");
+  const [libUrl, setLibUrl] = useState("");
+  const [libActive, setLibActive] = useState({
+    version: "",
+    url: "",
+    updated: "",
+  });
+  const [apkName, setApkName] = useState("");
+  const [apkCode, setApkCode] = useState("");
+  const [apkUrl, setApkUrl] = useState("");
+  const [apkChangelog, setApkChangelog] = useState("");
   const [apkMandatory, setApkMandatory] = useState(false);
   const [apkActive, setApkActive] = useState({
-    version_name: '',
+    version_name: "",
     version_code: 0,
-    download_url: '',
-    changelog: '',
+    download_url: "",
+    changelog: "",
     is_mandatory: false,
   });
   const [savingLib, setSavingLib] = useState(false);
@@ -30,23 +42,27 @@ export function UpdatesView() {
     setError(null);
     try {
       const [lib, apk] = await Promise.all([
-        fetch('/api/client/lib-update', { cache: 'no-store' }).then((r) => r.json()),
-        fetch('/api/client/app-update', { cache: 'no-store' }).then((r) => r.json()),
+        fetch("/api/client/lib-update", { cache: "no-store" }).then((r) =>
+          r.json(),
+        ),
+        fetch("/api/client/app-update", { cache: "no-store" }).then((r) =>
+          r.json(),
+        ),
       ]);
       setLibActive({
-        version: lib.version || '',
-        url: lib.download_url || '',
-        updated: lib.updated_at || '',
+        version: lib.version || "",
+        url: lib.download_url || "",
+        updated: lib.updated_at || "",
       });
       setApkActive({
-        version_name: apk.version_name || '',
+        version_name: apk.version_name || "",
         version_code: apk.version_code || 0,
-        download_url: apk.download_url || '',
-        changelog: apk.changelog || '',
+        download_url: apk.download_url || "",
+        changelog: apk.changelog || "",
         is_mandatory: !!apk.is_mandatory,
       });
     } catch (err: any) {
-      setError(err?.message || 'Could not load update channels.');
+      setError(err?.message || "Could not load update channels.");
     }
   };
 
@@ -56,21 +72,40 @@ export function UpdatesView() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl text-ink">Updates</h1>
+      <header>
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-accent">
+          Release management
+        </p>
+        <h1 className="text-3xl font-semibold text-ink">
+          App & library updates
+        </h1>
+        <p className="mt-2 text-sm text-muted">
+          Publish a new version and keep your users up to date.
+        </p>
+      </header>
 
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-5">
-          <h2 className="text-base text-ink">Library</h2>
+          <h2 className="text-lg font-semibold text-ink">Library channel</h2>
+          <p className="mt-2 text-sm text-muted">
+            Update the native library download available to the app.
+          </p>
           <div className="mt-4 rounded-lg border border-line bg-subtle p-3 text-sm">
             <div className="flex justify-between text-muted">
               <span>Active version</span>
-              <span className="font-mono text-ink">v{libActive.version || '—'}</span>
+              <span className="font-mono text-ink">
+                v{libActive.version || "—"}
+              </span>
             </div>
-            <p className="mt-2 break-all font-mono text-xs text-muted">{libActive.url || 'No URL published'}</p>
+            <p className="mt-2 break-all font-mono text-xs text-muted">
+              {libActive.url || "No URL published"}
+            </p>
             {libActive.updated ? (
-              <p className="mt-2 text-xs text-faint">{new Date(libActive.updated).toLocaleString()}</p>
+              <p className="mt-2 text-xs text-faint">
+                {new Date(libActive.updated).toLocaleString()}
+              </p>
             ) : null}
           </div>
           <form
@@ -78,25 +113,28 @@ export function UpdatesView() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (!libVersion.trim()) {
-                notify('Version is required.', 'err');
+                notify("Version is required.", "err");
                 return;
               }
               if (!/^https?:\/\//i.test(libUrl.trim())) {
-                notify('Enter a valid download URL.', 'err');
+                notify("Enter a valid download URL.", "err");
                 return;
               }
               setSavingLib(true);
               try {
-                await api('/api/client/lib-update', {
-                  method: 'POST',
-                  body: JSON.stringify({ version: libVersion.trim(), download_url: libUrl.trim() }),
+                await api("/api/client/lib-update", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    version: libVersion.trim(),
+                    download_url: libUrl.trim(),
+                  }),
                 });
-                setLibVersion('');
-                setLibUrl('');
-                notify('Library update published.');
+                setLibVersion("");
+                setLibUrl("");
+                notify("Library update published.");
                 await load();
               } catch (err: any) {
-                notify(err?.message || 'Publish failed.', 'err');
+                notify(err?.message || "Publish failed.", "err");
               } finally {
                 setSavingLib(false);
               }
@@ -107,7 +145,9 @@ export function UpdatesView() {
                 className="font-mono"
                 value={libVersion}
                 onChange={(e) => setLibVersion(e.target.value)}
-                placeholder={libActive.version ? `Current ${libActive.version}` : '1.1'}
+                placeholder={
+                  libActive.version ? `Current ${libActive.version}` : "1.1"
+                }
               />
             </Field>
             <Field label="Direct ZIP URL">
@@ -131,12 +171,14 @@ export function UpdatesView() {
             <div className="flex justify-between text-muted">
               <span>Active version</span>
               <span className="font-mono text-ink">
-                {apkActive.version_name || '—'} ({apkActive.version_code || 0})
+                {apkActive.version_name || "—"} ({apkActive.version_code || 0})
               </span>
             </div>
-            <div className="mt-1 text-xs text-muted">{apkActive.is_mandatory ? 'Mandatory' : 'Optional'}</div>
+            <div className="mt-1 text-xs text-muted">
+              {apkActive.is_mandatory ? "Mandatory" : "Optional"}
+            </div>
             <p className="mt-2 break-all font-mono text-xs text-muted">
-              {apkActive.download_url || 'No URL published'}
+              {apkActive.download_url || "No URL published"}
             </p>
           </div>
           <form
@@ -144,20 +186,21 @@ export function UpdatesView() {
             onSubmit={async (e) => {
               e.preventDefault();
               const versionName = apkName.trim() || apkActive.version_name;
-              const versionCode = parseInt(apkCode, 10) || apkActive.version_code;
+              const versionCode =
+                parseInt(apkCode, 10) || apkActive.version_code;
               const url = apkUrl.trim() || apkActive.download_url;
               if (!url || !/^https?:\/\//i.test(url)) {
-                notify('A valid APK download URL is required.', 'err');
+                notify("A valid APK download URL is required.", "err");
                 return;
               }
               if (!versionName) {
-                notify('Version name is required.', 'err');
+                notify("Version name is required.", "err");
                 return;
               }
               setSavingApk(true);
               try {
-                await api('/api/client/app-update', {
-                  method: 'POST',
+                await api("/api/client/app-update", {
+                  method: "POST",
                   body: JSON.stringify({
                     version_name: versionName,
                     version_code: versionCode,
@@ -166,10 +209,10 @@ export function UpdatesView() {
                     is_mandatory: apkMandatory,
                   }),
                 });
-                notify('APK update published.');
+                notify("APK update published.");
                 await load();
               } catch (err: any) {
-                notify(err?.message || 'Publish failed.', 'err');
+                notify(err?.message || "Publish failed.", "err");
               } finally {
                 setSavingApk(false);
               }
@@ -181,7 +224,7 @@ export function UpdatesView() {
                   className="font-mono"
                   value={apkName}
                   onChange={(e) => setApkName(e.target.value)}
-                  placeholder={apkActive.version_name || '1.4.0'}
+                  placeholder={apkActive.version_name || "1.4.0"}
                 />
               </Field>
               <Field label="Version code">
@@ -190,7 +233,7 @@ export function UpdatesView() {
                   className="font-mono"
                   value={apkCode}
                   onChange={(e) => setApkCode(e.target.value)}
-                  placeholder={String(apkActive.version_code || '')}
+                  placeholder={String(apkActive.version_code || "")}
                 />
               </Field>
             </div>
