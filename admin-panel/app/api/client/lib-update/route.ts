@@ -68,7 +68,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status, headers: corsHeaders });
   }

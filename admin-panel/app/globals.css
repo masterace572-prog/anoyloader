@@ -64,8 +64,8 @@ body {
   scrollbar-width: none;
 }
 
-input[type='number']::-webkit-inner-spin-button,
-input[type='number']::-webkit-outer-spin-button {
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
@@ -75,4 +75,10 @@ textarea,
 button,
 select {
   font-family: inherit;
+}
+
+:root {
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: "Courier New", monospace;
 }

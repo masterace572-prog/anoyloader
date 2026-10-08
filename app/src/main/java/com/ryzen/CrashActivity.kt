@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import java.io.File
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
@@ -19,7 +20,12 @@ class CrashActivity : AppCompatActivity() {
         enableEdgeToEdge()
 
         val errorMessage = intent.getStringExtra("error_message")
-        val stackTrace = intent.getStringExtra("stack_trace")
+        val stackTrace = intent.getStringExtra("stack_trace") ?: runCatching {
+            File(filesDir, "crash-reports").listFiles()
+                ?.filter { it.extension == "txt" }
+                ?.maxByOrNull { it.lastModified() }
+                ?.inputStream()?.bufferedReader()?.use { it.readText().take(128 * 1024) }
+        }.getOrNull()
 
         setContent {
             AppTheme {

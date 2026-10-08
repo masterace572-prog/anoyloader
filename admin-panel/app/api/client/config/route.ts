@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const auth = requireAdmin(req);
+    const auth = await requireAdmin(req);
     if (!auth.ok) {
       return NextResponse.json(
         { success: false, error: auth.error },

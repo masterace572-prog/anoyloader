@@ -1,15 +1,20 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { FileArchive, KeyRound, LogOut, Settings2 } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import React from "react";
+import { Code2, FileArchive, KeyRound, LogOut, Settings2 } from "lucide-react";
+import { cn } from "@/lib/cn";
 
-export type AppView = 'licenses' | 'updates' | 'system';
+export type AppView = "licenses" | "updates" | "system" | "api";
 
-const NAV: { id: AppView; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'licenses', label: 'Keys', icon: KeyRound },
-  { id: 'updates', label: 'Updates', icon: FileArchive },
-  { id: 'system', label: 'Maintenance', icon: Settings2 },
+const NAV: {
+  id: AppView;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: "api", label: "API access", icon: Code2 },
+  { id: "licenses", label: "Keys", icon: KeyRound },
+  { id: "updates", label: "Updates", icon: FileArchive },
+  { id: "system", label: "Maintenance", icon: Settings2 },
 ];
 
 export function Shell({
@@ -41,8 +46,10 @@ export function Shell({
                 type="button"
                 onClick={() => onView(item.id)}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
-                  active ? 'bg-subtle text-ink' : 'text-muted hover:bg-subtle hover:text-ink'
+                  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-subtle text-ink"
+                    : "text-muted hover:bg-subtle hover:text-ink",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -66,7 +73,11 @@ export function Shell({
       <header className="sticky top-0 z-20 border-b border-line bg-surface lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="text-[15px] font-medium text-ink">Anoy</div>
-          <button type="button" onClick={onLogout} className="rounded-lg p-2 text-muted hover:bg-subtle hover:text-ink">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="rounded-lg p-2 text-muted hover:bg-subtle hover:text-ink"
+          >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -77,8 +88,8 @@ export function Shell({
               type="button"
               onClick={() => onView(item.id)}
               className={cn(
-                'flex-1 rounded-lg py-1.5 text-sm',
-                view === item.id ? 'bg-subtle text-ink' : 'text-muted'
+                "flex-1 rounded-lg py-1.5 text-sm",
+                view === item.id ? "bg-subtle text-ink" : "text-muted",
               )}
             >
               {item.label}
@@ -88,7 +99,9 @@ export function Shell({
       </header>
 
       <main className="min-h-screen lg:pl-56">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-8">{children}</div>
+        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-8">
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Server-only Supabase clients.
@@ -7,29 +7,39 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
  */
 
 function url(): string {
-  return (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
-}
-
-function anonKey(): string {
-  return (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    ""
+  ).trim();
 }
 
 function serviceKey(): string {
-  return (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  return (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 }
 
 export function isServerSupabaseConfigured(): boolean {
   const u = url();
-  const key = serviceKey() || anonKey();
-  return Boolean(u) && Boolean(key) && !u.includes('your-project-id');
+  const key = serviceKey();
+  return (
+    Boolean(u) &&
+    Boolean(key) &&
+    !u.includes("your-project-id") &&
+    !key.includes("your-service-role")
+  );
 }
 
-/** Prefer service role; fall back to anon if service role is missing. */
+/** Privileged routes fail closed without a server-only service role key. */
 export function getServerSupabase(): SupabaseClient | null {
   const u = url();
-  if (!u || u.includes('your-project-id')) return null;
-  const key = serviceKey() || anonKey();
-  if (!key || key.includes('your-anon-key') || key.includes('your-service-role')) return null;
+  if (!u || u.includes("your-project-id")) return null;
+  const key = serviceKey();
+  if (
+    !key ||
+    key.includes("your-anon-key") ||
+    key.includes("your-service-role")
+  )
+    return null;
   return createClient(u, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -37,5 +47,5 @@ export function getServerSupabase(): SupabaseClient | null {
 
 export function hasServiceRoleKey(): boolean {
   const k = serviceKey();
-  return Boolean(k) && !k.includes('your-service-role');
+  return Boolean(k) && !k.includes("your-service-role");
 }

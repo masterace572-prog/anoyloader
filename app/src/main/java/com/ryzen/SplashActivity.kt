@@ -36,6 +36,19 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // A fatal process cannot reliably start UI. Present its private report on
+        // the next normal launch instead, without repeatedly opening it.
+        val lastCrash = File(filesDir, "crash-reports").listFiles()
+            ?.filter { it.extension == "txt" }
+            ?.maxByOrNull { it.lastModified() }
+        val crashPrefs = getSharedPreferences("crash-diagnostics", MODE_PRIVATE)
+        if (lastCrash != null && crashPrefs.getString("last_shown", null) != lastCrash.name) {
+            crashPrefs.edit().putString("last_shown", lastCrash.name).apply()
+            startActivity(Intent(this, CrashActivity::class.java))
+            finish()
+            return
+        }
+
         val localVersion = ApkUpdateManager.getLocalVersionName(this)
 
         setContent {

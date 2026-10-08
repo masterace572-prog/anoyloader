@@ -1,44 +1,34 @@
-export function getAdminToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem('admin_session_token');
+import { supabase } from "./supabase";
+export async function clearAdminToken() {
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("admin_session_token");
+    sessionStorage.removeItem("admin_session_auth");
+  }
+  await supabase?.auth.signOut();
 }
-
-export function setAdminToken(token: string) {
-  sessionStorage.setItem('admin_session_token', token);
-  sessionStorage.removeItem('admin_session_auth');
-}
-
-export function clearAdminToken() {
-  sessionStorage.removeItem('admin_session_token');
-  sessionStorage.removeItem('admin_session_auth');
-}
-
-export function adminHeaders(extra?: HeadersInit): HeadersInit {
-  const token = getAdminToken();
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}`, 'x-admin-token': token } : {}),
-    ...(extra || {}),
-  };
-}
-
 export class ApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
     super(message);
-    this.status = status;
   }
 }
-
-export async function api<T = any>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    cache: 'no-store',
-    ...init,
-    headers: adminHeaders(init?.headers),
-  });
+export async function api<T = any>(
+  url: string,
+  init?: RequestInit,
+): Promise<T> {
+  const session = await supabase?.auth.getSession();
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  const token = session?.data.session?.access_token;
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(url, { cache: "no-store", ...init, headers });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status);
-  }
+  if (!res.ok)
+    throw new ApiError(
+      data?.error || `Request failed (${res.status})`,
+      res.status,
+    );
   return data as T;
 }

@@ -1,111 +1,103 @@
-import { createHmac, timingSafeEqual } from 'crypto';
-import { NextRequest } from 'next/server';
+import { NextRequest } from "next/server";
+import { createHash } from "crypto";
+import { getServerSupabase } from "./supabase-server";
 
-/**
- * Server-only admin auth helpers.
- * Secrets MUST come from Vercel / process.env — never ship them to the client.
- *
- * Required env (Vercel Project → Settings → Environment Variables):
- *   ADMIN_PIN                 – dashboard login PIN
- *   ADMIN_SESSION_SECRET      – optional HMAC secret (falls back to ADMIN_PIN)
- *   SUPABASE_SERVICE_ROLE_KEY – server-side DB writes
- *   NEXT_PUBLIC_SUPABASE_URL
- *   NEXT_PUBLIC_SUPABASE_ANON_KEY
- */
-
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
-const TOKEN_PREFIX = 'anoy-admin';
-
-function getAdminPin(): string {
-  const pin = (process.env.ADMIN_PIN || '').trim();
-  return pin;
-}
-
-function getSessionSecret(): string {
-  const explicit = (process.env.ADMIN_SESSION_SECRET || '').trim();
-  if (explicit) return explicit;
-  const pin = getAdminPin();
-  if (pin) return `anoy-session:${pin}`;
-  return '';
-}
-
-export function isAdminPinConfigured(): boolean {
-  return getAdminPin().length > 0;
-}
-
-/** Constant-time PIN compare against process.env.ADMIN_PIN */
-export function verifyAdminPin(entered: string): boolean {
-  const expected = getAdminPin();
-  if (!expected) return false;
-  const a = Buffer.from(String(entered ?? ''), 'utf8');
-  const b = Buffer.from(expected, 'utf8');
-  if (a.length !== b.length) {
-    // still run a dummy compare to reduce timing signal on length
-    timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32));
-    return false;
-  }
-  return timingSafeEqual(a, b);
-}
-
-function sign(payload: string, secret: string): string {
-  return createHmac('sha256', secret).update(payload).digest('hex');
-}
-
-/** Issue a signed session token after successful PIN login */
-export function issueAdminSessionToken(): string | null {
-  const secret = getSessionSecret();
-  if (!secret) return null;
-  const exp = Date.now() + SESSION_TTL_MS;
-  const payload = `${TOKEN_PREFIX}:${exp}`;
-  const sig = sign(payload, secret);
-  return Buffer.from(`${payload}.${sig}`, 'utf8').toString('base64url');
-}
-
-export function verifyAdminSessionToken(token: string | null | undefined): boolean {
-  if (!token) return false;
-  const secret = getSessionSecret();
-  if (!secret) return false;
-  try {
-    const raw = Buffer.from(token, 'base64url').toString('utf8');
-    const lastDot = raw.lastIndexOf('.');
-    if (lastDot <= 0) return false;
-    const payload = raw.slice(0, lastDot);
-    const sig = raw.slice(lastDot + 1);
-    const expected = sign(payload, secret);
-    const a = Buffer.from(sig, 'utf8');
-    const b = Buffer.from(expected, 'utf8');
-    if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
-    const parts = payload.split(':');
-    if (parts.length !== 2 || parts[0] !== TOKEN_PREFIX) return false;
-    const exp = Number(parts[1]);
-    if (!Number.isFinite(exp) || Date.now() > exp) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Read Bearer token or x-admin-token header */
+export type AuthResult =
+  { ok: true; userId: string } | { ok: false; status: number; error: string };
 export function extractAdminToken(req: NextRequest): string | null {
-  const auth = req.headers.get('authorization') || '';
-  if (auth.toLowerCase().startsWith('bearer ')) {
-    return auth.slice(7).trim() || null;
-  }
-  const header = req.headers.get('x-admin-token');
-  return header?.trim() || null;
+  const auth = req.headers.get("authorization") || "";
+  return auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : null;
 }
 
-export function requireAdmin(req: NextRequest): { ok: true } | { ok: false; status: number; error: string } {
-  if (!isAdminPinConfigured()) {
+/** Always checks approval in the database, including on every API-key request. */
+export async function requireAdmin(
+  req: NextRequest,
+  scope?: "licenses:read" | "licenses:write",
+): Promise<AuthResult> {
+  const client = getServerSupabase();
+  if (!client)
     return {
       ok: false,
       status: 503,
-      error: 'ADMIN_PIN is not configured on the server. Set it in Vercel Environment Variables.',
+      error: "Server database is not configured.",
     };
-  }
   const token = extractAdminToken(req);
-  if (!verifyAdminSessionToken(token)) {
-    return { ok: false, status: 401, error: 'Unauthorized. Sign in with the admin PIN.' };
+  if (!token) return { ok: false, status: 401, error: "Sign in to continue." };
+  let userId: string;
+  let apiKeyId: string | undefined;
+  if (token.startsWith("anoy_api_")) {
+    // Management API keys cannot mint more keys or alter system settings.
+    if (!scope)
+      return {
+        ok: false,
+        status: 403,
+        error: "An account session is required.",
+      };
+    const hash = createHash("sha256").update(token).digest("hex");
+    const { data: key, error } = await client
+      .from("management_api_keys")
+      .select("id,user_id,scopes,expires_at,revoked_at")
+      .eq("key_hash", hash)
+      .maybeSingle();
+    if (error)
+      return {
+        ok: false,
+        status: 503,
+        error: "API authentication is unavailable.",
+      };
+    if (
+      !key ||
+      key.revoked_at ||
+      new Date(key.expires_at).getTime() <= Date.now()
+    )
+      return {
+        ok: false,
+        status: 401,
+        error: "Invalid, expired, or revoked API key.",
+      };
+    if (!key.scopes.includes(scope))
+      return { ok: false, status: 403, error: `Missing permission: ${scope}` };
+    userId = key.user_id;
+    apiKeyId = key.id;
+  } else {
+    const { data, error } = await client.auth.getUser(token);
+    if (error || !data.user)
+      return {
+        ok: false,
+        status: 401,
+        error: "Session expired. Sign in again.",
+      };
+    userId = data.user.id;
   }
-  return { ok: true };
+  const { data: admin, error } = await client
+    .from("admin_accounts")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("is_approved", true)
+    .maybeSingle();
+  if (error)
+    return {
+      ok: false,
+      status: 503,
+      error: "Admin approval lookup is unavailable. Run the account migration.",
+    };
+  if (!admin)
+    return {
+      ok: false,
+      status: 403,
+      error: "Your account is awaiting administrator approval.",
+    };
+  if (apiKeyId) {
+    const { error: usageError } = await client.rpc(
+      "record_management_api_usage",
+      { p_id: apiKeyId },
+    );
+    if (usageError)
+      return {
+        ok: false,
+        status: 503,
+        error: "API usage tracking is unavailable.",
+      };
+  }
+  return { ok: true, userId };
 }

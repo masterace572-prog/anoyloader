@@ -75,11 +75,17 @@ public class BProcessManagerService implements ISystemService {
                 app = bProcess.get(processName);
                 if (app != null) {
                     if (app.initLock != null) {
-                        app.initLock.block();
+                        // Initialization is synchronous under mProcessLock. A closed
+                        // gate means reentry/incomplete state; never wait indefinitely
+                        // while holding the lock needed by death/cleanup callbacks.
+                        if (!app.initLock.block(1)) return null;
                     }
-                    if (app.bActivityThread != null) {
+                    if (app.bActivityThread != null && app.bActivityThread.asBinder().isBinderAlive()) {
                         return app;
                     }
+                    // Do not hand out a dead Binder or retain a stale slot reservation.
+                    bProcess.remove(processName);
+                    mPidsSelfLocked.remove(app);
                 }
                 bpid = getUsingBPidL();
                 Slog.d(TAG, "init bUid = " + buid + ", bPid = " + bpid);
@@ -90,7 +96,7 @@ public class BProcessManagerService implements ISystemService {
             app = new ProcessRecord(info, processName);
             app.uid = Process.myUid();
             app.bpid = bpid;
-            app.buid = BPackageManagerService.get().getAppId(packageName);
+            app.buid = buid;
             app.callingBUid = getBUidByPidOrPackageName(callingPid, packageName);
             app.userId = userId;
 
@@ -98,14 +104,24 @@ public class BProcessManagerService implements ISystemService {
             mPidsSelfLocked.add(app);
 
             mProcessMap.put(buid, bProcess);
-            if (!initAppProcessL(app)) {
-                //init process fail
-                bProcess.remove(processName);
-                mPidsSelfLocked.remove(app);
-                app = null;
-            } else {
-                app.pid = getPid(BlackBoxCore.getContext(), ProxyManifest.getProcessName(app.bpid));
+            boolean initialized = false;
+            try {
+                initialized = initAppProcessL(app);
+                if (initialized) {
+                    app.pid = getPid(BlackBoxCore.getContext(), ProxyManifest.getProcessName(app.bpid));
+                }
+            } finally {
+                app.initLock.open();
+                if (!initialized) {
+                    // Also executes if provider/attach throws. Do not leave a
+                    // registered half-process or strand initialization waiters.
+                    if (bProcess.get(processName) == app) bProcess.remove(processName);
+                    mPidsSelfLocked.remove(app);
+                    if (bProcess.isEmpty()) mProcessMap.remove(buid);
+                    removeProc(app);
+                }
             }
+            if (!initialized) app = null;
         }
         return app;
     }
@@ -150,11 +166,16 @@ public class BProcessManagerService implements ISystemService {
 
     private int getUsingBPidL() {
         ActivityManager manager = (ActivityManager) BlackBoxCore.getContext().getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> runningAppProcesses = manager.getRunningAppProcesses();
+        List<ActivityManager.RunningAppProcessInfo> runningAppProcesses =
+                manager != null ? manager.getRunningAppProcesses() : null;
         Set<Integer> usingPs = new HashSet<>();
-        for (ActivityManager.RunningAppProcessInfo runningAppProcess : runningAppProcesses) {
-            int i = parseBPid(runningAppProcess.processName);
-            usingPs.add(i);
+        // Android's snapshot may omit a process still being initialized. Reserve
+        // tracked slots too, otherwise a child process can displace a live game.
+        for (ProcessRecord record : mPidsSelfLocked) usingPs.add(record.bpid);
+        if (runningAppProcesses != null) {
+            for (ActivityManager.RunningAppProcessInfo runningAppProcess : runningAppProcesses) {
+                usingPs.add(parseBPid(runningAppProcess.processName));
+            }
         }
         for (int i = 0; i < ProxyManifest.FREE_COUNT; i++) {
             if (usingPs.contains(i)) {
@@ -214,55 +235,70 @@ public class BProcessManagerService implements ISystemService {
 			Log.e(TAG, "Provider error: " + e.getMessage());
 			result = new Bundle();
 		}
-		IBinder appThread = BundleCompat.getBinder(result, "_Black_|_client_");
+		if (result == null) return false;
+        IBinder appThread = BundleCompat.getBinder(result, "_Black_|_client_");
 		if (appThread == null || !appThread.isBinderAlive()) {
 			return false;
 		}
-		attachClientL(record, appThread);
+        if (!attachClientL(record, appThread)) return false;
 		createProc(record);
 		return true;
 	}
 
-    private void attachClientL(final ProcessRecord app, final IBinder appThread) {
+    private boolean attachClientL(final ProcessRecord app, final IBinder appThread) {
         IBActivityThread activityThread = IBActivityThread.Stub.asInterface(appThread);
-        if (activityThread == null) {
-            app.kill();
-            return;
-        }
+        if (activityThread == null) return false;
+        final IBinder.DeathRecipient recipient = new IBinder.DeathRecipient() {
+            @Override
+            public void binderDied() {
+                Log.d(TAG, "App Died: " + app.processName);
+                onProcessDie(app);
+            }
+        };
+        boolean linked = false;
+        boolean attached = false;
         try {
-            appThread.linkToDeath(new IBinder.DeathRecipient() {
-                @Override
-                public void binderDied() {
-                    Log.d(TAG, "App Died: " + app.processName);
-                    appThread.unlinkToDeath(this, 0);
-                    onProcessDie(app);
-                }
-            }, 0);
+            // A failed link means the process is already dead: do not publish it.
+            appThread.linkToDeath(recipient, 0);
+            linked = true;
+            android.os.IInterface client = ApplicationThreadCompat.asInterface(activityThread.getActivityThread());
+            if (client == null || !appThread.isBinderAlive()) return false;
+            app.appThread = client;
+            app.bActivityThread = activityThread;
+            attached = true;
+            return true;
         } catch (RemoteException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Virtual client died during attach", e);
+            return false;
+        } finally {
+            if (linked && !attached) {
+                try { appThread.unlinkToDeath(recipient, 0); } catch (RuntimeException ignored) { }
+            }
+            app.initLock.open();
         }
-        app.bActivityThread = activityThread;
-        try {
-            app.appThread = ApplicationThreadCompat.asInterface(activityThread.getActivityThread());
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        app.initLock.open();
     }
 
     public void onProcessDie(ProcessRecord record) {
         synchronized (mProcessLock) {
-            record.kill();
+            // Binder death can arrive after a replacement was registered. Never
+            // kill by an old PID (it may have been reused) or remove that replacement.
             Map<String, ProcessRecord> process = mProcessMap.get(record.buid);
-            if (process != null) {
+            boolean current = process != null && process.get(record.processName) == record;
+            if (current) {
                 process.remove(record.processName);
                 if (process.isEmpty()) {
                     mProcessMap.remove(record.buid);
                 }
             }
             mPidsSelfLocked.remove(record);
-            removeProc(record);
-            BNotificationManagerService.get().deletePackageNotification(record.getPackageName(), record.userId);
+            boolean slotReused = false;
+            for (ProcessRecord live : mPidsSelfLocked) {
+                if (live.bpid == record.bpid) { slotReused = true; break; }
+            }
+            if (!slotReused) removeProc(record);
+            if (current) {
+                BNotificationManagerService.get().deletePackageNotification(record.getPackageName(), record.userId);
+            }
         }
     }
 

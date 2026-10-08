@@ -1460,14 +1460,8 @@ class MAct : AppCompatActivity() {
                 return
             }
 
-            // Stop any previous zombie instance of this package before relaunch
-            // (common after a previous crash leaves a half-dead process)
-            try {
-                core.stopPackage(currentGame.packageName, USER_ID)
-                Thread.sleep(250)
-            } catch (_: Throwable) {
-            }
-
+            // Reuse an existing virtual activity when possible. Force-stopping here
+            // killed healthy sessions when the loader was reopened during gameplay.
             val launched = core.launchApk(currentGame.packageName, USER_ID)
             if (!launched) {
                 isLaunchingState.value = false
